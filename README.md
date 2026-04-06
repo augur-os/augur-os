@@ -18,6 +18,10 @@ Clone it. Connect any LLM. Plain-text skills you can `cat`, `grep`, and `git dif
 
 ---
 
+> **Soft Launch** — Augur is in soft launch. The full source code is being prepared for public release. Want early access to the private repo? Email **gursannikov@augur.run** — we're onboarding early adopters now.
+
+---
+
 ## Quick Start
 
 ```bash
