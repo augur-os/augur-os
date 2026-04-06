@@ -4,7 +4,6 @@
 [![CI](https://github.com/augur-os/augur-os/actions/workflows/ci-tests.yml/badge.svg)](https://github.com/augur-os/augur-os/actions/workflows/ci-tests.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Node 20+](https://img.shields.io/badge/node-20+-green.svg)](https://nodejs.org/)
-[![GitHub stars](https://img.shields.io/github/stars/augur-os/augur-os?style=social)](https://github.com/augur-os/augur-os)
 [![GitHub last commit](https://img.shields.io/github/last-commit/augur-os/augur-os)](https://github.com/augur-os/augur-os/commits)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Sponsored by Guriqo](https://img.shields.io/badge/Sponsored%20by-Guriqo-orange.svg)](https://guriqo.com)
