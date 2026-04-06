@@ -1,0 +1,136 @@
+[project]
+name = "augur-cli"
+version = "0.2.0"
+description = "Agent-native CLI for the Augur personal knowledge system"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "Gur Sannikov" }
+]
+keywords = ["augur", "mcp", "cli", "automation", "knowledge"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+dependencies = [
+    "pyyaml>=6.0",
+    "mcp>=1.22.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "httpx>=0.25.0",
+    "requests>=2.33.0",
+    "aiohttp>=3.13.4",
+    "toml>=0.10.2",
+    "python-dotenv>=1.0.0",
+    "watchdog>=6.0.0",
+    "markitdown[all]>=0.1.0",
+    "markitdown-ocr>=0.1.0",
+    "rank-bm25>=0.2.2",
+]
+
+[project.optional-dependencies]
+ocr = [
+    "mlx-vlm>=0.1.0",
+    "pymupdf>=1.24.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.1.0",
+    "mypy>=1.8.0",
+    "bandit>=1.7.0",
+    "pip-audit>=2.7.0",
+]
+windows = [
+    "pyttsx3>=2.90",
+]
+
+[project.urls]
+Homepage = "https://augur.run"
+Repository = "https://github.com/augur-os/augur-os"
+Documentation = "https://augur.run/more.html"
+Issues = "https://github.com/augur-os/augur-os/issues"
+
+[project.scripts]
+aug = "src.cli:main"
+
+[project.entry-points."augur.plugins"]
+# Future: plugin discovery via entry points
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+# Only include CLI and MCP package — NOT plugins/, config/, or dashboard/
+exclude = ["apps/dashboard", "src/scripts"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/pyproject.toml",
+    "/README.md",
+]
+
+[tool.black]
+line-length = 120
+skip-string-normalization = true
+
+[tool.ruff.lint]
+exclude = [
+    ".venv",
+    "__pycache__",
+    "node_modules",
+    "apps/dashboard",
+]
+ignore = ["E402"]
+
+[tool.pytest.ini_options]
+norecursedirs = ["_dev", ".git", ".tox", ".venv", "modules", "node_modules"]
+testpaths = ["tests", "plugins"]
+addopts = "--import-mode=importlib"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "asyncio: mark test as async (automatically applied by pytest-asyncio)",
+    "contract: MCP tool contract tests (verify input/output schemas)",
+    "e2e: End-to-end workflow tests",
+    "slow: Tests that take >5s to run",
+    "requires_ripgrep: Tests requiring ripgrep CLI",
+    "integration: Live integration tests requiring external CLIs installed",
+]
+pythonpath = ["."]
+
+[tool.mypy]
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true
+
+[tool.coverage.run]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.bandit]
+exclude_dirs = [
+    "tests",
+    "node_modules",
+    ".venv",
+    "_dev",
+]
+skips = ["B110", "B112", "B105", "B311", "B404", "B603", "B607", "B101"]
+
+[tool.uv]
+constraint-dependencies = [
+    "cryptography>=46.0.6",
+    "pygments>=2.20.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
