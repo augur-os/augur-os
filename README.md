@@ -21,7 +21,20 @@ Clone it. Connect any LLM. Plain-text skills you can `cat`, `grep`, and `git dif
 
 ## Quick Start
 
-### Git Clone (recommended)
+```bash
+npx create-augur@latest my-brain
+cd my-brain
+pnpm --filter dashboard dev
+```
+
+Dashboard opens at [localhost:3000](http://localhost:3000).
+
+**Requirements**: Node.js >= 20, Python >= 3.11
+
+### Alternative Install Methods
+
+<details>
+<summary><strong>Git Clone</strong></summary>
 
 ```bash
 git clone https://github.com/augur-os/augur-os.git
@@ -32,7 +45,10 @@ aug discover
 
 **Requirements**: Python >= 3.11, [pipx](https://pipx.pypa.io/)
 
-### Quick Install (Claude Code Plugin)
+</details>
+
+<details>
+<summary><strong>Claude Code Plugin</strong></summary>
 
 ```bash
 # Add the marketplace
@@ -44,7 +60,10 @@ claude plugin install augur-skills@augur-skills
 
 Skills are auto-discovered from `skills/` and namespaced as `augur-skills:<skill-name>`.
 
-### Cowork (Claude Desktop)
+</details>
+
+<details>
+<summary><strong>Cowork (Claude Desktop)</strong></summary>
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/augur-os/augur-os/main/scripts/install.sh | bash -s -- --from cowork
@@ -52,19 +71,27 @@ curl -fsSL https://raw.githubusercontent.com/augur-os/augur-os/main/scripts/inst
 
 Installs the full system, wires the MCP server, and assembles the Cowork plugin. Restart Claude Desktop after install — skills and tools appear automatically.
 
-### Install Individual Skills
+</details>
+
+<details>
+<summary><strong>Install Individual Skills</strong></summary>
 
 ```bash
 npx skills add augur-os/augur-os --skill reading-list
 npx skills add augur-os/augur-os --skill finance -g  # global install
 ```
 
-### Dashboard
+</details>
+
+<details>
+<summary><strong>Dashboard (from clone)</strong></summary>
 
 ```bash
-cd augur-os && npm install && npm run dashboard:dev
+cd augur-os && pnpm install && pnpm --filter dashboard dev
 # Open http://localhost:3000
 ```
+
+</details>
 
 ### MCP Server (for AI agents)
 
