@@ -7,7 +7,7 @@
 
 [Website](https://augur.run) | [Documentation](https://augur.run/more.html) | [Sessions](https://augur.run/sessions.html) | [Roadmap](ROADMAP.md)
 
-> **Soft launch.** Augur is a local-first AI personal knowledge system that keeps your skills, memory, and automation on your machine.
+> **Soft launch.** Augur OS is the open-source local second-brain harness for the AI clients you already use.
 
 Augur is currently in soft launch:
 
@@ -16,22 +16,24 @@ Augur is currently in soft launch:
 - Windows validation is still pending before we make a firmer public support claim.
 - The canonical roadmap lives at [ROADMAP.md](ROADMAP.md).
 
-Plain-text skills you can `cat`, `grep`, and `git diff`. Connect any MCP-compatible client. Keep your knowledge, preferences, and decisions local.
+AI clients are the reasoning engines. Claude, Codex, Gemini, Cursor, and Ollama can connect through local MCP while Augur keeps memory, skills, tools, workflows, approvals, and automation on your machine.
+
+Augur is not an LLM wrapper and does not require an Augur API key. Bring the AI subscriptions or local models you already use; Augur gives them one durable local harness to work against.
 
 ## What is Augur?
 
-Augur is an open-source personal AI OS. It gives your AI clients a shared skill layer, a persistent knowledge base, and a local dashboard.
+Augur is an open-source personal AI OS and second-brain harness. It gives your AI clients a shared skill layer, a persistent knowledge base, governed local tools, and a local dashboard.
 
 Think of it as `.bashrc` for your AI: configure with text files, debug with `cat`, version with `git`.
 
 ### Key Features
 
 - **200+ composable skills** across the adaptive, brain, career, command, life, and studio hubs.
-- **MCP-native** tooling exposed over Model Context Protocol.
+- **MCP-native** tooling exposed over local Model Context Protocol.
 - **Local dashboard** for humans and agents.
 - **Ingest pipeline** for OCR, document extraction, web scraping, and bookmark import.
 - **LLM Wiki** synthesized from ADRs, memory, and sessions.
-- **Multi-client** support for Claude Code, Codex, Gemini CLI, Cursor, and Copilot.
+- **Multi-client** support for Claude Code, Codex, Gemini CLI, Cursor, Copilot, and Ollama.
 - **Autoloops** for self-heal, code health, dependency audit, and memory sync.
 - **Airplane mode** for offline operation with Ollama or local models.
 
@@ -54,14 +56,14 @@ For Windows-specific validation, follow the repo scripts and the current platfor
 
 ```
 +-----------------------------------------------------------+
-|                    REASONING LAYER                         |
-|               (Model-Agnostic Planning)                   |
-|      Claude  -  GPT  -  Ollama  -  Local Models           |
+|                    REASONING ENGINES                       |
+|           (AI clients you choose and subscribe to)         |
+| Claude  -  Codex  -  Gemini  -  Cursor  -  Ollama         |
 +-----------------------------+-----------------------------+
                               |
 +-----------------------------v-----------------------------+
-|                    EXECUTION LAYER                         |
-|              (200+ Skills, Multi-Client)                  |
+|                    LOCAL HARNESS LAYER                     |
+|        (Memory, Skills, MCP Tools, Workflows)              |
 |                                                           |
 |   skills/            Canonical Augur-managed skills       |
 |   .cursor/...        Repo-scoped managed exports          |
@@ -70,8 +72,8 @@ For Windows-specific validation, follow the repo scripts and the current platfor
 +-----------------------------+-----------------------------+
                               |
 +-----------------------------v-----------------------------+
-|                      OPS LAYER                            |
-|          (Daemon, Self-Heal, Nightly Automation)          |
+|                      OPS LAYER                             |
+|        (Approvals, Autoloops, Audit, Maintenance)          |
 |    38 auto-* skills  -  Adaptive loops  -  Health checks  |
 +-----------------------------------------------------------+
                               |

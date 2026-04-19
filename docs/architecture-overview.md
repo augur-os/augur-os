@@ -1,6 +1,8 @@
 # Augur Architecture (Reasoning, Execution, Ops)
 
-Augur is a personal AI operating system: a local-first way to connect models to real workflows (files, notes, queues) with auditability and human control.
+Augur is a personal AI operating system: a local-first way to connect AI clients to real workflows (files, notes, queues) with auditability and human control.
+
+AI clients are the reasoning engines. Augur is the local harness around them: persistent memory, reusable skills, governed tools, workflows, approvals, and auditability exposed through local MCP. It is not an LLM wrapper, and it does not require an Augur API key.
 
 This document reflects the current soft-launch architecture: native macOS support is implemented, native Windows architecture is implemented, and Windows validation is still pending before any firmer support claim.
 
@@ -27,11 +29,11 @@ This document defines a 3-layer architecture and the boundaries between them.
 - Direct file mutation, network calls, or tool execution.
 - Managing secrets, approvals, or long-running automation.
 
-This layer is model-agnostic (ChatGPT, Claude, Gemini, local models).
+This layer is model-agnostic (Claude, Codex, Gemini, Cursor, Ollama, ChatGPT, and local models).
 
 ### 2) Execution layer
 
-**Role**: Perform the work deterministically: edit files, run commands, and produce artifacts.
+**Role**: Perform the work deterministically through the local harness: edit files, run commands, call MCP tools, and produce artifacts.
 
 **Responsibilities**
 - Execute the plan using tools (skills, scripts, CLI, MCP).
