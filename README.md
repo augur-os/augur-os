@@ -28,7 +28,7 @@ Think of it as `.bashrc` for your AI: configure with text files, debug with `cat
 
 ### Key Features
 
-- **200+ composable skills** across the adaptive, brain, career, command, life, and studio hubs.
+- **Composable skill library** across the adaptive, brain, career, command, life, and studio hubs.
 - **MCP-native** tooling exposed over local Model Context Protocol.
 - **Local dashboard** for humans and agents.
 - **Ingest pipeline** for OCR, document extraction, web scraping, and bookmark import.
@@ -58,23 +58,27 @@ For Windows-specific validation, follow the repo scripts and the current platfor
 +-----------------------------------------------------------+
 |                    REASONING ENGINES                       |
 |           (AI clients you choose and subscribe to)         |
-| Claude  -  Codex  -  Gemini  -  Cursor  -  Ollama         |
+| Claude · Codex · Gemini · Cursor · Copilot · Ollama       |
 +-----------------------------+-----------------------------+
                               |
 +-----------------------------v-----------------------------+
-|                    LOCAL HARNESS LAYER                     |
-|        (Memory, Skills, MCP Tools, Workflows)              |
-|                                                           |
-|   skills/            Canonical Augur-managed skills       |
-|   .cursor/...        Repo-scoped managed exports          |
-|   .gemini/...        Repo-scoped managed exports          |
-|   .codex/...         Prompt/native export targets         |
+|                       MCP GATEWAY                          |
+|        Single execution surface for human and agent        |
 +-----------------------------+-----------------------------+
                               |
 +-----------------------------v-----------------------------+
-|                      OPS LAYER                             |
-|        (Approvals, Autoloops, Audit, Maintenance)          |
-|    38 auto-* skills  -  Adaptive loops  -  Health checks  |
+|                    EXECUTION LAYER                         |
+|                                                            |
+|   Skills                User · Project · Client            |
+|   Wiki + Ingest         Concept-first compiler             |
+|   Browse                Workbench surfaces                 |
+|   Vault                 Local files, allowlisted           |
++-----------------------------+-----------------------------+
+                              |
++-----------------------------v-----------------------------+
+|                       OPS LAYER                            |
+|   Autoloops · Approvals · Audit log · Health checks       |
+|   Security autoloop: S1–S5 + Tank CLI                      |
 +-----------------------------------------------------------+
                               |
           +-------------------+-------------------+
@@ -95,7 +99,7 @@ augur-os/
 ├── packages/           # Shared JS packages
 ├── plugins/            # Platform integrations
 ├── scripts/            # Bootstrap and support scripts
-├── skills/             # 200+ composable skills
+├── skills/             # Curated skill library across six hubs
 ├── src/                # Framework (CLI, config, MCP server)
 ├── tests/              # Repo-level tests
 └── .github/            # CI/CD workflows
