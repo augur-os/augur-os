@@ -1,11 +1,10 @@
 # Central MCP Gateway Architecture
 
-**Date**: 2026-01-13
-**Status**: Active (Phase 4 migration in progress)
+**Status**: Active. Aligned with `architecture-overview.md` (April 2026).
 
-This document describes the Central MCP Gateway pattern - the architectural decision to route supported execution through a single MCP server.
+This document describes the gateway-internal architecture: the tool registry, context-aware tool loading, logging, and how dashboard navigation drives tool-loading patterns.
 
-This is the current soft-launch architecture story: supported user-facing paths should route through MCP, while documented transition paths may still exist during migration.
+For the cross-component sequence (user intent → client → gateway → skill → vault + audit), see [architecture-overview.md §How an action flows](./architecture-overview.md#how-an-action-flows). That diagram is canonical for the high-level flow; this document covers what happens *inside* the gateway.
 
 ## Core Principle
 
@@ -100,10 +99,10 @@ flowchart TB
         Executor["Tool Executor"]
     end
 
-    subgraph Skills["Skills (skills/)"]
-        Factory["Factory Skills\n(agents)"]
-        Horizontal["Horizontal Skills\n(infrastructure)"]
-        Vertical["Vertical Skills\n(domains)"]
+    subgraph Skills["Skills (three-type taxonomy)"]
+        UserSkills["User skills\n(vault-owned)"]
+        ProjectSkills["Project skills\n(shared, in skills/)"]
+        ClientSkills["Client skills\n(managed exports)"]
     end
 
     subgraph Execution["Execution"]
@@ -133,17 +132,17 @@ flowchart TB
     Executor --> Logger
 
     %% MCP to Skills
-    Executor -->|"Invoke"| Factory
-    Executor -->|"Invoke"| Horizontal
-    Executor -->|"Invoke"| Vertical
+    Executor -->|"Invoke"| UserSkills
+    Executor -->|"Invoke"| ProjectSkills
+    Executor -->|"Invoke"| ClientSkills
 
     %% Skills to Execution
-    Factory --> Scripts
-    Horizontal --> Scripts
-    Vertical --> Scripts
-    Factory --> Modules
-    Horizontal --> Modules
-    Vertical --> Modules
+    UserSkills --> Scripts
+    ProjectSkills --> Scripts
+    ClientSkills --> Scripts
+    UserSkills --> Modules
+    ProjectSkills --> Modules
+    ClientSkills --> Modules
 
     %% Data access
     Scripts -->|"Read/Write"| DataRepo
