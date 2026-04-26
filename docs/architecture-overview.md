@@ -100,7 +100,27 @@ Makes the system safe and reliable by controlling routing, approvals, and observ
 
 ## How an action flows
 
-<!-- DIAGRAM 2 -->
+```mermaid
+sequenceDiagram
+    actor User
+    participant Client as Client (Dashboard or AI)
+    participant Gateway as MCP gateway
+    participant Skill
+    participant Vault as Vault + audit
+
+    Note over Client, Gateway: Same path whether the user clicked a dashboard button or asked an AI agent.
+
+    User->>Client: Intent (click or prompt)
+    Client->>Gateway: Tool call
+    Note over Gateway: Policy check
+    Gateway->>Skill: Dispatch
+    Skill->>Vault: Read / write files
+    Vault-->>Skill: Result
+    Skill-->>Gateway: Result
+    Gateway->>Vault: Audit entry
+    Gateway-->>Client: Response
+    Client-->>User: Response
+```
 
 The same path runs whether a user clicks a dashboard button or asks an AI agent. The dashboard is itself an MCP client; agents are also MCP clients. Both call the gateway, the gateway dispatches to a skill, the skill mutates the vault under allowlisted roots, and the gateway records an audit entry. This shared path is what makes the dashboard and agent surfaces interoperable rather than parallel.
 
