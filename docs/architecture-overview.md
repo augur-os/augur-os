@@ -174,7 +174,28 @@ Augur ships through staged release payloads (ADR-557): a candidate payload is bu
 
 ## Release and lifecycle
 
-<!-- DIAGRAM 3 -->
+```mermaid
+flowchart LR
+    Soft["Soft launch (now)"] --> MVP["MVP (May 2026)"]
+    MVP --> Cadence["Monthly cadence (Jun 2026+)"]
+    Cadence --> WindowsGA["Windows GA"]
+
+    subgraph Gates["Quality gates — autoloops"]
+        Sec["Security autoloop<br/>(S1–S5 + Tank CLI)"]
+        Test["Test autoloop"]
+        Repo["Repo / dependency autoloop"]
+    end
+
+    Sec -.-> Soft
+    Sec -.-> MVP
+    Sec -.-> Cadence
+    Test -.-> Soft
+    Test -.-> MVP
+    Test -.-> Cadence
+    Repo -.-> Soft
+    Repo -.-> MVP
+    Repo -.-> Cadence
+```
 
 Augur is in soft launch (April 2026, now). MVP release targets May 2026; monthly cadence begins June 2026. Windows GA follows once validation is green. Each release passes through the autoloops as quality gates — the security autoloop, the test autoloop, and the repo / dependency autoloop all run ahead of each cut. See `ROADMAP.md` for the per-phase scope.
 
