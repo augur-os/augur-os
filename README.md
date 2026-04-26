@@ -7,14 +7,13 @@
 
 [Website](https://augur.run) | [Documentation](https://augur.run/more.html) | [Sessions](https://augur.run/sessions.html) | [Roadmap](ROADMAP.md)
 
-> **Soft launch.** Augur OS is the open-source local second-brain harness for the AI clients you already use.
+> Augur OS is the open-source local second-brain harness for the AI clients you already use.
 
-Augur is currently in soft launch:
+Current state (April 2026):
 
-- Native macOS support is implemented.
-- Native Windows architecture is implemented.
-- Windows validation is still pending before we make a firmer public support claim.
-- The canonical roadmap lives at [ROADMAP.md](ROADMAP.md).
+- Runs natively on macOS today.
+- Windows architecture is complete; validation is in flight before a firmer public support claim.
+- MVP release targets May 2026. See [ROADMAP.md](ROADMAP.md) for the full release plan.
 
 AI clients are the reasoning engines. Claude, Codex, Gemini, Cursor, and Ollama can connect through local MCP while Augur keeps memory, skills, tools, workflows, approvals, and automation on your machine.
 
@@ -128,7 +127,7 @@ aug --list-tools
 
 ## Contributing
 
-Contributions are welcome, but the project should be treated as soft launch work rather than a broadly public-ready release. See [CONTRIBUTING.md](CONTRIBUTING.md) for current workflow notes.
+Contributions are welcome ahead of the May 2026 MVP. See [CONTRIBUTING.md](CONTRIBUTING.md) for the current workflow notes and scope.
 
 ## License
 
