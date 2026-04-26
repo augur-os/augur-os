@@ -8,7 +8,60 @@ This document defines the layered architecture, the named subsystems, and how an
 
 ## At a glance
 
-<!-- DIAGRAM 1 -->
+```mermaid
+flowchart TB
+    subgraph Reasoning["Reasoning — model-agnostic AI clients"]
+        Claude
+        Codex
+        Gemini
+        Cursor
+        Copilot
+        Ollama
+    end
+
+    Gateway["MCP gateway"]
+
+    subgraph Execution["Execution"]
+        subgraph Skills["Skills"]
+            UserSkills["User skills (vault)"]
+            ProjectSkills["Project skills (shared)"]
+            ClientSkills["Client skills (exports)"]
+        end
+        WikiIngest["Wiki + Ingest"]
+        Browse["Browse"]
+        Vault["Vault (local files)"]
+    end
+
+    subgraph Ops["Ops — cross-cutting"]
+        Autoloops["Autoloops<br/>(Security autoloop, Test, Repo)"]
+        Approvals
+        Audit["Audit log"]
+    end
+
+    subgraph Surfaces["Surfaces — same path for human and agent"]
+        Dashboard["Local dashboard"]
+        ClientUIs["AI client UIs"]
+    end
+
+    Claude --> Gateway
+    Codex --> Gateway
+    Gemini --> Gateway
+    Cursor --> Gateway
+    Copilot --> Gateway
+    Ollama --> Gateway
+
+    Dashboard --> Gateway
+    ClientUIs --> Gateway
+
+    Gateway --> Skills
+    Gateway --> WikiIngest
+    Gateway --> Browse
+    Gateway --> Vault
+
+    Autoloops -.-> Gateway
+    Approvals -.-> Gateway
+    Audit -.-> Gateway
+```
 
 The diagram shows the three layers and the named subsystems they contain. AI clients sit in the **Reasoning** layer as model-agnostic consumers. The **MCP gateway** is the single point through which all execution flows. Underneath the gateway live the execution subsystems: Skills (split by ownership), Wiki + Ingest, Browse, and the local Vault. The **Ops** layer (Autoloops, Approvals, Audit log) cuts across execution, governing what runs and recording what happened. Local dashboard and AI client UIs both connect through the same gateway — there is no separate path for human and agent.
 
