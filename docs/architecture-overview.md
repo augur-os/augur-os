@@ -1,242 +1,134 @@
-# Augur Architecture (Reasoning, Execution, Ops)
+# Augur Architecture
 
-Augur is a personal AI operating system: a local-first way to connect AI clients to real workflows (files, notes, queues) with auditability and human control.
+Augur is a local-first personal AI operating system: a harness around the AI clients you already use (Claude, Codex, Gemini, Cursor, Copilot, Ollama). It gives those clients a shared skill layer, a persistent local knowledge base, governed local tools, automated quality gates, and a local dashboard, all exposed through Model Context Protocol. Augur is not an LLM wrapper, and it does not require an Augur API key.
 
-AI clients are the reasoning engines. Augur is the local harness around them: persistent memory, reusable skills, governed tools, workflows, approvals, and auditability exposed through local MCP. It is not an LLM wrapper, and it does not require an Augur API key.
+This document defines the layered architecture, the named subsystems, and how an action flows through the system.
 
-This document reflects the current soft-launch architecture: native macOS support is implemented, native Windows architecture is implemented, and Windows validation is still pending before any firmer support claim.
+> **Architecture Decision Records:** for the rationale behind specific decisions, see the ADR index. Key ADRs referenced throughout: ADR-001 (three-layer architecture), ADR-002 (separate code and data repositories), ADR-005 (central MCP gateway), ADR-006 (local-first), ADR-557 (MVP staged release payloads), ADR-559–564 (wiki and ingest), ADR-550 (Windows hardening), ADR-553 (Gemini extension), ADR-562 (runtime IDE registry).
 
-This document defines a 3-layer architecture and the boundaries between them.
+## At a glance
 
-> **Architecture Decision Records**: For detailed rationale behind key decisions, see `get_adr_dir()` (`get_documents_dir()/adrs/`). Key ADRs:
-> - ADR-001: Three-Layer Architecture
-> - ADR-002: Separate Code and Data Repositories
-> - ADR-006: Local-First Architecture
+<!-- DIAGRAM 1 -->
 
-## The 3-layer model
+The diagram shows the three layers and the named subsystems they contain. AI clients sit in the **Reasoning** layer as model-agnostic consumers. The **MCP gateway** is the single point through which all execution flows. Underneath the gateway live the execution subsystems: Skills (split by ownership), Wiki + Ingest, Browse, and the local Vault. The **Ops** layer (Autoloops, Approvals, Audit log) cuts across execution, governing what runs and recording what happened. Local dashboard and AI client UIs both connect through the same gateway — there is no separate path for human and agent.
 
-### 1) Reasoning layer
+## The three layers
 
-**Role**: Turn an ambiguous user request into a concrete plan and checks.
+### Reasoning
 
-**Responsibilities**
-- Understand intent and constraints.
-- Produce a plan, prompts, and acceptance criteria.
-- Decide what to ask the human before execution.
-- Validate outputs against a checklist (logic, completeness, safety).
+Turns an ambiguous user request into a concrete plan and acceptance criteria. Model-agnostic — Claude, Codex, Gemini, Cursor, Copilot, Ollama, and other MCP-capable clients all act in this role.
 
-**Non-responsibilities**
-- Direct file mutation, network calls, or tool execution.
-- Managing secrets, approvals, or long-running automation.
+- Understands intent and constraints.
+- Produces plans, prompts, and validation checks.
+- Decides what to ask the human before execution.
 
-This layer is model-agnostic (Claude, Codex, Gemini, Cursor, Ollama, ChatGPT, and local models).
+This layer never directly mutates files, makes network calls, or runs tools. It speaks to the gateway only.
 
-### 2) Execution layer
+### Execution
 
-**Role**: Perform the work deterministically through the local harness: edit files, run commands, call MCP tools, and produce artifacts.
+Performs the work deterministically through the local harness: edits files, runs commands, calls MCP tools, produces artifacts.
 
-**Responsibilities**
-- Execute the plan using tools (skills, scripts, CLI, MCP).
-- Make bounded, reviewable changes (small diffs, explicit outputs).
-- Run validations (tests, lint, builds) when appropriate.
+- Executes the plan using skills, scripts, CLI, and MCP tools.
+- Makes bounded, reviewable changes (small diffs, explicit outputs).
+- Runs validations (tests, lint, builds) when appropriate.
 
-**Non-responsibilities**
-- Deciding policy, approving destructive actions, or redefining goals mid-flight.
+This layer is also surface-agnostic: an agentic IDE, a CLI, or a dashboard click can each act as the executor.
 
-This layer is also surface-agnostic: Codex CLI, an agentic IDE, or an MCP client can act as the executor.
+### Ops
 
-### 3) Ops layer
+Makes the system safe and reliable by controlling routing, approvals, and observability.
 
-**Role**: Make the system safe and reliable by controlling routing, approvals, and observability.
+- Intent routing — which skill or workflow handles a request.
+- Approval gates — what requires confirmation, what is read-only.
+- Auditability — what ran, what changed, why.
+- Policy and safety constraints — allowlists, scopes, idempotency.
+- Maintenance automation — health checks, dependency tracking, release workflow.
+- Autoloops, including the security autoloop (see Subsystems).
 
-**Responsibilities**
-- Intent routing (which skill or workflow should handle this).
-- Approval gates (what requires confirmation, what is read-only).
-- Auditability (what ran, what changed, why).
-- Policy and safety constraints (allowlists, scopes, idempotency).
-- Maintenance automation (health checks, dependency tracking, release workflow).
+## How an action flows
 
-**Non-responsibilities**
-- Writing business logic for any single skill.
+<!-- DIAGRAM 2 -->
 
-In Augur, Ops is src/lib infrastructure: dashboard shell, src/lib config, CI, dependency tracking, and runbooks.
+The same path runs whether a user clicks a dashboard button or asks an AI agent. The dashboard is itself an MCP client; agents are also MCP clients. Both call the gateway, the gateway dispatches to a skill, the skill mutates the vault under allowlisted roots, and the gateway records an audit entry. This shared path is what makes the dashboard and agent surfaces interoperable rather than parallel.
 
-## Principle: reasoning is scarce, execution is cheap
+## Subsystems
 
-Use expensive reasoning where it matters (planning, reviewing, avoiding mistakes) and keep execution modular and repeatable (scripts, skills, tests, deterministic file changes).
+### 1. Skills
 
-Practically, this shows up as:
-- SKILL.md stays small and points to detailed references.
-- Durable state is files, not hidden databases.
-- Derived indexes (RAG, caches) are rebuildable.
-- The system prefers small, composable actions that are easy to audit.
+Skills are the primary unit of execution. They are small, composable, file-backed, and grouped under hubs (adaptive, brain, career, command, life, studio).
+
+Skills come in three types:
+
+- **User skills** live in the user's vault and are private to them. They are vault-owned (per ADR-563) and travel with the user, not the codebase.
+- **Project skills** are the shared canonical set, versioned with the repo under `skills/`. These are the curated skill library across six hubs that ships with Augur.
+- **Client skills** are managed exports tailored to each AI client surface — `.cursor/skills/`, `.gemini/skills/`, `.codex/skills/`, `~/.agents/skills/augur/` — generated from project skills with client-specific framing.
+
+Skills are addressable through MCP and through the `aug` CLI. Skill-owned UI ships inside the skill (`augur/dashboard/`) so a skill is one self-contained unit of code, data, and surface.
+
+### 2. Wiki and ingest
+
+Augur ships a content pipeline that turns inputs (URLs, files, conversations) into durable knowledge. The ingest pipeline (ADR-559 ambient file import) accepts files, URLs, folders, and text and routes them through extraction, classification, renaming, and indexing. The wiki compiler (ADR-560 semantic page compiler, ADR-561 concept-first compiler) synthesizes durable concept pages from sources, weighted by source quality. ADR-564 surfaces the resulting brain/inbox/wiki insights in the dashboard.
+
+### 3. Browse
+
+Browse is the workbench surface for finding skills, clients, and content. ADR-540 redesigned the browse workbench; ADR-541 added the visibility split and logs; ADR-554 added the skills tab and client inventory; ADR-478 added freshness indicators. Browse is the human-facing complement to the agent-facing skill discovery in MCP.
+
+### 4. Multi-client surfaces
+
+AI clients connect through a shared MCP runtime, but each client's local environment differs. The runtime IDE registry (ADR-562) tracks which clients are present and which export targets each needs. Gemini extension support (ADR-553) added Gemini CLI as a first-class client alongside Claude Code, Codex, Cursor, Copilot, and Ollama.
+
+Native platform support is split by maturity: macOS is shipped and validated; Windows architecture is implemented (ADR-550) with validation pending before any firmer public claim.
+
+### 5. Autoloops (with the security autoloop as lead example)
+
+Autoloops are scheduled, scope-bounded automation that keep the system healthy: code health, dependency audit, memory sync, repo loops, test loops, security loops. They run on the user's machine, write structured outputs, and surface findings into the dashboard.
+
+The **security autoloop** is the most-developed example as of April 2026:
+
+- **S1** — prompt-injection detection.
+- **S2** — secret scanning, with `detect-secrets` and a fallback scanner.
+- **S3** — static code analysis (Bandit + AST fallback).
+- **S4** — integrity and trust checks.
+- **S5** — permissions and policy checks.
+- Tank CLI integration via the existing CLI registry.
+- Scan-fix module that proposes corrective changes alongside findings.
+
+The security autoloop runs ahead of releases and is shown explicitly as a quality gate in the release diagram below.
+
+### 6. Release and lifecycle
+
+Augur ships through staged release payloads (ADR-557): a candidate payload is built, verified through autoloops, and then promoted. Sync managed-output purge (ADR-558) keeps managed export targets clean across re-installs, and supported-client state purge (ADR-555) handles client-specific artifacts. Skill group and release enablement (ADR-551) controls which skill groups participate in a given release cut.
+
+## Release and lifecycle
+
+<!-- DIAGRAM 3 -->
+
+Augur is in soft launch (April 2026, now). MVP release targets May 2026; monthly cadence begins June 2026. Windows GA follows once validation is green. Each release passes through the autoloops as quality gates — the security autoloop, the test autoloop, and the repo / dependency autoloop all run ahead of each cut. See `ROADMAP.md` for the per-phase scope.
 
 ## Human-in-the-loop and safety
 
-Safety is achieved by combining:
-- **Bounded tool interfaces**: tools declare read-only vs destructive intent.
-- **Allowlisted filesystem roots**: UI and tools can only mutate within configured data roots.
-- **Approval gates**: destructive actions require explicit user confirmation.
-- **Validation and rollback posture**: prefer changes that are reversible (files, git diffs) and easy to back out.
+Safety is the combination of bounded interfaces, allowlisted roots, approval gates, validation/rollback posture, and the security autoloop:
 
-Some of these exist today (allowlists, safe server actions); others are emerging (structured audit logs, explicit approval workflows, rollback helpers).
+- **Bounded tool interfaces** — tools declare read-only vs destructive intent.
+- **Allowlisted filesystem roots** — UI and tools can only mutate within configured data roots.
+- **Approval gates** — destructive actions require explicit user confirmation.
+- **Validation and rollback** — prefer changes that are reversible (files, git diffs).
+- **Security autoloop** — the automated half of safety, complementing the human-in-the-loop gates above. See Subsystems §5.
 
-## Central MCP Gateway
+## Repository mapping
 
-> **All supported execution flows route through MCP.**
+How the current repo structure maps to the layers:
 
-Augur is a **context repository** - users should work seamlessly whether clicking buttons in the Dashboard or chatting with AI agents. The Central MCP Gateway ensures identical execution flow across the supported entry points, so GUI actions and agent commands share the same context and history.
+- `skills/` — execution (skills, logic, tests, scripts, skill-owned UI).
+- `skills/{skill}/augur/dashboard/` — skill-owned UI source that ships with each skill.
+- `src/mcp/augur_mcp/` — central execution gateway (exposes skills as tools via MCP, handles context switching, logging, background jobs). See ADR-005.
+- `apps/dashboard/` — ops UI shell (Next.js App Router) that hosts skill UIs and provides framework components, navigation, and bounded execution actions.
+- `src/config/paths.py` — ops configuration for user data locations.
+- `.cursor/`, `.gemini/`, `.codex/`, `~/.agents/skills/augur/` — managed client export targets (Client skills).
 
-See [architecture-mcp-gateway.md](./architecture-mcp-gateway.md) for the complete specification, including sequence diagrams and API patterns.
+## Where to go next
 
-## Repository mapping to layers
-
-This is how the current repo structure maps onto the model:
-
-- `skills/`: execution (skills, logic, tests, scripts, skill-owned UI)
-- `skills/{skill}/augur/dashboard/`: skill-owned UI source that ships with each skill
-- `src/mcp/augur_mcp/`: central execution gateway (exposes skills as tools via MCP, handles context switching, logging, and background jobs) — see ADR-005
-- `apps/dashboard/`: ops UI shell (Next.js App Router) that hosts skill UIs and provides src/lib components, navigation, and bounded execution actions
-- `src/config/paths.py`: ops configuration for user data locations
-- `scripts/` and `.github/scripts/`: ops automation, bootstrap, release tooling, dependency tracking, and generators
-- `docs/`: ops documentation and runbooks (this file, guides, ADRs)
-
-## Architecture diagram
-
-```mermaid
-flowchart TB
-  User((Human))
-
-  subgraph Ops["Ops layer"]
-    Router["Intent routing"]
-    Gates["Approval gates"]
-    Policies["Safety policies\n(allowlists, scopes)"]
-    Audit["Audit trail"]
-  end
-
-  subgraph Reasoning["Reasoning layer (model-agnostic)"]
-    Plan["Plan + prompts + acceptance criteria"]
-    Review["Review outputs against checklist"]
-  end
-
-  subgraph Exec["Execution layer"]
-    MCP["Central MCP Server\n(src/mcp/augur_mcp)"]
-    Skills["Skills\n(skills/*)"]
-    Dashboard["Console UI\n(apps/dashboard)"]
-  end
-
-  subgraph Data["Data plane (filesystem)"]
-    DataRepo["User data repo\n(YAML + Markdown)"]
-    Derived["Derived state\n(RAG indexes, caches)"]
-  end
-
-  User --> Router
-  Policies --> Router
-  Router --> Plan
-  Plan --> MCP
-  Dashboard -->|"All calls"| MCP
-  MCP --> Skills
-  MCP --> Audit
-  Skills --> DataRepo
-  Skills --> Derived
-  Review --> User
-
-  subgraph Growth["Adaptive Growth Loop"]
-    Commits["Git History"]
-    Analysis["Adaptive Analysis\n(LLM-powered)"]
-    Backlog["Growth Backlog\n(Markdown)"]
-  end
-
-  Skills --> Commits
-  Dashboard --> Commits
-  Commits --> Analysis
-  Analysis --> Backlog
-  Backlog --> User
-```
-
-## Registry flow (current implementation)
-
-```mermaid
-flowchart TB
-  subgraph Packages["Skill Packages (repo)"]
-    SKILL["SKILL.md frontmatter"]
-    Modules["modules/*.md"]
-    Refs["references/*.md"]
-    Scripts["scripts/*.py"]
-  end
-
-  PathsPy["src/config/paths.py (user data base)"]
-  UserConfig["augur-config.yaml (skills_state)"]
-  SkillData["External user data dirs\n(vault, documents, runtime)"]
-
-  Registry["src/plugins/skill_registry.py"]
-
-  SKILL --> Registry
-  Modules --> Registry
-  Refs --> Registry
-  Scripts --> Registry
-  PathsPy --> Registry
-  UserConfig --> Registry
-
-  Scripts --> SkillData
-  PathsPy --> SkillData
-
-  subgraph MCP["MCP Service"]
-    Server["augur_mcp/server.py"]
-    Dynamic["augur_mcp/dynamic_registry.py"]
-  end
-
-  Registry --> Server
-  Registry --> Dynamic
-
-  Chains["Chain definitions (server)"]
-  Chains --> Server
-
-  Server --> MCPClients["MCP clients"]
-
-  CLI["augur_cli.py"]
-  Server --> CLI
-
-  APIRegistry["Dashboard API /api/registry"]
-  APICaps["Dashboard API /api/mcp/capabilities"]
-  CLI --> APIRegistry
-  CLI --> APICaps
-
-  SkillsLookup["Dashboard skillsLookup.ts"]
-  SKILL --> SkillsLookup
-
-  UI["Dashboard UI (Help/Nav/Actions)"]
-  APIRegistry --> UI
-  APICaps --> UI
-  SkillsLookup --> UI
-```
-
-## Skill-owned UI pattern
-
-> See ADR-003 for the decision rationale.
-
-The dashboard follows a **skill-owned UI** pattern to keep the interface growing with capability:
-
-- **Host app**: `apps/dashboard/` (Next.js) provides the shell: layout, navigation, src/lib UI components, and server actions
-- **Skill UI modules**: `skills/{skill}/augur/dashboard/` contains skill-specific pages/components
-- **Routing strategy**: Stable routes in `apps/dashboard/app/**` mount or import skill UI from `skills/**/augur/dashboard/**`
-
-This keeps routes stable while letting each skill "own" its UI implementation. Shared ops pages (like the agent backlog dashboard) can live directly in the dashboard when they orchestrate cross-skill workflows.
-
-See `apps/dashboard/README.md` for implementation details.
-
-## Universal interoperability
-
-Skills are portable. You can import a skill from a zip file or URL, and export your own skills to share. The `skill_porter` tool ensures that skills can move between Augur instances without lock-in.
-
-See `apps/dashboard/scripts/skill-scripts/skill_porter.py` for the implementation.
-
-## What to implement next
-
-To move toward reliable delegation (Stage 5), the Ops layer needs explicit task classes with:
-- clear input/output schemas
-- a validation checklist
-- an approval model
-- auditable traces of tool execution
-
-See `docs/delegation.md` for the first delegated task class definition.
+- [ROADMAP.md](../ROADMAP.md) — public release plan with status markers.
+- [architecture-mcp-gateway.md](./architecture-mcp-gateway.md) — gateway-internal detail.
+- [getting-started.md](./getting-started.md) — local install and first run.
+- [Sessions log](https://augur.run/sessions.html) — recent change log on augur.run.
