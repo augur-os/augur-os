@@ -148,11 +148,15 @@ Augur ships a content pipeline that turns inputs (URLs, files, conversations) in
 
 Browse is the workbench surface for finding skills, clients, and content. ADR-540 redesigned the browse workbench; ADR-541 added the visibility split and logs; ADR-554 added the skills tab and client inventory; ADR-478 added freshness indicators. Browse is the human-facing complement to the agent-facing skill discovery in MCP.
 
+*→ See [architecture-dashboard.md](./architecture-dashboard.md) for the page-as-blocks model and GUI/agent parity.*
+
 ### 4. Multi-client surfaces
 
 AI clients connect through a shared MCP runtime, but each client's local environment differs. The runtime IDE registry (ADR-562) tracks which clients are present and which export targets each needs. Gemini extension support (ADR-553) added Gemini CLI as a first-class client alongside Claude Code, Codex, Cursor, Copilot, and Ollama.
 
 Native platform support is split by maturity: macOS is shipped and validated; Windows architecture is implemented (ADR-550) with validation pending before any firmer public claim.
+
+*→ See [architecture-commands.md](./architecture-commands.md) for the per-client command schemas and the source-of-truth fan-out.*
 
 ### 5. Autoloops (with the security autoloop as lead example)
 
@@ -229,6 +233,8 @@ How the current repo structure maps to the layers:
 - [ROADMAP.md](../ROADMAP.md) — public release plan with status markers.
 - [architecture-llm-wiki.md](./architecture-llm-wiki.md) — concept-first compiler and lifecycle.
 - [architecture-autoloops.md](./architecture-autoloops.md) — loop anatomy, catalog, and trust model.
+- [architecture-dashboard.md](./architecture-dashboard.md) — page model and GUI/agent parity.
+- [architecture-commands.md](./architecture-commands.md) — per-client command schemas and fan-out.
 - [architecture-mcp-gateway.md](./architecture-mcp-gateway.md) — gateway-internal detail.
 - [getting-started.md](./getting-started.md) — local install and first run.
 - [Sessions log](https://augur.run/sessions.html) — recent change log on augur.run.
