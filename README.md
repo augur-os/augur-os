@@ -87,6 +87,7 @@ For Windows-specific validation, follow the repo scripts and the current platfor
 ```
 
 For a deeper dive, see [docs/architecture-overview.md](docs/architecture-overview.md).
+Subsystem deep-dives: [llm-wiki](docs/architecture-llm-wiki.md) · [autoloops](docs/architecture-autoloops.md).
 
 ## Repository Structure
 
