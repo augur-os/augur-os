@@ -142,6 +142,8 @@ Skills are addressable through MCP and through the `aug` CLI. Skill-owned UI shi
 
 Augur ships a content pipeline that turns inputs (URLs, files, conversations) into durable knowledge. The ingest pipeline (ADR-559 ambient file import) accepts files, URLs, folders, and text and routes them through extraction, classification, renaming, and indexing. The wiki compiler (ADR-560 semantic page compiler, ADR-561 concept-first compiler) synthesizes durable concept pages from sources, weighted by source quality. ADR-564 surfaces the resulting brain/inbox/wiki insights in the dashboard.
 
+*→ See [architecture-llm-wiki.md](./architecture-llm-wiki.md) for the compiler pipeline and concept-page lifecycle.*
+
 ### 3. Browse
 
 Browse is the workbench surface for finding skills, clients, and content. ADR-540 redesigned the browse workbench; ADR-541 added the visibility split and logs; ADR-554 added the skills tab and client inventory; ADR-478 added freshness indicators. Browse is the human-facing complement to the agent-facing skill discovery in MCP.
@@ -167,6 +169,8 @@ The **security autoloop** is the most-developed example as of April 2026:
 - Scan-fix module that proposes corrective changes alongside findings.
 
 The security autoloop runs ahead of releases and is shown explicitly as a quality gate in the release diagram below.
+
+*→ See [architecture-autoloops.md](./architecture-autoloops.md) for the loop anatomy, the catalog, and the trust-and-improvement model.*
 
 ### 6. Release and lifecycle
 
@@ -223,6 +227,8 @@ How the current repo structure maps to the layers:
 ## Where to go next
 
 - [ROADMAP.md](../ROADMAP.md) — public release plan with status markers.
+- [architecture-llm-wiki.md](./architecture-llm-wiki.md) — concept-first compiler and lifecycle.
+- [architecture-autoloops.md](./architecture-autoloops.md) — loop anatomy, catalog, and trust model.
 - [architecture-mcp-gateway.md](./architecture-mcp-gateway.md) — gateway-internal detail.
 - [getting-started.md](./getting-started.md) — local install and first run.
 - [Sessions log](https://augur.run/sessions.html) — recent change log on augur.run.
