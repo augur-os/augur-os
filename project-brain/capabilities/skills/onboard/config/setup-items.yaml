@@ -1,0 +1,111 @@
+version: 1
+phases:
+  - id: foundation
+    label: Foundation
+    items:
+      - id: index-machine
+        label: Index machine ready
+        description: Skill inventory and IDE registry inputs are present.
+        probe: foundation.index_machine
+        action:
+          type: command
+          command: /dev-sync
+          label: Sync clients
+      - id: search-engine
+        label: Fast search engine (ripgrep)
+        description: >-
+          ripgrep (rg) powers fast full-text search across the vault, wiki, and
+          skills. Without it search falls back to a slower Python scan. Install:
+          winget install BurntSushi.ripgrep.MSVC (Windows) /
+          brew install ripgrep (macOS) / apt install ripgrep (Linux).
+        probe: foundation.search_engine
+        action:
+          type: route
+          route: /settings
+          label: Setup help
+      - id: vault
+        label: Vault connected
+        description: The configured vault path resolves and is writable.
+        probe: foundation.vault
+        action:
+          type: route
+          route: /settings
+          label: Open settings
+      - id: human-profile
+        label: Build your voice profile
+        description: A useful English or Hebrew voice profile is available for personalization.
+        probe: foundation.voice_profile
+        action:
+          type: command
+          command: /profile interview
+          label: Run /profile interview
+  - id: knowledge
+    label: Knowledge
+    items:
+      - id: inbox-folders
+        label: Inbox folders configured
+        description: At least one inbox folder exists for file intake.
+        probe: knowledge.inbox_folders
+        action:
+          type: route
+          route: /browse?view=notes
+          label: Open notes
+      - id: source-folders
+        label: Source folders linked
+        description: At least one source folder exists for knowledge indexing.
+        probe: knowledge.source_folders
+        action:
+          type: route
+          route: /browse?view=notes&type=url,file
+          label: Open URL/file notes
+      - id: wiki-queries
+        label: Wiki queries seeded
+        description: Compounding wiki queries are configured.
+        probe: knowledge.wiki_queries
+        action:
+          type: command
+          command: /wiki-status
+          label: Check wiki
+      - id: wiki-pages-5
+        label: Five wiki pages compiled
+        description: The compiled wiki has at least five Markdown pages.
+        probe: knowledge.wiki_pages_5
+        action:
+          type: command
+          command: /wiki-update
+          label: Update wiki
+  - id: personalization
+    label: Personalization
+    items:
+      - id: private-skill
+        label: Private skill created
+        description: At least one vault-owned private skill exists.
+        probe: personalization.private_skill
+        action:
+          type: route
+          route: /browse?category=skills
+          label: Browse skills
+      - id: saved-prompt
+        label: Saved prompt exists
+        description: At least one reusable prompt is saved in the vault.
+        probe: personalization.saved_prompt
+        action:
+          type: route
+          route: /browse?view=notes&type=prompt
+          label: Open prompt notes
+      - id: first-ask
+        label: First /ask answered
+        description: At least one successful /ask query has been recorded.
+        probe: personalization.first_ask
+        action:
+          type: command
+          command: /ask
+          label: Try /ask
+      - id: integration
+        label: Connect first integration
+        description: At least one local integration is enabled.
+        probe: personalization.integration
+        action:
+          type: route
+          route: /settings/integrations
+          label: Open integrations

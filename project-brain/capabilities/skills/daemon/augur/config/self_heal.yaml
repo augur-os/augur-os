@@ -1,0 +1,160 @@
+# AI Self-Healing Configuration (ADR-076)
+# User overrides: config/system/self_heal.yaml
+# This file contains sensible defaults.
+
+# Master switch
+enabled: true
+
+# ─── Scanner ────────────────────────────────────────────────────────────────
+scan_interval_minutes: 5
+# Only scan log files modified within this many hours (0 = no limit)
+max_log_age_hours: 24
+
+# ─── Adaptive Discovery ────────────────────────────────────────────────────
+# Automatically find new log files in state/log roots that contain errors
+# but aren't yet listed in scan_targets. Discovered files are persisted
+# to state/self_heal/scan_targets.yaml (ADR-466).
+adaptive_discovery: true
+
+scan_targets:
+  # Primary log files (plain text, Python logging format)
+  - path: "logs/*.log"
+    patterns:
+      - "ERROR"
+      - "FATAL"
+      - "CRITICAL"
+      - "Traceback"
+  # Stderr logs from daemon child processes
+  - path: "logs/*.stderr.log"
+    patterns:
+      - "Error:"
+      - "Exception:"
+      - "panic:"
+  # Cron/LaunchAgent error output (nightly.err, etc.)
+  - path: "logs/*.err"
+    patterns:
+      - "Traceback"
+      - "Error"
+      - "Exception"
+      - "No such file"
+  # Per-service structured error logs
+  - path: "logs/*/latest/errors_*.log"
+    patterns:
+      - "ERROR"
+      - "Exception"
+      - "Traceback"
+      - "FATAL"
+  # JSONL telemetry — chain execution failures
+  - path: "state/chain_telemetry.jsonl"
+    patterns:
+      - '"status": "failed"'
+      - '"failed_steps": [1-9]'
+  # JSONL telemetry — offload dispatch failures
+  - path: "state/offload-log.jsonl"
+    patterns:
+      - '"status": "error"'
+      - '"status": "failed"'
+  # Dashboard stderr (MCP reconnect failures, Next.js crashes, route conflicts)
+  - path: "logs/dashboard.stderr.log"
+    patterns:
+      - "Max reconnection attempts"
+      - "permanent failure"
+      - "MCP server failed"
+      - "Error: You cannot define a route"
+      - "Conflicting app and page file"
+      - "panicked at"
+  # Dashboard API route errors (JSONL format)
+  - path: "state/mcp-updates.log"
+    patterns:
+      - "python-route-error"
+      - "ide-bridge-task.*error"
+  # Structured self-heal events from fail-fast emissions (ADR-084)
+  - path: "state/self_heal_events.jsonl"
+    patterns:
+      - '"severity":"critical"'
+      - '"severity":"high"'
+      - '"severity":"medium"'
+  # Browser-side errors captured by ClientErrorReporter (ADR-167)
+  - path: "logs/dashboard.client.jsonl"
+    patterns:
+      - "Hydration failed"
+      - "Unhandled Runtime Error"
+      - "TypeError"
+      - "ReferenceError"
+      - "Cannot read properties of"
+      - "Failed to fetch"
+      - "unhandledrejection"
+      - "ChunkLoadError"
+
+# ─── LLM ────────────────────────────────────────────────────────────────────
+llm:
+  # Which CLI to use. "auto" detects from llm.yaml or installed CLIs.
+  # Options: auto, claude, kimi, codex
+  cli: auto
+
+  # Model for classification (fast, single-turn, cheap)
+  classify_model: haiku
+
+  # Model for fix attempts (multi-turn debug protocol)
+  fix_model: sonnet
+
+  # Tools allowed during fix attempts
+  fix_allowed_tools: "Read,Edit,Bash,Grep,Glob,Write"
+
+  # Timeouts
+  classify_timeout_s: 120
+  fix_timeout_s: 600
+
+# ─── Fix Constraints ────────────────────────────────────────────────────────
+fix:
+  max_fix_attempts: 3
+  auto_commit: true
+  commit_prefix: "fix(self-heal):"
+  # Context lines read around each error in log file
+  log_context_lines: 30
+  # Recurring low/medium issues escalate directly to HIGH after this many occurrences
+  escalation_threshold: 3
+
+  # Severity-scaled parameters (critical > high > medium)
+  severity_profiles:
+    critical:
+      max_turns: 30
+      max_files_modified: 5
+      complexity_abort_threshold: 9
+      timeout_s: 600
+    high:
+      max_turns: 20
+      max_files_modified: 3
+      complexity_abort_threshold: 7
+      timeout_s: 420
+    medium:
+      max_turns: 15
+      max_files_modified: 2
+      complexity_abort_threshold: 5
+      timeout_s: 300
+
+# ─── Severity Routing ───────────────────────────────────────────────────────
+# "fix" = headless /debug invocation, "todo" = create TODO_ marker, "dismiss" = log and skip
+routing:
+  critical: fix
+  high: fix
+  medium: fix
+  low: todo
+  transient: dismiss
+
+# ─── Notifications ──────────────────────────────────────────────────────────
+notifications:
+  on_detect: true
+  on_fix_start: true
+  on_fix_success: true
+  on_fix_failure: true
+  on_abort: true
+
+# ─── Resource Health Monitoring ────────────────────────────────────────────
+# Checks dev server resource usage (CPU, memory) and Turbopack cache size.
+# Findings feed into the existing dedup→classify→route pipeline.
+resource_health:
+  enabled: true
+  turbopack_cache_limit_mb: 400
+  next_dev_cpu_limit_pct: 300
+  next_dev_rss_limit_mb: 3500

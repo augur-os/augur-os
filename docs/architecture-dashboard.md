@@ -43,11 +43,11 @@ The dashboard can render, dispatch, validate, and transport. It does not become 
 
 The route also handles compatibility envelopes and plugin fallback responses for unavailable tools. It does not decide workflows; it forwards one MCP tool call and reports the result.
 
-## Hub auto-generation from skill manifests
+## Two-surface model and skill page declaration
 
-Hubs are generated from skill metadata. `x-augur-hub` declares where a skill belongs, and dashboard mount scripts turn skill manifests into hub registries, route registries, tabs, and browse entries.
+The dashboard has exactly two surfaces: **Browse** (`/browse`) and **Workspace** (`/workspace`). There is no hub-nav concept. Skills declare their Workspace pages via `x-augur-dashboard-pages` in SKILL.md frontmatter; dashboard mount scripts discover those declarations and generate route registries and tab entries.
 
-Generated files under `apps/dashboard/app/{hub}/` or generated registries should be treated as output. Source edits belong in the skill, feature, page YAML, or dashboard framework file that generated them.
+Generated files under `apps/dashboard/app/workspace/` or generated registries should be treated as output. Source edits belong in the skill, feature, page YAML, or dashboard framework file that generated them.
 
 ## Block renderer and config-driven pages
 

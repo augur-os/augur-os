@@ -1,0 +1,48 @@
+# Dream skill — skill-local config.
+# Per Rule #2 (plugin decentralization), this file is read ONLY by the dream
+# routine and its MCP tools. Do not move to central config.
+
+phases:
+  # Phase order for the routine. Deterministic phases run first; judgment phases
+  # rely on the client's LLM context in the active session.
+  order:
+    - orphans            # deterministic — dream-orphans
+    - dead-citations     # deterministic — dream-dead-citations
+    - cache-gc           # deterministic — dream-cache-gc
+    - tier-recompute     # deterministic — delegates to ADR-738 entity-tier-recompute
+    - stale-pages        # judgment    — dream-stale-pages flags, client proposes
+    - pattern-extraction # judgment    — no tool; client surveys recent ingestions
+    - merge-candidates   # judgment    — dream-merge-candidates flags, client proposes
+  # Phase ids to skip (e.g., on platforms where tier-recompute is unavailable).
+  skips: []
+  # Retry policy (per phase). 0 = no retry; the deterministic-phase failure
+  # contract says one failure does NOT block subsequent deterministic phases.
+  retries:
+    default: 0
+    cache-gc: 1
+
+# dream-stale-pages threshold. A page is "stale" if the latest timeline `_at:`
+# is newer than its compiled-truth `_last_compiled_at:` by more than this gap.
+stale_pages:
+  gap_days: 14
+
+# dream-orphans threshold. A page is flagged as an orphan candidate if it has
+# zero inbound graph edges AND fewer than this many timeline entries.
+orphans:
+  max_timeline_entries: 3
+
+# dream-cache-gc — filesystem GC against `get_cache_dir()`. Per the
+# spec-correction noted in the implementation plan, this is NOT a thin delegate
+# to the `cache-control` MCP tool (which is an in-memory skill-cache
+# invalidator); dream owns its own filesystem-GC logic with the allowlist below.
+cache_gc:
+  retention_days: 30
+  # Allowlisted subdirectories under `get_cache_dir()` that the GC will purge.
+  # Anything outside this list is left alone — never blindly walk the whole
+  # cache root.
+  paths:
+    - graph        # ADR-738 graph cache (rebuildable via graph-rebuild)
+
+# dream-report-write target. Relative to `get_documents_machine_dir('reports')` (i.e. _augur/reports/).
+report:
+  output_dir: dream

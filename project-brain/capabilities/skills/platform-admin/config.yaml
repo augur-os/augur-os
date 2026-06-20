@@ -1,0 +1,160 @@
+hub:
+  id: dev
+  owner: true
+  title: Dev
+  subtitle: Developer tools and system internals
+  icon: Terminal
+  nav_order: 50
+  category: dev
+  iconBg: bg-violet-500/20
+  iconColor: text-violet-400
+  overview:
+    search: true
+    layout: masonry
+contributions:
+  pages: []
+  blocks:
+  - id: refactor
+    type: ops-board
+    title: Capability Audit
+    icon: Search
+    expandTo: ''
+    config_schema: {}
+    # TODO_BUG: stale_config — get-refactor-report is not registered in the MCP server.
+    # Block data_source removed to avoid runtime errors; restore once the tool is wired.
+  actions:
+  # TODO_BUG: stale_config — the actions below referenced MCP tools and /api/dev/*
+  # endpoints that no longer exist. Each action was removed because every dispatch
+  # path (mcp_tool and endpoint) was unregistered. Restore individual actions once
+  # the underlying tool/route is wired:
+  #   - data-migration-safety -> check-data-migration-safety
+  #   - code-simplify -> simplify-code
+  #   - augur-aware-refactor -> augur-refactor
+  #   - nightly-checks -> run-nightly-checks (/api/dev/nightly-checks)
+  #   - dependency-graph -> get-dependency-graph (/api/dev/dependencies)
+  #   - data-backup -> data-backup (/api/dev/backup)
+  #   - infra-health -> get-infrastructure-health (/api/dev/infra-health)
+  #   - ci-matrix -> get-ci-change-matrix (/api/dev/ci-matrix)
+  #   - incident-runbooks -> list-incident-runbooks (/api/dev/runbooks)
+  #   - adaptive-growth -> run-adaptive-growth (/api/dev/adaptive-growth)
+  #   - release-plan -> get-release-dry-run (/api/dev/release-plan)
+  - id: ops-refactor-audit
+    label: Run Capability Audit
+    description: Scan latest client features and generate migration report
+    icon: Search
+    dispatch: oneshot
+    command: /auto-refactor
+    page: /browse
+  - id: ops-refactor-followup
+    label: Work on Report
+    description: Send report to IDE for interactive implementation
+    icon: Wrench
+    dispatch: ide
+    page: /browse
+  commands:
+  - id: auto-tidy
+    type: workflow
+    visibility: auto
+    description: Review and cleanup all TODO_ markers in the codebase
+    callable: scripts/ops/tidy.py
+    protocol: scan-fix
+    loop:
+      name: code-quality
+      tier: 2
+      trigger: nightly
+  - id: auto-debt
+    type: workflow
+    visibility: auto
+    description: Identify, prioritize, and schedule technical debt work
+    callable: scripts/ops/debt.py
+    protocol: scan-fix
+    loop:
+      name: code-quality
+      tier: 4
+      trigger: nightly
+  - id: auto-docs
+    type: workflow
+    visibility: auto
+    description: Keep documentation synchronized with code
+    callable: scripts/ops/docs.py
+    protocol: scan-fix
+    loop:
+      name: knowledge-enrichment
+      tier: 2
+      trigger: nightly
+  - id: adr
+    type: skill
+    visibility: core
+    description: Manage Architecture Decision Records — query, write, implement, harden,
+      plan, test
+  - id: auto-coverage-check
+    type: workflow
+    visibility: auto
+    description: Analyze test coverage gaps and identify untested Python source modules
+    callable: scripts/ops/coverage_check.py
+    protocol: scan-fix
+    loop:
+      name: code-quality
+      tier: 3
+      trigger: nightly
+  - id: auto-debt-scan
+    type: workflow
+    visibility: auto
+    description: Identify technical debt via large files and git churn analysis
+    callable: scripts/ops/debt_scan.py
+    protocol: scan-fix
+    loop:
+      name: code-quality
+      tier: 4
+      trigger: nightly
+  - id: auto-adr-audit
+    type: workflow
+    visibility: auto
+    description: Scan recently-implemented ADRs for quality gaps, missing files, and
+      status issues
+    callable: scripts/ops/adr_audit.py
+    protocol: scan-fix
+    loop:
+      name: hardening
+      tier: 2
+      trigger: nightly
+  - id: auto-stale-routes
+    type: workflow
+    visibility: auto
+    description: Scan dashboard hook URLs for missing API route files
+    callable: scripts/scan_stale_routes.py
+    protocol: scan-fix
+    loop:
+      name: code-quality
+      tier: 2
+      trigger: nightly
+  - id: auto-root-pollution
+    type: workflow
+    visibility: auto
+    description: Detect and relocate stray files from project root
+    callable: scripts/ops/root_pollution.py
+    protocol: scan-fix
+    loop:
+      name: code-quality
+      tier: 0
+      trigger: nightly
+  - id: auto-circular-deps
+    type: workflow
+    visibility: auto
+    description: Detect circular import dependencies in TypeScript and Python code
+    callable: scripts/ops/circular_deps.py
+    protocol: scan-fix
+    loop:
+      name: code-quality
+      tier: 2
+      trigger: nightly
+  - id: auto-env-check
+    type: workflow
+    visibility: auto
+    description: Validate environment variable usage against documentation files
+    callable: scripts/ops/env_check.py
+    protocol: scan-fix
+    loop:
+      name: code-quality
+      tier: 1
+      trigger: nightly

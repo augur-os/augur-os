@@ -1,0 +1,47 @@
+summary:
+  activeScope: "skills/career"
+  enforcementMode: "confirm-outside-boundary"
+  blockedWritesToday: 5
+  allowedReadsToday: 42
+  allowedCommandsToday: 9
+  lastActivatedAt: "2026-03-27T14:35:00Z"
+rules:
+  - id: "read"
+    label: "Read any file"
+    status: "allowed"
+    detail: "Inspection never trips the freeze boundary."
+  - id: "search"
+    label: "Search any file"
+    status: "allowed"
+    detail: "Ripgrep and file discovery stay available everywhere."
+  - id: "write"
+    label: "Write outside scope"
+    status: "blocked"
+    detail: "Edits outside the frozen directory require explicit user confirmation."
+  - id: "git"
+    label: "Git operations"
+    status: "allowed"
+    detail: "Commits and status checks remain available during a frozen session."
+recentBoundaries:
+  - target: "skills/career"
+    intent: "Refine action YAML and dashboard copy without touching other hubs."
+    blockedWrites: 3
+    allowedReads: 18
+    activatedAt: "2026-03-27T14:35:00Z"
+  - target: "apps/dashboard"
+    intent: "Tune route handlers while keeping skill code untouched."
+    blockedWrites: 1
+    allowedReads: 11
+    activatedAt: "2026-03-25T09:10:00Z"
+  - target: "skills/finance"
+    intent: "Update portfolio and planning data without broad repo edits."
+    blockedWrites: 1
+    allowedReads: 13
+    activatedAt: "2026-03-22T16:05:00Z"
+examples:
+  - command: "/freeze skills/career"
+    outcome: "Restricts edits to the career skill until the session ends or freeze is turned off."
+  - command: "/freeze apps/dashboard"
+    outcome: "Lets the agent patch dashboard code while blocking writes elsewhere."
+  - command: "/freeze off"
+    outcome: "Clears the active boundary and restores normal write access."

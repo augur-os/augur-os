@@ -1,0 +1,364 @@
+integrations:
+  claude_code:
+    enabled: true
+    skill_scope: project
+    config_paths:
+    - ~/.claude.json
+    last_applied: null
+    desired_capabilities: []
+    last_health:
+      healthy: true
+      status: healthy
+      checks:
+        config_present:
+        - true
+        - No config required for CLI
+        connectivity:
+        - true
+        - claude CLI is installed
+        tool_list:
+        - null
+        - Not applicable for CLI
+        end_to_end:
+        - true
+        - Can generate CLI commands
+      last_check: '2026-01-25T23:56:03.043901'
+      error: null
+    last_error: null
+    installed: true
+    managed_files:
+    - CLAUDE.md
+    - docs/agent-topics/
+    - skills/
+    - .claude/mcp.json
+    - .claude/agents/
+    - .claude/commands/
+  cursor:
+    enabled: false
+    skill_scope: project
+    config_paths: []
+    last_applied: null
+    desired_capabilities: []
+    last_health:
+      healthy: true
+      status: healthy
+      checks:
+        config_present:
+        - true
+        - MCP config exists and contains 'exo' server
+        connectivity:
+        - true
+        - Cursor is running
+        tool_list:
+        - null
+        - Requires active MCP connection
+        end_to_end:
+        - true
+        - Can generate instructions
+      last_check: '2026-01-25T23:56:02.932805'
+      error: null
+    last_error: null
+    installed: true
+    managed_files:
+    - .cursorrules
+    - .cursor/rules/
+    - .cursor/agents/
+    - .cursor/mcp.json
+    - .cursor/memory/
+  copilot:
+    enabled: true
+    skill_scope: project
+    config_paths:
+    - ~/.copilot/mcp-config.json
+    - .vscode/mcp.json
+    last_applied: null
+    desired_capabilities: []
+    last_health:
+      healthy: true
+      status: healthy
+      checks:
+        config_present:
+        - null
+        - MCP config not yet supported for VS Code
+        connectivity:
+        - true
+        - VS Code is running
+        tool_list:
+        - null
+        - Requires MCP support (coming soon)
+        end_to_end:
+        - true
+        - Can generate instructions
+      last_check: '2026-01-25T23:56:02.965476'
+      error: null
+    last_error: null
+    installed: true
+    managed_files:
+    - .github/copilot-instructions.md
+    - .github/instructions/
+    - .github/prompts/
+    - .github/agents/
+    - .github/skills/
+    - .github/copilot/
+    - .github/copilot-memory.md
+  windsurf:
+    enabled: false
+    config_paths: []
+    last_applied: null
+    desired_capabilities: []
+    last_health: null
+    last_error: null
+    installed: false
+    managed_files:
+    - .windsurfrules
+    - .windsurf/rules/
+    - .windsurf/skills/
+    - .windsurf/mcp.json
+  cline:
+    enabled: false
+    config_paths: []
+    last_applied: null
+    desired_capabilities: []
+    last_health: null
+    last_error: null
+    installed: true
+    managed_files:
+    - .clinerules/augur-rules.md
+  gemini:
+    enabled: true
+    skill_scope: project
+    config_paths: []
+    last_applied: null
+    desired_capabilities: []
+    last_health: null
+    last_error: null
+    installed: true
+    managed_files:
+    - .gemini/GEMINI.md
+    - .gemini/skills/
+    - .gemini/settings.json
+    - .gemini/workflows/
+    - .gemini/topics/
+    - .gemini/memory/
+  kimi:
+    enabled: false
+    config_paths: []
+    last_applied: null
+    desired_capabilities: []
+    last_health: null
+    last_error: null
+    installed: false
+    managed_files:
+    - AGENTS.md
+    - ~/.kimi/mcp.json
+    - ~/.kimi/augur-memory.md
+  antigravity:
+    enabled: true
+    config_paths: []
+    last_applied: null
+    desired_capabilities: []
+    last_health:
+      healthy: true
+      status: healthy
+      checks:
+        config_present:
+        - true
+        - No config file required
+        connectivity:
+        - true
+        - Antigravity is installed and running
+        tool_list:
+        - null
+        - Requires MCP connection
+        end_to_end:
+        - true
+        - Can generate workflows
+      last_check: '2026-01-25T23:56:02.999263'
+      error: null
+    last_error: null
+    installed: true
+    managed_files:
+    - .antigravity/
+  codex:
+    enabled: true
+    skill_scope: project
+    config_paths: []
+    last_applied: null
+    desired_capabilities: []
+    last_health:
+      healthy: true
+      status: healthy
+      checks:
+        config_present:
+        - true
+        - MCP config exists and contains 'exo' server
+        api_key:
+        - true
+        - API key configured
+        connectivity:
+        - true
+        - Codex CLI is installed
+        tool_list:
+        - null
+        - Not applicable for CLI
+        end_to_end:
+        - true
+        - Can generate CLI commands
+      last_check: '2026-01-25T23:56:03.059377'
+      error: null
+    last_error: null
+    installed: true
+    managed_files:
+    - CODEX.md
+    - .codex/skills/
+    - .codex/prompts/
+    - ~/.agents/skills/augur
+    - ~/.codex/AGENTS.md
+    - ~/.codex/instructions.md
+    - ~/.codex/augur-memory.md
+  opencode:
+    enabled: true
+    skill_scope: project
+    config_paths: []
+    last_applied: null
+    desired_capabilities: []
+    last_health:
+      healthy: true
+      status: healthy
+      checks:
+        config_present:
+        - true
+        - No config required for CLI
+        connectivity:
+        - true
+        - opencode CLI is installed
+        tool_list:
+        - null
+        - Not applicable for CLI
+        end_to_end:
+        - true
+        - Can generate CLI commands
+      last_check: '2026-01-25T23:56:03.087052'
+      error: null
+    last_error: null
+    installed: true
+    managed_files:
+    - .opencode/AGENTS.md
+    - .opencode/skills/
+    - ~/.config/opencode/opencode.json
+  claude_desktop:
+    enabled: false
+    installed: true
+    managed_files:
+    - CLAUDE.md
+    config_paths: []
+    last_applied: null
+    desired_capabilities: []
+    last_health:
+      healthy: true
+      status: healthy
+      checks:
+        installed:
+        - true
+        - Installed
+        running:
+        - true
+        - Running
+        mcp_config:
+        - true
+        - Claude Desktop is already configured with Augur MCP.
+      last_check: '2026-01-25T23:56:03.029740'
+    last_error: null
+  juls:
+    enabled: false
+    config_paths: []
+    last_applied: null
+    desired_capabilities: []
+    last_health:
+      healthy: false
+      status: not_configured
+      checks:
+        config_present:
+        - true
+        - No config required for CLI
+        connectivity:
+        - false
+        - juls CLI not found in PATH
+        tool_list:
+        - null
+        - Not applicable for CLI
+        end_to_end:
+        - true
+        - Can generate CLI commands
+      last_check: '2026-01-25T23:56:03.073314'
+      error: null
+    last_error: null
+  claude_sdk:
+    enabled: false
+    config_paths: []
+    last_applied: null
+    desired_capabilities: []
+    last_health:
+      healthy: false
+      status: not_configured
+      checks:
+        config_present:
+        - true
+        - SDK configures via environment variables
+        connectivity:
+        - false
+        - anthropic SDK not found in Python environment
+        tool_list:
+        - null
+        - Not applicable for SDK
+        end_to_end:
+        - true
+        - Can generate SDK code
+      last_check: '2026-01-25T23:56:03.099173'
+      error: null
+    last_error: null
+  cowork:
+    enabled: true
+    config_paths:
+    - ~/Library/Application Support/Claude/config.json
+    last_applied: null
+    desired_capabilities:
+    - file_dispatch
+    - prompt_adaptation
+    last_health:
+      healthy: false
+      status: not_configured
+      checks:
+        installed:
+        - false
+        - Cowork not yet detected
+        running:
+        - false
+        - Not running
+        cowork_feature:
+        - false
+        - Cowork feature not detected
+        dispatch_dir:
+        - false
+        - Dispatch directory not yet created
+      last_check: null
+      error: null
+    last_error: null
+  ollama:
+    enabled: true
+    config_paths: []
+    last_applied: null
+    desired_capabilities:
+      - local_inference
+      - model_serving
+      - agent_launch
+    last_health: null
+    last_error: null
+    installed: true
+    managed_files: []
+    health_checks:
+      binary_present: "which ollama"
+      server_running: "ollama list"
+      models_available: "ollama list"
+    managed_by: augur
+schema_version: 1

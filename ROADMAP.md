@@ -1,38 +1,25 @@
 # Roadmap
 
-This roadmap covers the open-source Augur runtime (this repository, MIT-licensed). Augur Enterprise is a separate, closed-source product on its own roadmap; see the bottom of [README.md](./README.md) for the Enterprise reference.
+This roadmap covers the open-source Augur runtime for **PC & Mac** (MIT-licensed). Team,
+edge, and shared-org-brain deployment is **Augur Enterprise** — a separate, closed-source
+product on its own track. Contact us for edge and enterprise deployment.
 
-This roadmap matches the current soft-launch story:
+**Open source: coming soon.** The architecture is public today, and the PC & Mac runtime is
+in private, invitation-based access. The public open-source launch lands when the core is
+stable on the supported platforms — we'd rather ship it right than ship it dated.
 
-- Native macOS support is implemented.
-- Native Windows architecture is implemented.
-- Windows validation is pending before we make a firmer public support claim.
+## Now
 
-## May 2026
+- Architecture is public; the PC & Mac runtime is available by private invitation.
+- macOS support is implemented; Windows architecture is implemented, validation in progress.
+- Hardening the core: clone-and-compose, the compounding engine, and the control layer.
 
-Target MVP release.
+## Next
 
-Focus:
+- Open the public open-source runtime for PC & Mac.
+- Begin a predictable release cadence once the core is stable.
 
-- Finish the last soft-launch gaps.
-- Tighten validation on the supported platforms.
-- Keep the release scope small and usable.
+## Later
 
-## June 2026
-
-Target start of monthly releases.
-
-Focus:
-
-- Establish a predictable release cadence.
-- Keep platform validation moving alongside product work.
-
-## July / August 2026
-
-Target monthly release cadence continuing.
-
-Focus:
-
-- Keep shipping incremental improvements.
-- Fold validated Windows support into the public support story once verification is complete.
-
+- Fold validated Windows support into the public support story.
+- Team and edge-fleet deployment (robots, kiosks, on-prem nodes) ships via Augur Enterprise.

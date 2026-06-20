@@ -51,6 +51,11 @@ Vault memory is also the bridge to the wiki. Saved synthesis and retained outcom
 
 ## Brain-Scoped Memory
 
+ADR-794 adds standard brain root files as the human-readable entrypoints for
+identity, persona, user context, and compact memory. `MEMORY.md` at a brain root
+is a curated entrypoint; detailed durable memory remains in the brain memory
+roots, and client-native memory files remain generated handoffs.
+
 The multi-brain architecture treats durable memory as brain-scoped context. Global memory carries platform defaults, User memory carries personal preferences and durable facts, Team memory is the commercial tier for organization-shared context, and Project memory carries repo-local role/context. Reads are conceptually a union from broad to specific, with more-specific context winning on conflicts. Writes go to the most-specific writable brain: Project when a project brain is active, otherwise User.
 
 Client-native memory is not the canonical store. It is a projection and ingest surface: clients can feed review-gated memory back into Augur, and Augur can project the aggregated context back out to supported clients.

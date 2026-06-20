@@ -1,0 +1,6 @@
+schema_version: 1
+id: project-augur
+type: project
+root: .
+attached_project: ..
+description: Augur project brain

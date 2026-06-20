@@ -1,0 +1,26 @@
+# Augur — third-party attribution
+
+This product includes software ported from other projects. Attributions
+required by their licenses are listed below.
+
+## island-io/mila (Apache License 2.0)
+
+- Source: https://github.com/island-io/mila
+- Originally developed by Uri Harduf at Island Technology, Inc.
+
+The speaker-diarization integration in
+`src/lib/extraction/transcription/diarize.py` ports, from Mila:
+
+- the offline pyannote.audio SpeakerDiarization pipeline configuration
+  (segmentation-3.0 + wespeaker-voxceleb-resnet34-LM, clustering params),
+- the pyannote 3.x compatibility monkey-patches (torch.load weights_only;
+  speechbrain LazyModule), and
+- the path-substring model-directory naming required to route the embedding
+  to the torch backend.
+
+Mila itself builds on ivrit.ai Whisper finetunes (Hebrew), whisper.cpp (MIT)
+for local inference, OpenAI Whisper model weights, and pyannote.audio for
+speaker diarization.
+
+A copy of the Apache License 2.0 is available at
+https://www.apache.org/licenses/LICENSE-2.0

@@ -1,0 +1,97 @@
+name: 'Export Plugins'
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version label (defaults to short SHA)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Validate export without creating a release'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies
+        run: uv pip install --system pyyaml
+
+      - name: Determine version
+        id: version
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
+        run: |
+          if [ -n "$VERSION_INPUT" ]; then
+            echo "tag=$VERSION_INPUT" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Export all skills as tarballs
+        id: export
+        run: |
+          PYTHONPATH="$PWD/project-brain/capabilities:$PWD:$PWD/src/mcp" python apps/dashboard/scripts/skill-scripts/skill_exporter.py \
+            --all --target tarball --output /tmp/plugin-export/ --json \
+            | tee /tmp/export-results.json
+
+          TOTAL=$(python3 -c "import json; d=json.load(open('/tmp/export-results.json')); print(len(d))")
+          OK=$(python3 -c "import json; d=json.load(open('/tmp/export-results.json')); print(sum(1 for r in d if r['success']))")
+          FAIL=$((TOTAL - OK))
+          echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+          echo "ok=$OK" >> "$GITHUB_OUTPUT"
+          echo "fail=$FAIL" >> "$GITHUB_OUTPUT"
+
+          # Fail if >10% of skills failed
+          THRESHOLD=$((TOTAL / 10))
+          if [ "$FAIL" -gt "$THRESHOLD" ]; then
+            echo "::error::Too many export failures: $FAIL/$TOTAL"
+            exit 1
+          fi
+
+      - name: List exported tarballs
+        run: |
+          echo "Exported tarballs:"
+          ls -lh /tmp/plugin-export/dist/plugins/*.tar.gz | wc -l
+          ls -lh /tmp/plugin-export/dist/plugins/*.tar.gz | head -20
+
+      - name: Dry run summary
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "=== DRY RUN ==="
+          echo "Would create release: plugins-${{ steps.version.outputs.tag }}"
+          echo "Tarballs: ${{ steps.export.outputs.ok }}/${{ steps.export.outputs.total }} exported"
+          echo "Failures: ${{ steps.export.outputs.fail }}"
+          echo "Skipping release creation (dry run)"
+
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: plugins-${{ steps.version.outputs.tag }}
+          name: "Augur Plugins ${{ steps.version.outputs.tag }}"
+          body: |
+            Exported ${{ steps.export.outputs.ok }}/${{ steps.export.outputs.total }} Augur skills as portable Claude Code plugins.
+
+            Each tarball is a standalone plugin that can be installed into Claude Code.
+
+            Failed: ${{ steps.export.outputs.fail }}
+          files: /tmp/plugin-export/dist/plugins/*.tar.gz
+          draft: false
+          prerelease: false

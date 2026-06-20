@@ -1,0 +1,8 @@
+enabled: true
+known_groups:
+  - name: guriqo-com-build
+    canonical_strategy: highest_version
+    pattern: "guriqo-com-*.zip"
+    decided_at: "2026-05-12T14:30:00Z"
+    decided_by: gsannikov
+    note: "cached from prior sweep"

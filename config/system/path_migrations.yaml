@@ -1,0 +1,24 @@
+# Historical root moves for Augur-managed paths.
+#
+# Purpose: when a top-level root moves (documents, vault, runtime, …), external
+# *client-owned* configs (Claude Desktop config + DXT extension settings, Codex,
+# Gemini, …) keep pointing at the old path and the client's MCP server silently
+# crash-loops. Augur's own MCP health tooling never saw those configs, so the
+# breakage stayed invisible (see the 2026-06-13 documents migration → 2026-06-16
+# Filesystem-extension outage).
+#
+# `auto-mcp-health-audit` reads this map to (a) detect a dangling client path and
+# (b) compute its unambiguous successor for auto-repair. A repair is only applied
+# when the rewritten path actually exists on disk.
+#
+# Entries are normally AUTO-RECORDED: the audit (and `aug config reconcile-paths`)
+# snapshot the canonical roots (documents, vault, …) and append a `{old,new}` pair
+# here automatically whenever a root's configured value changes — so a root move
+# needs no manual edit. You may still hand-add entries (e.g. a pre-existing move,
+# like the seed below). Keep `old`/`new` as the directory roots that moved
+# (subpaths are rewritten automatically). `~` is expanded.
+migrations:
+  - old: ~/Projects/Au-docs
+    new: ~/Documents
+    date: 2026-06-13
+    note: "Primary documents root migrated from ~/Projects/Au-docs to native ~/Documents."

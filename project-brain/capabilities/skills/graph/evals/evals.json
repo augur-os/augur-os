@@ -1,0 +1,17 @@
+{
+  "skill_name": "graph",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Use the graph skill: Typed knowledge graph layer \u2014 deterministic, zero-LLM typed-edge extraction over the vault. Labels e",
+      "expected_output": "The skill executes and produces relevant output",
+      "files": [],
+      "expectations": [
+        "The graph skill is triggered",
+        "Output is non-empty and relevant",
+        "No errors or stack traces"
+      ],
+      "confidence": "seed"
+    }
+  ]
+}

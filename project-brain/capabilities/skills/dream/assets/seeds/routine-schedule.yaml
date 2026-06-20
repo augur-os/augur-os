@@ -1,0 +1,11 @@
+schedules:
+  - id: codex-dream-nightly
+    title: Dream
+    loop: dream
+    source: codex
+    rrule: "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA,SU;BYHOUR=2;BYMINUTE=30"
+    prompt: "/routines run dream"
+    workspace: "__PROJECT_ROOT__"
+    model: "gpt-5.4"
+    reasoning_effort: "high"
+    runs_in: local

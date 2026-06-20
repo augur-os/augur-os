@@ -1,0 +1,28 @@
+# Git anti-pattern definitions for collect_git_signals.py
+# Each pattern maps a regex to a directive ID from directive-map.yaml
+
+patterns:
+  - id: rule_11_no_fs
+    regex: "import\\s+(fs|\\{\\s*readFile)"
+    scope: "apps/dashboard/"
+    directive: no_fs_in_dashboard
+
+  - id: rule_11_no_spawn
+    regex: "(execSync|execFile|spawn)\\("
+    scope: "apps/dashboard/"
+    directive: no_fs_in_dashboard
+
+  - id: rule_5_no_suppression
+    regex: "(@ts-ignore|eslint-disable|@pytest\\.mark\\.skip)"
+    scope: null
+    directive: no_suppression
+
+  - id: rule_5_no_fallback_fix
+    regex: "(pluginFallback|fallbackData)"
+    scope: "apps/dashboard/"
+    directive: no_fallback_fixes
+
+  - id: rule_2_no_central_registry
+    regex: "(registry\\.ts|registry\\.yaml|central.*config)"
+    scope: "config/"
+    directive: no_central_registry

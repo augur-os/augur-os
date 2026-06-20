@@ -1,0 +1,98 @@
+{
+  "skill_name": "onboard",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/onboard --status",
+      "expected_output": "Displays installation state table with install source, connected platforms, vault status, dashboard status, and MCP status",
+      "files": [
+        "skills/onboard/references/mode-status.md"
+      ],
+      "expectations": [
+        "Reads onboard-complete.json from state directory",
+        "Shows installed status (yes/no)",
+        "Lists connected platforms",
+        "Shows vault scaffolded status",
+        "Pings dashboard and MCP endpoints"
+      ],
+      "confidence": "seed"
+    },
+    {
+      "id": 2,
+      "prompt": "/onboard --help",
+      "expected_output": "Shows usage, options, flags, and mode selection table without executing any onboarding steps",
+      "files": [
+        "skills/onboard/SKILL.md"
+      ],
+      "expectations": [
+        "Does NOT execute any onboarding steps",
+        "Displays usage section from SKILL.md",
+        "Shows all mode flags (--migrate, --full, --connect, --status, --templates)",
+        "Shows mode selection table"
+      ],
+      "confidence": "seed"
+    },
+    {
+      "id": 3,
+      "prompt": "/onboard --connect cursor",
+      "expected_output": "Configures MCP for Cursor and updates state file with new platform",
+      "files": [
+        "skills/onboard/references/mode-connect.md"
+      ],
+      "expectations": [
+        "Verifies Augur is installed first",
+        "Runs configure_mcp.py --client cursor",
+        "Updates configured_clients in state file",
+        "Shows getting-started message for Cursor"
+      ],
+      "confidence": "seed"
+    },
+    {
+      "id": 4,
+      "prompt": "/onboard --migrate",
+      "expected_output": "Detects legacy data, migrates vault, verifies plugins and MCP",
+      "files": [
+        "skills/onboard/references/mode-migrate.md"
+      ],
+      "expectations": [
+        "Detects legacy data locations",
+        "Migrates vault data to new paths",
+        "Verifies plugin configurations",
+        "Verifies MCP server health"
+      ],
+      "confidence": "seed"
+    },
+    {
+      "id": 5,
+      "prompt": "/onboard (default, no flags)",
+      "expected_output": "Runs interactive setup wizard through Steps 1-6",
+      "files": [
+        "skills/onboard/references/mode-default.md"
+      ],
+      "expectations": [
+        "Detects current platform",
+        "Clones or verifies repository",
+        "Installs dependencies (pnpm, uv)",
+        "Configures MCP server",
+        "Scaffolds vault directories",
+        "Offers to start dashboard"
+      ],
+      "confidence": "seed"
+    },
+    {
+      "id": 6,
+      "prompt": "augur init my-project --port 3001",
+      "expected_output": "Creates a new Augur project directory with custom port",
+      "files": [
+        "skills/onboard/scripts/augur_init.py"
+      ],
+      "expectations": [
+        "Clones augur-os repository",
+        "Writes project.yaml with port 3001",
+        "Creates external directories (vault, docs, state, rag, logs, cache)",
+        "Generates .claude/mcp.json with correct AUGUR_ROOT"
+      ],
+      "confidence": "seed"
+    }
+  ]
+}

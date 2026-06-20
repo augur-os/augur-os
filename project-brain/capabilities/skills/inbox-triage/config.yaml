@@ -1,0 +1,5 @@
+# Skill-local config for inbox-triage (Rule #2: skill-owned config).
+report:
+  output_dir: inbox-triage   # under get_documents_machine_dir('reports')
+triage:
+  general_domain: general    # guaranteed drain for no-fit cards

@@ -1,0 +1,35 @@
+# Remote User Configuration
+# Copy to users.yaml and fill in real bcrypt hashes.
+# Generate a hash: node -e "require('bcryptjs').hash('password', 10).then(h => console.log(h))"
+
+users:
+  - id: admin
+    name: "Admin User"
+    role: admin
+    password_hash: "$2b$10$REPLACE_WITH_REAL_HASH"
+    api_keys: []
+
+  - id: user
+    name: "Remote User"
+    role: user
+    password_hash: "$2b$10$REPLACE_WITH_REAL_HASH"
+    api_keys: []
+
+roles:
+  admin:
+    - "mcp:*"
+    - "dashboard:*"
+    - "files:*"
+    - "system:*"
+    - "cli:*"
+  user:
+    - "mcp:read"
+    - "mcp:tools"
+    - "dashboard:read"
+    - "dashboard:actions"
+    - "files:read"
+    - "files:write"
+  readonly:
+    - "mcp:read"
+    - "dashboard:read"
+    - "files:read"

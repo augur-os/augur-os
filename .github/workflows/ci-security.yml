@@ -1,0 +1,194 @@
+name: 'CI: Security Scanning'
+
+# Security scanning - runs weekly, on dependency changes, and manually
+# Consolidates: agent-security
+
+on:
+  schedule:
+    - cron: '0 5 * * 6'  # Weekly deep scan on Saturday at 05:00 AM UTC
+    - cron: '0 4 * * *'  # Nightly quick scan at 04:00 AM UTC
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Runner to use'
+        type: choice
+        options:
+          - ubuntu-latest
+          - macos-latest
+        default: 'ubuntu-latest'
+
+jobs:
+  # ============================================
+  # PYTHON DEPENDENCY AUDIT
+  # ============================================
+  python-deps:
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
+    # Only run slow dep audit on weekly Saturday schedule or manual dispatch
+    if: github.event.schedule == '0 5 * * 6' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install pip-audit
+        run: uv pip install --system pip-audit
+
+      - name: Audit Python dependencies
+        run: |
+          echo "=== Auditing Python Dependencies ==="
+
+          # Check MCP server dependencies
+          if [ -f "src/mcp/pyproject.toml" ]; then
+            echo "Checking src/mcp (augur-mcp)..."
+            cd src/mcp
+            uv pip install --system -e . --quiet
+            pip-audit --desc --fix --dry-run
+            cd ../..
+          fi
+
+          # Check for requirements.txt files
+          for req in $(find . -name "requirements.txt" -not -path "./.venv/*" -not -path "./node_modules/*"); do
+            echo "Checking $req..."
+            pip-audit -r "$req" --desc
+          done
+
+  # ============================================
+  # NODE.JS DEPENDENCY AUDIT
+  # ============================================
+  nodejs-deps:
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
+    # Only run slow dep audit on weekly Saturday schedule or manual dispatch
+    if: github.event.schedule == '0 5 * * 6' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store/v10
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('apps/dashboard/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      - name: Audit pnpm dependencies
+        working-directory: apps/dashboard
+        run: |
+          echo "=== Auditing pnpm Dependencies ==="
+          pnpm install --frozen-lockfile
+          pnpm audit --audit-level=high
+
+  # ============================================
+  # SECRET DETECTION
+  # ============================================
+  secrets-scan:
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        run: |
+          wget -q https://github.com/gitleaks/gitleaks/releases/download/v8.18.0/gitleaks_8.18.0_linux_x64.tar.gz
+          tar -xzf gitleaks_8.18.0_linux_x64.tar.gz
+          sudo mv gitleaks /usr/local/bin/
+
+      - name: Run gitleaks
+        run: |
+          echo "=== Scanning for Secrets ==="
+          gitleaks detect --source . --verbose --no-git --gitleaks-ignore-path .gitleaksignore
+
+  # ============================================
+  # PYTHON CODE SECURITY (SAST)
+  # ============================================
+  python-sast:
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install bandit
+        run: uv pip install --system bandit
+
+      - name: Run bandit
+        run: |
+          echo "=== Running Bandit Security Scanner ==="
+          bandit -r src/ project-brain/capabilities/skills/ \
+            --exclude ".venv,node_modules,tests,_dev" \
+            -ll \
+            --format txt
+
+  # ============================================
+  # SECURITY SUMMARY
+  # ============================================
+  security-summary:
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
+    needs: [python-deps, nodejs-deps, secrets-scan, python-sast]
+    if: always()
+
+    steps:
+      - name: Check results
+        run: |
+          echo "=== Security Scanning Summary ==="
+
+          FAILED=false
+
+          if [[ "${{ needs.python-deps.result }}" == "failure" ]]; then
+            echo "❌ Python Dependencies: FAILED"
+            FAILED=true
+          elif [[ "${{ needs.python-deps.result }}" == "success" ]]; then
+            echo "✅ Python Dependencies: PASSED"
+          fi
+
+          if [[ "${{ needs.nodejs-deps.result }}" == "failure" ]]; then
+            echo "❌ Node.js Dependencies: FAILED"
+            FAILED=true
+          elif [[ "${{ needs.nodejs-deps.result }}" == "success" ]]; then
+            echo "✅ Node.js Dependencies: PASSED"
+          fi
+
+          if [[ "${{ needs.secrets-scan.result }}" == "failure" ]]; then
+            echo "❌ Secrets Scan: FAILED"
+            FAILED=true
+          elif [[ "${{ needs.secrets-scan.result }}" == "success" ]]; then
+            echo "✅ Secrets Scan: PASSED"
+          fi
+
+          if [[ "${{ needs.python-sast.result }}" == "failure" ]]; then
+            echo "❌ Python SAST: FAILED"
+            FAILED=true
+          elif [[ "${{ needs.python-sast.result }}" == "success" ]]; then
+            echo "✅ Python SAST: PASSED"
+          fi
+
+          echo ""
+          if [[ "$FAILED" == "true" ]]; then
+            echo "⚠️ Some security checks failed - review findings above"
+            exit 1
+          else
+            echo "All security scans passed!"
+          fi

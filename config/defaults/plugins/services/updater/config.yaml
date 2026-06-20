@@ -1,0 +1,5 @@
+schema_version: 1
+check_interval: daily
+auto_backup: true
+notify_in_dashboard: true
+github_repo: augur-os/augur-os

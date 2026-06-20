@@ -1,0 +1,16 @@
+{
+  "skill_name": "rag",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Use the rag skill to search a skill knowledge",
+      "expected_output": "The search-skill-knowledge MCP tool executes successfully",
+      "files": [],
+      "expectations": [
+        "The search-skill-knowledge tool is called",
+        "Tool returns structured data without errors"
+      ],
+      "confidence": "seed"
+    }
+  ]
+}

@@ -1,0 +1,402 @@
+---
+status: Implemented
+date: '2026-02-05'
+deciders:
+- Augur Team
+related: []
+hub: null
+tags:
+- daemon
+- production
+- monitoring
+- self
+- healing
+superseded_by: null
+---
+
+# ADR-041: Daemon Production Monitoring & Self-Healing
+
+## Context
+
+The unified daemon (ADR-038) currently manages background services as child subprocesses with basic health monitoring and restart capabilities. However, production environments require more sophisticated monitoring:
+
+1. **Dashboard Server Monitoring**: When the Next.js dashboard goes down, we need to distinguish between intentional downtime (rebuild/reload in progress) vs unexpected crashes requiring intervention.
+
+2. **MCP Server Health**: MCP servers can become stalled (PID exists but process is unresponsive), requiring cleanup and restart. These issues should be silently fixed but logged for nightly review.
+
+3. **Runtime Error Detection**: Errors and warnings in `runtime/` should be translated into technical debt items (`TODO_` markers) for systematic resolution via workflows.
+
+Additionally, behavior should differ between **Production Mode** (auto-fix) and **Dev Mode** (notify-only).
+
+## Decision
+
+Enhance the daemon with three new monitoring modules, each with mode-aware behavior:
+
+### 1. Dashboard Server Monitor (`dashboard_monitor.py`)
+
+**Production Mode:**
+```
+loop every 30s:
+  1. Check if dashboard process is running (port 3000)
+  2. If down:
+     a. Check for rebuild lock file: runtime/locks/dashboard_rebuild.lock
+     b. If lock exists + age < 5min → skip (intentional rebuild)
+     c. If no lock or stale lock:
+        - Attempt restart via `npm run dev` or `npm run start`
+        - If restart fails 3x → trigger recovery stage
+        - Recovery: clear .next cache, reinstall deps, retry
+     d. After recovery → send notification via NotificationService
+  3. Write status to runtime/stats/dashboard_status.json
+```
+
+**Dev Mode:**
+```
+loop every 30s:
+  1. Check if dashboard process is running
+  2. If down + no rebuild lock:
+     - Log warning to daemon.log
+     - Send notification via NotificationService
+     - DO NOT auto-restart
+```
+
+### 2. MCP Server Health Monitor (`mcp_health_monitor.py`)
+
+**Production Mode:**
+```
+loop every 60s:
+  1. Read active MCP PIDs from runtime/mcp_pids.json
+  2. For each PID:
+     a. Check if process exists (os.kill(pid, 0))
+     b. Check if process is responsive (send health check if supported)
+     c. If stalled (exists but unresponsive):
+        - SIGTERM → wait 5s → SIGKILL if needed
+        - Clear stale PID from registry
+        - Allow MCP manager to restart on next request
+     d. Write silent log: runtime/logs/mcp_health.log
+     e. Add TODO_BUG marker to: runtime/mcp_issues.md
+        Format: # TODO_BUG(integration/medium): MCP {name} stalled, auto-fixed {timestamp}
+```
+
+**Dev Mode:**
+```
+loop every 60s:
+  1. Check MCP health (same detection logic)
+  2. If stalled:
+     - Log warning to daemon.log
+     - Send notification via NotificationService
+     - DO NOT auto-kill (let developer investigate)
+```
+
+### 3. Runtime Error Scanner (`runtime_error_scanner.py`)
+
+**Production Mode:**
+```
+loop every 5min (or on-demand via cron):
+  1. Scan runtime/logs/*.log for ERROR/WARNING patterns
+  2. Scan runtime/logs/*.stderr.log for stack traces
+  3. For each unique error pattern:
+     a. Generate dedup key (hash of error signature)
+     b. Check if already tracked in runtime/tech_debt.md
+     c. If new:
+        - Append TODO_IMPROVE or TODO_BUG marker based on severity
+        - Format: # TODO_BUG(category/severity): {error_summary}
+        - Include: file, line, timestamp, count
+  4. Track error frequency for nightly reporting
+```
+
+**Dev Mode:**
+```
+Same scanning logic but:
+  - Send notification for each new error type (not just log)
+  - Still write to tech_debt.md for visibility
+```
+
+### Mode Detection
+
+```python
+def get_daemon_mode() -> str:
+    """Detect current mode from dashboard settings or env."""
+    # Priority:
+    # 1. AUGUR_MODE env var (explicit override)
+    # 2. data/core/settings.yaml → mode field
+    # 3. Default: "production"
+
+    if os.environ.get("AUGUR_MODE"):
+        return os.environ["AUGUR_MODE"]
+
+    settings_file = get_user_data_base() / "core" / "settings.yaml"
+    if settings_file.exists():
+        settings = yaml.safe_load(settings_file.read_text())
+        return settings.get("mode", "production")
+
+    return "production"
+```
+
+### Notification Integration
+
+All modules use the existing `NotificationService` from `daemon/scripts/notification_service.py`:
+
+```python
+from notification_service import notify
+
+# In production mode (after auto-fix):
+notify(
+    f"Dashboard recovered after crash. Recovery took {duration}s.",
+    channel="system"
+)
+
+# In dev mode (notify without fixing):
+notify(
+    f"Dashboard is down. Check manually or rebuild.",
+    channel="system"
+)
+```
+
+### Technical Debt Output Format
+
+`runtime/tech_debt.md`:
+
+```markdown
+# Runtime Technical Debt
+Auto-generated by daemon runtime_error_scanner. Review with `/review-markers`.
+
+## Errors (fix urgently)
+<!-- TODO_BUG(integration/high): MCP augur stalled 3x in 24h (2026-02-05) -->
+<!-- TODO_BUG(ux/medium): Dashboard hydration error in /control page -->
+
+## Warnings (address in maintenance)
+<!-- TODO_IMPROVE(performance): Slow MCP tool response >5s average -->
+<!-- TODO_IMPROVE(maintainability): Deprecated API usage in install -->
+```
+
+### Integration with Nightly Workflow
+
+The existing `/nightly` workflow gains a new step:
+
+```yaml
+- name: Process daemon tech debt
+  run: |
+    # Merge runtime tech_debt.md into main codebase markers
+    python3 scripts/merge_tech_debt.py
+    # Clean up resolved issues
+    python3 .github/scripts/scan_code_markers.py --cleanup-resolved
+```
+
+## Architecture
+
+```
+unified_daemon.py (existing)
+    ├── log_monitor.py (existing, unchanged)
+    ├── continuous_executor.py (existing, unchanged)
+    ├── nightly_maintainer.py (existing, unchanged)
+    │
+    └── NEW monitoring modules:
+        ├── dashboard_monitor.py
+        │   └── Uses: notification_service.py
+        │
+        ├── mcp_health_monitor.py
+        │   └── Uses: notification_service.py
+        │   └── Writes: mcp_issues.md, mcp_health.log
+        │
+        └── runtime_error_scanner.py
+            └── Writes: tech_debt.md
+            └── Reads: runtime/logs/*.log
+```
+
+### Lock File Protocol
+
+To prevent restart loops during intentional operations:
+
+| Operation | Lock File | Max Age |
+|-----------|-----------|---------|
+| Dashboard rebuild | `dashboard_rebuild.lock` | 5 min |
+| Dashboard reload | `dashboard_reload.lock` | 2 min |
+| MCP restart | `mcp_restart_{name}.lock` | 1 min |
+
+Lock files contain: `{ "started": ISO8601, "reason": "user-initiated" | "auto" }`
+
+## Consequences
+
+### Positive
+
+- Production systems self-heal without user intervention
+- Dev mode preserves debugging context (no auto-kills)
+- Technical debt is tracked automatically, not forgotten
+- Clear separation between monitoring and action
+- Leverages existing notification infrastructure
+- Nightly cleanup integrates with existing `/review-markers` workflow
+
+### Negative
+
+- More complexity in daemon (3 new monitoring threads)
+- Lock file management adds failure modes
+- Dev mode notifications could become noisy
+
+### Neutral
+
+- Existing ADR-038 architecture remains valid (additive changes)
+- Notification preferences remain user-configurable
+
+## Alternatives Considered
+
+### Alternative 1: External Monitoring (Uptime Robot, etc.)
+
+**Rejected**: Augur is local-first (ADR-006). External monitoring requires internet, adds latency, and can't access local process state for intelligent restart decisions.
+
+### Alternative 2: Single Unified Monitor
+
+**Rejected**: Dashboard, MCP, and runtime logs have different check intervals and recovery strategies. Separating them makes each module simpler and allows independent testing.
+
+### Alternative 3: Systemd/Launchd Native Monitoring
+
+**Rejected**: Native service managers can restart processes but lack context-awareness (can't detect rebuild locks, can't translate errors to tech debt). Our custom monitoring adds intelligence.
+
+## Script Consolidation (Migration to Daemon Plugin)
+
+All runtime health monitoring scripts will be consolidated into the daemon plugin. This centralizes system health management under one skill.
+
+### Scripts to Move into Daemon Plugin
+
+| Source | Target | Action |
+|--------|--------|--------|
+| `plugins/dev/skills/devops/scripts/cleanup_processes.py` | `plugins/observability/skills/daemon/scripts/cleanup_processes.py` | **Move** |
+| `.github/scripts/mcp_health_check.py` | `plugins/observability/skills/daemon/scripts/mcp_health_check.py` | **Move** |
+| `.github/scripts/scan_code_markers.py` | Keep + create runtime variant | **Keep** original, create `runtime_marker_scanner.py` |
+
+### 1. cleanup_processes.py → Move to Daemon
+
+**From**: `plugins/dev/skills/devops/scripts/cleanup_processes.py`
+**To**: `plugins/observability/skills/daemon/scripts/cleanup_processes.py`
+
+**Current capabilities**:
+- Finds and kills processes on port 3000 (dashboard)
+- Finds and kills zombie MCP processes (`pgrep -f mcp`)
+- Cross-platform support (macOS, Windows, Linux)
+
+**After move, extend with**:
+- Stalled detection (PID exists but unresponsive)
+- Mode-aware behavior (auto-kill in prod, notify-only in dev)
+- Logging and TODO_BUG marker generation
+- Integration with `notification_service.py`
+
+**Backward compatibility**: Leave thin wrapper in devops:
+```python
+# plugins/dev/skills/devops/scripts/cleanup_processes.py (after move)
+"""Deprecated: Use daemon plugin. This wrapper maintains backward compatibility."""
+import sys
+sys.path.insert(0, str(Path(__file__).parents[5]))
+from plugins.services.skills.daemon.scripts.cleanup_processes import main
+if __name__ == "__main__":
+    main()
+```
+
+### 2. mcp_health_check.py → Move to Daemon
+
+**From**: `.github/scripts/mcp_health_check.py`
+**To**: `plugins/observability/skills/daemon/scripts/mcp_health_check.py`
+
+**Current capabilities**:
+- Validates MCP configuration against recommended limits
+- Checks server count, tool count, startup time estimates
+- Returns structured health report
+
+**After move, extend with**:
+- Runtime process health checks (not just config validation)
+- PID liveness verification
+- Responsiveness checks (ping/health endpoints if supported)
+- Integration with unified daemon monitoring loop
+
+**Backward compatibility**: Leave CI wrapper in `.github/scripts/`:
+```python
+# .github/scripts/mcp_health_check.py (after move)
+"""CI wrapper - actual implementation in daemon plugin."""
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parents[2]))
+from plugins.services.skills.daemon.scripts.mcp_health_check import main
+if __name__ == "__main__":
+    main()
+```
+
+### 3. scan_code_markers.py → Keep + Create Runtime Variant
+
+**Location**: `.github/scripts/scan_code_markers.py` (no change)
+
+**Rationale**: This scans the **codebase** for markers, which is a CI/development concern. It stays in `.github/scripts/`.
+
+**New file**: `plugins/observability/skills/daemon/scripts/runtime_marker_scanner.py`
+
+**Purpose**: Scans **runtime logs** (not codebase) and generates markers.
+
+**Capabilities**:
+- Scan `runtime/logs/*.log` for ERROR/WARNING patterns
+- Scan `runtime/logs/*.stderr.log` for stack traces
+- Generate `TODO_BUG`/`TODO_IMPROVE` markers (same format as codebase scanner)
+- Output to `runtime/tech_debt.md`
+- Deduplication and frequency tracking
+- Nightly merge into codebase marker scan
+
+### 4. log_monitor.py → Keep in Daemon (no change)
+
+**Location**: `plugins/observability/skills/daemon/scripts/log_monitor.py`
+
+Keep focused on LLM logs. The new `runtime_marker_scanner.py` handles dashboard/MCP logs.
+
+## Final Daemon Scripts Structure
+
+After migration:
+```
+plugins/observability/skills/daemon/scripts/
+├── __init__.py
+├── unified_daemon.py           # Main daemon process manager
+├── service_healer.py           # LaunchAgent plist management
+├── notification_service.py     # Cross-platform notifications
+├── log_monitor.py              # LLM log error detection (existing)
+├── continuous_executor.py      # Background task executor (existing)
+├── nightly_maintainer.py       # Scheduled nightly tasks (existing)
+│
+├── cleanup_processes.py        # MOVED from devops
+├── mcp_health_check.py         # MOVED from .github/scripts
+│
+├── dashboard_monitor.py        # NEW: Dashboard server monitoring
+├── mcp_health_monitor.py       # NEW: MCP runtime health monitoring
+└── runtime_marker_scanner.py   # NEW: Runtime log → tech debt markers
+```
+
+## Implementation Plan
+
+1. **Phase 1**: Script Migration
+   - Move `cleanup_processes.py` from devops to daemon
+   - Move `mcp_health_check.py` from `.github/scripts/` to daemon
+   - Create backward-compatible wrappers at original locations
+   - Update any imports in other scripts
+
+2. **Phase 2**: Dashboard monitor (highest user impact)
+   - Create `dashboard_monitor.py`
+   - Reuse port 3000 check from `cleanup_processes.py`
+   - Add lock file protocol
+   - Add recovery stage
+
+3. **Phase 3**: MCP health monitor (infrastructure stability)
+   - Create `mcp_health_monitor.py`
+   - Extend `cleanup_processes.py` with stalled detection
+   - Add mode-aware behavior
+   - Add TODO_BUG generation
+
+4. **Phase 4**: Runtime error scanner (tech debt tracking)
+   - Create `runtime_marker_scanner.py`
+   - Use same marker format as `scan_code_markers.py`
+   - Output to `runtime/tech_debt.md`
+   - Add dedup and frequency tracking
+
+5. **Phase 5**: Nightly integration
+   - Create `merge_tech_debt.py` script in daemon
+   - Add step to `/nightly` workflow to merge runtime markers
+
+## References
+
+- ADR-038: Unified Daemon Process
+- ADR-037: Autonomous Execution Pipeline
+- `plugins/observability/skills/daemon/scripts/unified_daemon.py`
+- `plugins/observability/skills/daemon/scripts/notification_service.py`
+- `docs/guides/TODO-markers.md` (TODO_ marker format)

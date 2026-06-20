@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "augur-core": {
+      "args": ["-m", "augur_core", "--client-id", "${AUGUR_CLIENT_ID}"],
+      "command": "${AUGUR_PYTHON}",
+      "cwd": "${AUGUR_ROOT}",
+      "env": {
+        "AUGUR_ROOT": "${AUGUR_ROOT}",
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONPATH": "${AUGUR_ROOT}/project-brain/capabilities:${AUGUR_ROOT}:${AUGUR_ROOT}/src/mcp"
+      }
+    }
+  }
+}

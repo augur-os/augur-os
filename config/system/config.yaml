@@ -1,0 +1,46 @@
+user:
+  name: ""
+  timezone: UTC
+  languages:
+  - en
+  email: null
+paths:
+  base: null
+  skills_repo: null
+apple_notes:
+  unified_inbox: "\U0001F4E5 Inbox"
+  mirror_folder: "\U0001F504 Augur Sync"
+  auto_ingest: true
+  ingest_interval_minutes: 5
+  legacy_inbox_notes:
+    job-analyzer: "\U0001F4CB Job Links"
+    reading: "\U0001F4DA Reading List"
+    ideas-capture: "\U0001F4A1 Ideas"
+    voice-memos: "\U0001F399\uFE0F Voice Memos"
+    recipe-manager: "\U0001F373 Food Recipes"
+    places-skill: "\U0001F4DA Places & Restaurants"
+    books: "\U0001F4DA Books"
+defaults:
+  scraping_tool: firecrawl
+  backup_to_drive: false
+  output_format: yaml
+integrations:
+  google_drive:
+    enabled: false
+    backup_folder: null
+  llmfit:
+    enabled: false
+skills:
+  job-analyzer:
+    priority_threshold: 6.0
+    target_compensation: 450000
+  reading:
+    auto_summarize: true
+    max_summary_length: 150
+  ideas-capture:
+    hot_threshold: 7.0
+    warm_threshold: 5.0
+  voice-memos:
+    default_language: auto
+    speaker_labels: true
+schema_version: 1

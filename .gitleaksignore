@@ -1,0 +1,26 @@
+# Gitleaks ignore patterns
+# See: https://github.com/gitleaks/gitleaks#gitleaksignore
+
+# Documentation examples (intentional anti-patterns showing what NOT to do)
+# Note: Most plugin paths have been migrated to augur-data repo
+packages/factory/security-engineer/references/secret-management.md:generic-api-key:42
+.agent/archive/packages-backup-20260115-101758/factory/security-engineer/references/secret-management.md:generic-api-key:42
+
+# Next.js build cache (local dev keys, not tracked in git, regenerated on each dev build)
+shared/dashboard/.next/cache/.rscinfo:generic-api-key:1
+shared/dashboard/.next/cache/.previewinfo:generic-api-key:1
+shared/dashboard/.next/dev/cache/.rscinfo:generic-api-key:1
+shared/dashboard/.next/dev/prerender-manifest.json:generic-api-key:8
+shared/dashboard/.next/dev/prerender-manifest.json:generic-api-key:9
+shared/dashboard/.next/dev/server/server-reference-manifest.json:generic-api-key:95
+
+# Historical false positives in test/docs commits (tracked by fingerprint)
+08e52e117fed9aa29757989f10027a75a5bc63d2:plugins/crew/skills/security/tests/test_security.py:private-key:59
+08e52e117fed9aa29757989f10027a75a5bc63d2:plugins/crew/skills/security/tests/test_security.py:generic-api-key:245
+7ec557748e2a571acfe4dafccbd253183cdfa0a7:plugins/core/skills/security-engineer/references/secret-management.md:generic-api-key:42
+7ec557748e2a571acfe4dafccbd253183cdfa0a7:plugins/core/skills/security-engineer/scripts/security_reminder.py:generic-api-key:264
+6967962d4be8129d119c1b654ab890d0a662f9f2:plugins/factory-quality/skills/security-engineer/scripts/security_reminder.py:generic-api-key:269
+65aec2d5db3394a706ee56f772e688e2b3341d73:plugins/factory-quality/skills/security-engineer/references/secret-management.md:generic-api-key:42
+65aec2d5db3394a706ee56f772e688e2b3341d73:plugins/services-core/skills/vector-rag/_dev/docs/coding-conventions.md:generic-api-key:617
+1a645f43d0769f6a80669a9ed51d7e4d8f98e806:packages/local-rag/docs/coding-conventions.md:generic-api-key:617
+69b29cc2d56acc8d16a8aa3e1594ec574240bb52:docs/guides/developer-guide/testing-guide.md:generic-api-key:261

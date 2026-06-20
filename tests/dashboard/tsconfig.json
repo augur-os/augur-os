@@ -1,0 +1,20 @@
+{
+  "extends": "../../apps/dashboard/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "../../apps/dashboard",
+    "paths": {
+      "@/*": ["./*"],
+      "*": ["node_modules/*"]
+    },
+    "noEmit": true,
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "typeRoots": ["../../apps/dashboard/node_modules/@types"]
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "../../apps/dashboard/next-env.d.ts",
+    "../../apps/dashboard/jest.setup.js"
+  ]
+}

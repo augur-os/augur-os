@@ -1,0 +1,56 @@
+name: Release Please
+
+# Automated release management from conventional commits.
+# Creates a release PR that bumps VERSION, generates CHANGELOG, and tags on merge.
+# See ADR-048: Multi-User Scale Support
+#
+# TODO_BUG(release): Re-enable the push trigger after the repo's release
+# version/tag history is reconciled. The current configuration regenerates
+# stale 1.0.0 release PRs while VERSION remains 0.1.0 and old v1.0.0/v1.1.0
+# tags already exist.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  fresh-env-gate:
+    uses: ./.github/workflows/fresh-env-onboard.yml
+    with:
+      os_set: all
+
+  release-please:
+    needs: [fresh-env-gate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          release-type: simple
+          # VERSION file at repo root tracks the current version
+          extra-files: |
+            VERSION
+
+      # After a release is created, set up the release branch
+      - uses: actions/checkout@v4
+        if: ${{ steps.release.outputs.release_created }}
+        with:
+          fetch-depth: 0
+
+      - name: Create release branch
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          VERSION="${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}"
+          BRANCH="release/${VERSION}.x"
+
+          # Only create if branch doesn't exist
+          if ! git ls-remote --heads origin "$BRANCH" | grep -q "$BRANCH"; then
+            git checkout -b "$BRANCH" "v${{ steps.release.outputs.tag_name }}"
+            git push origin "$BRANCH"
+            echo "Created release branch: $BRANCH"
+          else
+            echo "Release branch $BRANCH already exists, skipping"
+          fi

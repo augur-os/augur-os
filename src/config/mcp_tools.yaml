@@ -1,0 +1,125 @@
+# MCP Tool Configuration
+# Enable/disable MCP tools exposed to IDE clients
+#
+# Modes:
+# - category: Enable/disable by category (recommended)
+# - allowlist: Only explicitly listed tools are enabled
+# - denylist: All tools enabled except explicitly listed
+#
+# Presets provide quick configurations:
+# - minimal: Just skill discovery (read-only)
+# - standard: Discovery + context + execution (default)
+# - full: All capabilities including self-update
+
+version: "1.0"
+
+# Active mode
+mode: category
+
+# Active preset (null if custom configuration)
+active_preset: standard
+
+# Tool category definitions
+# Each category groups related tools with src/lib enable/disable
+categories:
+  core:
+    description: Essential skill discovery and loading
+    enabled: true
+    recommended: true
+    tools:
+      - list-skills
+      - get-skill
+      - find-skill
+      - load-module
+      - load-reference
+      - get-config
+
+  context:
+    description: Context enrichment and personalization
+    enabled: true
+    recommended: true
+    tools:
+      - get-context
+
+  execution:
+    description: Execute skill actions and agent chains
+    enabled: true
+    recommended: true
+    tools:
+      - skill-action
+      - execute-chain
+      - list-chains
+
+  training:
+    description: Preference training (learns from user feedback)
+    enabled: false
+    recommended: false
+    tools:
+      - training-start
+      - training-answer
+      - training-preferences
+      - training-reset
+
+  background-jobs:
+    description: Async job management
+    enabled: false
+    recommended: false
+    tools:
+      - get-job-status
+      - cancel-job
+      - list-jobs
+
+  diagnostics:
+    description: Server health and metrics
+    enabled: false
+    recommended: false
+    tools:
+      - metrics
+      - health
+      - cache-control
+      - cross-skill
+
+  browse:
+    description: Browse page discovery tools
+    enabled: true
+    recommended: true
+    tools:
+      - reveal-in-finder
+      - open-file
+      - list-vault-items
+      - list-prompts
+      - list-scripts
+      - list-cli-commands
+      - list-integrations
+      - list-agents
+      - list-adrs
+      - list-tests
+      - list-api-routes
+      - browse-index
+      - cli-help
+
+# Preset configurations
+presets:
+  minimal:
+    description: Just skill discovery - read only
+    categories:
+      - core
+
+  standard:
+    description: Discovery + context + execution
+    categories:
+      - core
+      - context
+      - execution
+
+  full:
+    description: All capabilities including self-update
+    categories:
+      - core
+      - context
+      - execution
+      - self-update
+      - rollback
+      - training
+      - background-jobs
+      - diagnostics

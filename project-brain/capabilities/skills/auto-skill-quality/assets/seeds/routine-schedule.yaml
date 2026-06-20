@@ -1,0 +1,11 @@
+schedules:
+  - id: codex-dev-loop-skill-quality
+    title: Skill Quality
+    loop: skill-quality
+    source: codex
+    rrule: "RRULE:FREQ=WEEKLY;BYDAY=FR;BYHOUR=3;BYMINUTE=0"
+    prompt: "/routines run skill-quality"
+    workspace: "__PROJECT_ROOT__"
+    model: "gpt-5.4"
+    reasoning_effort: "high"
+    runs_in: local

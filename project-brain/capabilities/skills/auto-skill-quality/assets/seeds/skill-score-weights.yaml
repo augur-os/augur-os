@@ -1,0 +1,12 @@
+# Skill Quality Score — weight configuration
+# Weights must sum to 1.0. Edit via dashboard at /professional/demo.
+weights:
+  instruction: 0.30
+  product: 0.40
+  ui: 0.15
+  wiring: 0.15
+tier_thresholds:
+  A: 75
+  B: 55
+  C: 35
+  D: 15

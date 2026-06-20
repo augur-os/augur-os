@@ -1,0 +1,15 @@
+# worktreeinclude — files to copy into new git worktrees
+# Matches .gitignore syntax: patterns here that are also in .gitignore
+# get automatically copied when a new AI client worktree is created.
+
+# Env files — API keys, secrets, local overrides
+**/.env
+**/.env.local
+**/.env.*
+
+# Local client settings — machine-specific tool permissions and paths
+.claude/settings.local.json
+
+# MCP config files — contain absolute local paths, required for MCP tools to work
+.mcp.json
+config/mcp_config.json

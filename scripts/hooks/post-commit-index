@@ -1,0 +1,48 @@
+#!/bin/bash
+# scripts/hooks/post-commit-index
+# Post-commit hook: incrementally reindex structural categories
+# for files changed in the last commit.
+
+AUGUR_ROOT="$(git rev-parse --show-toplevel)"
+PYTHON="${AUGUR_ROOT}/.venv/bin/python"
+[ -x "$PYTHON" ] || PYTHON="$(command -v python3)"
+[ -n "$PYTHON" ] || exit 0
+
+# Only reindex if unified_indexer exists
+INDEXER="${AUGUR_ROOT}/src/lib/index/unified_indexer.py"
+[ -f "$INDEXER" ] || exit 0
+
+# Changed-file set. Default: just this commit. A caller (e.g. the post-merge
+# hook) can pass AUGUR_REINDEX_BASE=<ref> to cover a whole pulled/merged range
+# — the cross-machine `git pull` vector that left the index stale after the
+# project-brain skill move.
+if [ -n "${AUGUR_REINDEX_BASE:-}" ] && git rev-parse --verify --quiet "$AUGUR_REINDEX_BASE" >/dev/null 2>&1; then
+  CHANGED_FILES=$(git diff --name-only "$AUGUR_REINDEX_BASE" HEAD 2>/dev/null)
+else
+  CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null)
+fi
+
+REINDEX_CATEGORIES=""
+
+echo "$CHANGED_FILES" | grep -Eq "skills/.*/scripts/|src/scripts/" && REINDEX_CATEGORIES="$REINDEX_CATEGORIES scripts"
+echo "$CHANGED_FILES" | grep -q "app/api/.*/route.ts" && REINDEX_CATEGORIES="$REINDEX_CATEGORIES api-routes"
+echo "$CHANGED_FILES" | grep -q "\.test\." && REINDEX_CATEGORIES="$REINDEX_CATEGORIES tests"
+echo "$CHANGED_FILES" | grep -q "test_.*\.py" && REINDEX_CATEGORIES="$REINDEX_CATEGORIES tests"
+echo "$CHANGED_FILES" | grep -Eq "augur\\.y[a]ml|SKILL\\.md|skills/.*/augur/pages/.*\\.ya?ml" && REINDEX_CATEGORIES="$REINDEX_CATEGORIES pages blocks"
+
+# Skill-derived categories. These silently emptied after the ADR-601/770
+# shared-vault -> project-brain skill move because nothing reindexed them and
+# the stale shared-vault/ source_paths were filtered out as missing files.
+echo "$CHANGED_FILES" | grep -Eq "/commands/[^/]+\.md" && REINDEX_CATEGORIES="$REINDEX_CATEGORIES commands"
+echo "$CHANGED_FILES" | grep -Eq "/actions/[^/]+\.md" && REINDEX_CATEGORIES="$REINDEX_CATEGORIES actions"
+echo "$CHANGED_FILES" | grep -Eq "/scripts/mcp/" && REINDEX_CATEGORIES="$REINDEX_CATEGORIES mcp-tools"
+# A SKILL.md add/remove/move invalidates every category derived from that skill
+# directory (skills, commands, actions, mcp-tools, scripts), so refresh them.
+echo "$CHANGED_FILES" | grep -q "SKILL\.md" && REINDEX_CATEGORIES="$REINDEX_CATEGORIES skills commands actions mcp-tools scripts"
+
+[ -z "$REINDEX_CATEGORIES" ] && exit 0
+
+# De-dupe so each category is reindexed at most once per commit.
+for cat in $(printf '%s\n' $REINDEX_CATEGORIES | sort -u); do
+  "$PYTHON" "$INDEXER" --category "$cat" >/dev/null 2>&1 &
+done

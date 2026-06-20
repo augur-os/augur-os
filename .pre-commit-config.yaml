@@ -1,0 +1,147 @@
+repos:
+  - repo: local
+    hooks:
+      # Path validation
+      - id: audit-paths
+        name: Audit hardcoded paths
+        entry: python .github/scripts/audit_paths.py
+        language: system
+        pass_filenames: false
+        description: "Checks for hardcoded paths that violate data separation"
+
+      # Boundary validation (NEW)
+      - id: validate-boundaries
+        name: Validate entity boundaries
+        entry: python .github/scripts/validate_boundaries.py
+        language: system
+        pass_filenames: false
+        description: "Enforces architectural boundaries (CLI, UI, MCP, Skills)"
+
+      # Logging audit (NEW)
+      - id: audit-logging
+        name: Ensure centralized logging usage
+        entry: python .github/scripts/audit_logging.py
+        language: system
+        types: [python]
+        pass_filenames: false
+        description: "Checks that all entities use shared.logging"
+
+      # Data separation check
+      - id: data-separation
+        name: Validate data/code separation
+        entry: python .github/scripts/audit_data_separation.py
+        language: system
+        pass_filenames: false
+        description: "Ensures user data only written to augur-data repo"
+
+      # File placement validation (NEW)
+      - id: validate-file-placement
+        name: Validate new file placement
+        entry: python .github/scripts/validate_file_placement.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [commit]
+        description: "Ensures new files are created in correct category paths (CORE/DATA/PLUGINS/RUNTIME)"
+
+      # Runtime gitignore check (NEW)
+      - id: runtime-gitignore
+        name: Check runtime files are gitignored
+        entry: python .github/scripts/check_runtime_gitignore.py
+        language: system
+        pass_filenames: false
+        stages: [commit]
+        description: "Ensures runtime folder contents are gitignored"
+
+      # Agent instruction freshness
+      - id: validate-agent-instructions
+        name: Validate generated agent instructions
+        entry: python skills/ai/scripts/sync_agents --fix
+        language: system
+        pass_filenames: false
+        stages: [commit]
+        description: "Ensures CLAUDE.md/CODEX.md and workflow mirrors are current"
+
+      # Command parity validation (ADR-251)
+      - id: validate-command-parity
+        name: Validate command registry parity (ADR-251)
+        entry: python .github/scripts/validate_command_parity.py
+        language: system
+        pass_filenames: false
+        stages: [commit]
+        description: "Ensures every declared command has a source file and no duplicate IDs"
+
+      # Stale path detection (ADR-177)
+      - id: stale-path-check
+        name: Check for stale path references
+        entry: python .github/scripts/scan_stale_paths.py --quick --ci
+        language: system
+        pass_filenames: false
+        stages: [commit]
+        description: "Catches stale path references in staged files before commit"
+
+      # IDE context registry freshness
+      - id: validate-ide-registry
+        name: Validate IDE registry
+        entry: python apps/dashboard/scripts/generate_registry.py --check
+        language: system
+        pass_filenames: false
+        stages: [commit]
+        description: "Ensures data/core/ide-integration/registry.yaml is current"
+
+      # Size check - warning only (NEW)
+      - id: size-check
+        name: Check file sizes
+        entry: python .github/scripts/check_sizes.py
+        language: system
+        pass_filenames: false
+        stages: [commit]
+        verbose: true
+        description: "Warns about large files being committed"
+
+      # Temp file cleanup with memory (ADR-028)
+      - id: cleanup-temp-files
+        name: Cleanup temporary files
+        entry: python .github/scripts/cleanup_temp_files.py
+        language: system
+        pass_filenames: false
+        stages: [commit]
+        always_run: true
+        description: "Cleans up scratch/temp files and saves memory about them"
+
+      # Browser verification gate for dashboard commits (CLAUDE.md rule 28)
+      - id: require-browser-verify
+        name: Require Verified-Browser trailer for dashboard commits
+        entry: python .github/scripts/require_browser_verify.py
+        language: system
+        pass_filenames: false
+        stages: [commit-msg]
+        description: "Cross-agent gate: dashboard UI/config commits must carry a Verified-Browser: or Skip-Verify: trailer (rule 28)"
+
+      # Skill structure validation (ADR-430)
+      - id: validate-skill-structure
+        name: Validate skill directory structure (ADR-430)
+        entry: python3 .github/scripts/validate_skill_structure.py
+        language: system
+        files: '^skills/'
+        pass_filenames: true
+        stages: [commit]
+        description: "Blocks commits with banned skill structure patterns (deprecated files, auto-generated artifacts, user data)"
+
+      # fs-bypass detection in API routes (ADR-453)
+      - id: audit-fs-bypass
+        name: Audit fs access in API routes (ADR-453)
+        entry: python skills/auto-fs-bypass/scripts/scan.py
+        language: system
+        pass_filenames: false
+        stages: [commit]
+        description: "Blocks direct fs access in API routes — must use MCP tools (CLAUDE.md rule #11)"
+
+      # Auto-index RAG plugins
+      - id: index-rag
+        name: Update RAG Indices
+        entry: python scripts/bulk_index.py
+        language: system
+        pass_filenames: false
+        stages: [commit]
+        description: "Regenerate RAG indices natively across all plugin skills on commit"

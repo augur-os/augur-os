@@ -1,0 +1,6 @@
+name: Augur
+port: 3000
+
+paths:
+  vault: ~/Projects/Au-vault
+  documents: ~/Documents

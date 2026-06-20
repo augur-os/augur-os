@@ -1,0 +1,19 @@
+{
+  "ignorePatterns": ["node_modules.bak*/**"],
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "plugins": ["unused-imports"],
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/no-require-imports": "off",
+    "unused-imports/no-unused-imports": "error",
+    "unused-imports/no-unused-vars": "off"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.ts", "**/*.tsx"],
+      "rules": {
+        "@typescript-eslint/no-unused-vars": "off"
+      }
+    }
+  ]
+}

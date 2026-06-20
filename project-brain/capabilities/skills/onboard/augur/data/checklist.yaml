@@ -1,0 +1,36 @@
+# Onboarding checklist templates
+# Referenced by /onboard --status and mode-default
+
+default_checklist:
+  - id: clone
+    label: "Clone repository"
+    required: true
+  - id: deps
+    label: "Install dependencies (pnpm, uv)"
+    required: true
+  - id: mcp
+    label: "Configure MCP server"
+    required: true
+  - id: vault
+    label: "Scaffold vault directories"
+    required: true
+  - id: dashboard
+    label: "Start dashboard"
+    required: false
+  - id: verify
+    label: "Run verification checks"
+    required: false
+
+migrate_checklist:
+  - id: detect_legacy
+    label: "Detect legacy data locations"
+    required: true
+  - id: migrate_vault
+    label: "Migrate vault data to new paths"
+    required: true
+  - id: verify_plugins
+    label: "Verify plugin configurations"
+    required: true
+  - id: verify_mcp
+    label: "Verify MCP server health"
+    required: true

@@ -1,0 +1,9 @@
+# Hybrid search -- RRF fusion + search budgets (ADR-739)
+rrf:
+  k: 60
+  per_source_limit: 50
+search_budgets:
+  conservative: {top_k: 5, token_estimate: 4000}
+  balanced: {top_k: 10, token_estimate: 10000}
+  tokenmax: {top_k: 20, token_estimate: 20000}
+default_budget: balanced

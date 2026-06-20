@@ -1,0 +1,6 @@
+# Release scope for the public augur-os repo.
+#   docs_only — publish only the curated architecture-doc tree (legacy allowlist).
+#   full      — publish the whole code repo; gated by the partition-integrity scan
+#               (src/lib/partition_integrity.py). Flip to `full` only after the
+#               soft-launch-readiness milestones (M1–M5) are complete.
+scope: full
