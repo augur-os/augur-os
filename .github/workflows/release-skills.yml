@@ -1,0 +1,43 @@
+name: Release Individual Skills
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'project-brain/capabilities/skills/*/SKILL.md'
+  workflow_dispatch:
+
+jobs:
+  release-skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Zip each skill directory
+        run: |
+          mkdir -p dist/skills-zips
+          for skill_dir in project-brain/capabilities/skills/*/; do
+            skill_name=$(basename "$skill_dir")
+            # Only zip if SKILL.md exists (real skill, not a support dir)
+            if [ -f "$skill_dir/SKILL.md" ]; then
+              cd "$skill_dir"
+              zip -r "../../../dist/skills-zips/${skill_name}.zip" . \
+                -x "__pycache__/*" "augur/tests/*" ".pytest_cache/*" "*.pyc"
+              cd ../../..
+              echo "Zipped: $skill_name"
+            fi
+          done
+          ls -la dist/skills-zips/
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Delete existing 'skills-latest' release if it exists
+          gh release delete skills-latest --yes 2>/dev/null || true
+          # Create new release with all zips
+          gh release create skills-latest \
+            --title "Individual Skills (Latest)" \
+            --notes "Individual skill zips for claude.ai upload. Each .zip contains one skill directory ready for Settings > Capabilities > Skills > Upload." \
+            --prerelease \
+            dist/skills-zips/*.zip

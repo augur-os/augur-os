@@ -1,0 +1,45 @@
+allowed_page_types:
+  - wiki-page
+  - topic
+  - overview
+  - entity
+  - comparison
+  - concept
+  - query
+
+penalties:
+  inventory_style: 30
+  thin_page: 15
+  low_cross_links: 10
+  missing_sources: 15
+  weak_tag_coverage: 8
+  weak_overview_navigation: 10
+  weak_hub_fit: 8
+  deep_structure_gap: 20
+  deep_content_gap: 18
+  generic_current_reality: 14
+  generic_source_doctrine: 16
+  needs_richer_article: 28
+  schema_required_sections_missing: 18
+  raw_metadata_evidence: 30
+  duplicate_physical_sources: 18
+  catch_all_page: 40
+  non_synthetic_overview: 20
+  missing_source_fingerprint: 12
+  generic_taxonomy_tags: 22
+  legacy_client_source_path: 18
+  generated_boilerplate_sections: 20
+  unsupported_domain_abstraction: 24
+  index_shaped_page: 35
+  draft_source_basis: 35
+  pending_source_cluster: 20
+  below_cluster_source_floor: 20
+  overbroad_source_cluster: 25
+  shallow_synthesis: 22
+  index_like_prose: 28
+  clipped_evidence: 20
+  timeline_entry_missing_at_or_source: 40
+  timeline_entry_missing_observation: 40
+  compiled_truth_contains_source_marker: 40
+  timeline_out_of_order: 8
+  legacy_concept_article_v3: 10

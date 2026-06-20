@@ -25,11 +25,14 @@ project-brain/capabilities/skills/my-skill/
 ---
 name: my-skill
 description: One-line description of what this skill does
-x-augur-hub: dev
 x-augur-master: claude-code
 x-augur-type: domain
 x-augur-mcp-tools:
   - my-tool
+# If the skill mounts Workspace pages, declare them here:
+# x-augur-dashboard-pages:
+#   - path: /workspace/my-skill
+#     title: My Skill
 ---
 
 # My Skill

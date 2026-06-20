@@ -1,0 +1,7 @@
+routing:
+  critical: fix
+  high: fix
+  medium: fix
+  low: todo
+  transient: dismiss
+# Runtime scan targets live in state/self_heal/scan_targets.yaml (ADR-466)

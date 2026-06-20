@@ -1,0 +1,42 @@
+# Stage 4: MCP/Actions Questions
+# These questions gather information for MCP tools and dashboard actions
+
+stage: 4
+name: "MCP/Actions"
+description: "Define MCP tools and dashboard actions"
+
+questions:
+  - id: actions
+    text: "What dashboard actions should be available? (comma-separated)"
+    type: text
+    default: "refresh, analyze, export"
+    required: true
+    context: "Actions appear as buttons in the dashboard. Common: refresh, analyze, export, import, sync"
+
+  - id: primary_flow
+    text: "What should be the primary action dispatch type?"
+    type: choice
+    options:
+      - fire
+      - oneshot
+      - modal
+    default: "oneshot"
+    required: true
+    context: |
+      fire: Immediate execution. Best for simple CRUD.
+      oneshot: Single AI task. Best for focused analysis.
+      modal: Shows form for user input. Best for parameterized actions.
+
+  - id: mcp_tools
+    text: "What MCP tools should be exposed? (comma-separated)"
+    type: text
+    default: "get-${skill_name}-status, list-${skill_name}-items"
+    required: true
+    context: "MCP tools are callable by AI agents. Use kebab-case names."
+
+  - id: api_endpoints
+    text: "What additional API endpoints are needed? (comma-separated)"
+    type: text
+    default: "health"
+    required: false
+    context: "e.g., 'health, stats, sync'. Each becomes api/{name}/route.ts"

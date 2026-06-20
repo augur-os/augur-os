@@ -1,0 +1,20 @@
+# Default UI QA target/config for the validator skill wrapper (scripts/ui_qa.py).
+# Override per run with --url / --selector / --config.
+url: http://localhost:3000/browse
+
+selectors:
+  card: "div.relative.overflow-hidden.rounded-2xl.border"
+  card_container: "div.relative.overflow-hidden.rounded-2xl.border"
+  action_button: "button"
+  dropdown_menu: "div.absolute.z-50, [role='menu'], .dropdown-content"
+  card_title: "h3"
+
+thresholds:
+  min_card_width: 80
+  min_card_height: 50
+  animation_wait: 1.0
+  hydration_wait: 2.0
+
+interactivity:
+  expect_menu: false
+  require_buttons: true

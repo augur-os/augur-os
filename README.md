@@ -3,13 +3,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/augur-os/augur-os/actions/workflows/ci-tests.yml/badge.svg)](https://github.com/augur-os/augur-os/actions/workflows/ci-tests.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Node 20+](https://img.shields.io/badge/node-20+-green.svg)](https://nodejs.org/)
+[![Node 22+](https://img.shields.io/badge/node-22+-green.svg)](https://nodejs.org/)
 
 [Website](https://augur.run) | [Documentation](https://augur.run/more.html) | [Sessions](https://augur.run/sessions.html) | [Roadmap](ROADMAP.md)
 
 Technical review path: [Architecture Review](docs/technical-architecture-review.md) · [Architecture Overview](docs/architecture-overview.md) · [Connection Layer](docs/architecture-mcp-gateway.md)
 
-> **Build a second brain on your laptop that your AI clients can operate.**
+> **Get to know your AI setup, build your local second brain, and talk with your projects.**
 >
 > Ingest your documents, compound them into a wiki, save prompts and skills, ask questions across your local knowledge. The same effective brain context works in Claude Code, Codex CLI, Gemini CLI, Cursor, and Copilot — no vendor lock-in, no Augur-managed API key by default, no cloud service.
 >
@@ -46,7 +46,7 @@ Most second brains start as folders, notes, and prompts. Augur is for the point 
 
 Augur is the harness around that second brain. It lets your knowledge and skills ride on whichever native AI client is best for the job: Claude Code, Codex, Gemini, Cursor, Ollama-backed clients, private-model clients, or public-model clients, without rebuilding your setup around one vendor.
 
-The target first-run story is simple: install Augur, add documents and notes, and let Augur start compounding. The target path is repo-first.
+The target first-run story is simple: paste the Augur install prompt into your desktop AI chat, answer "Which folder should I initialize?", and let Augur initialize a local `project-brain/` plus a read-only AI artifact inventory. The folder can be empty, or it can already contain `AGENTS.md`, client skill folders, agent profiles, prompts, MCP configs, and other AI project files from different vendors.
 From there Augur starts compounding by indexing, summarizing, routing, and exposing that knowledge through MCP commands and dashboard pages.
 
 ## What You Can Do With Augur
@@ -72,15 +72,23 @@ This produces a self-contained HTML report ("What Your AI Knows About You") cove
 
 ## Working Locally
 
-```bash
-npx create-augur@latest my-brain
-cd my-brain
-pnpm --filter dashboard dev
+Fast launch from a desktop AI client:
+
+1. Open `project-brain/capabilities/skills/onboard/install.md`.
+2. Paste the prompt into Claude, Codex, Gemini, Cursor, or another supported local AI client.
+3. Choose the folder you want Augur to initialize by answering the first question: Which folder should I initialize?
+4. The agent runs `uv run aug onboard run` (installs dependencies, builds the dashboard, wires MCP, seeds a local brain, verifies the system), then `uv run aug init --project <folder>` to produce a read-only AI-artifact inventory — reporting the project brain id, inventory count, inventory path (e.g. `project-brain/config/inventory/ai-artifacts.json`), the Browse URL (`http://localhost:3000/browse`), and the next action.
+5. Next action: Ask Augur about this project. The first project question is answer-only by default; Augur does not save or retain anything unless you ask.
+
+Shell fallback for contributors who want the full repo-first workspace:
+
+```
+git clone https://github.com/augur-os/augur-os.git
+cd augur-os
+uv run aug onboard run
 ```
 
-This repository is the source of truth for development and validation. The simplest current setup path is `create-augur`, which creates a repo-first full Augur workspace and installs the Python and Node dependency layers used by the MCP server and dashboard.
-
-The dashboard runs at [localhost:3000](http://localhost:3000).
+This repository is the source of truth for development and validation. `aug onboard run` builds, starts, and verifies the dashboard, so it is available at [localhost:3000](http://localhost:3000) once that command reports success.
 
 First brain workflow for a local release candidate:
 
@@ -95,14 +103,17 @@ The release checklist for these surfaces lives in [docs/guides/wiki-llm-release-
 
 Manual clone remains useful for contributors who want direct control over bootstrap:
 
-```bash
+<details>
+<summary>Manual setup (contributors who want direct control of bootstrap)</summary>
+
+```
 git clone https://github.com/augur-os/augur-os.git
 cd augur-os
 corepack enable && pnpm install && uv sync
-pnpm --filter dashboard dev
 ```
 
-The MCP/skills-only path is planned but not claimed as a working public install path yet. Until that mode is implemented, use the full repo-first setup when you need the local MCP server, generated client surfaces, indexes, and dashboard.
+After dependency sync, use the managed dev workflow: run `uv run aug dev build` for the dashboard, then run `uv run aug init --project .` to attach the checkout as a project brain.
+</details>
 
 For Windows-specific validation, follow the repo scripts and the current platform notes rather than assuming public release readiness.
 

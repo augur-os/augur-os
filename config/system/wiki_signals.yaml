@@ -1,0 +1,44 @@
+# Wiki signal priority config. See docs/superpowers/specs/2026-05-10-wiki-signal-priority-design.md.
+mtime_window_minutes: 30
+
+tier_caps:
+  critical: 5
+  high: 15
+  medium: 30
+  low: 50
+
+extraction_limit: 20
+include_logs: false
+
+client_memory:
+  enabled: true
+  clients:
+    claude:
+      enabled: true
+      path: ~/.claude
+      globs:
+        - projects/*/memory/*.md
+      tier: critical
+    codex:
+      enabled: true
+      path: ~/.codex/sessions
+      tier: critical
+    gemini:
+      enabled: true
+      path: ~/.gemini/conversations
+      tier: high
+    copilot:
+      enabled: true
+      path: ~/AppData/Roaming/GitHub Copilot/sessions
+      tier: high
+    chatgpt:
+      enabled: true
+      path: ~/AppData/Roaming/ChatGPT/exports
+      tier: high
+    cursor:
+      enabled: true
+      path: ~/AppData/Roaming/Cursor/conversations
+      tier: high
+episodic:
+  enabled: true
+  path: null

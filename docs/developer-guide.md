@@ -20,21 +20,29 @@ If you're adding a new skill, see [creating-skills.md](./creating-skills.md). If
 
 ## Bootstrap
 
-Start from the repo directly:
+Start from the repo directly with one command:
 
 ```bash
 git clone https://github.com/augur-os/augur-os.git
 cd augur-os
-corepack enable
-pnpm install
-uv sync
+uv run aug onboard run
 ```
 
-For local dashboard work:
+`aug onboard run` checks prerequisites (and prints the exact per-OS install command if `uv` or Node 22+ is missing — it does not install system tooling for you), installs dependencies, builds the dashboard, wires MCP, seeds a local brain, and verifies the system is up at <http://localhost:3000/browse>.
+
+<details>
+<summary>Manual setup (contributors who want direct control of bootstrap)</summary>
 
 ```bash
-pnpm --filter dashboard dev
+git clone https://github.com/augur-os/augur-os.git
+cd augur-os
+corepack enable && pnpm install && uv sync
 ```
+
+Then `uv run aug dev build` for the dashboard and `uv run aug init --project .` to attach the checkout as a project brain.
+</details>
+
+For local dashboard work, use the managed dev workflow from an Augur AI-client session, for example `/dev-build`. Open `http://localhost:3000` after the workflow reports the dashboard is active.
 
 ## Repository Structure
 

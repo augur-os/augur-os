@@ -1,0 +1,11 @@
+# Unified page-surface actions for the knowledge skill (ADR-807).
+# Migrated from SKILL.md x-augur-config.contributions.actions.
+actions:
+  - id: ocr-scan
+    label: OCR Scan
+    icon: ScanLine
+    kind: ai
+    template: Open the OCR scan form.
+    dispatch: modal
+    modal: ocr-scan
+    surfaces: [page]

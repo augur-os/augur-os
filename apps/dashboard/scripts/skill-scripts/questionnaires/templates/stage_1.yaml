@@ -1,0 +1,54 @@
+# Stage 1: Baseline Generation Questions
+# These questions gather basic information for generating the SKILL.md
+
+stage: 1
+name: "Baseline"
+description: "Generate or import a Layer 1 compliant SKILL.md"
+
+questions:
+  - id: skill_name
+    text: "What should the skill be named?"
+    type: text
+    default: "${skill_name}"
+    required: true
+    context: "Use kebab-case (e.g., my-cool-skill). This becomes the directory name."
+    validation_related: true
+
+  - id: description
+    text: "Provide a brief description of what this skill does."
+    type: text
+    default: "A skill for ${skill_name}"
+    required: true
+    context: "1-2 sentences describing the skill's purpose."
+
+  - id: version
+    text: "What version number should this skill start at?"
+    type: text
+    default: "1.0.0"
+    required: true
+    context: "Semantic versioning (major.minor.patch)"
+
+  - id: hub_label
+    text: "What should the hub label be (display name in navigation)?"
+    type: text
+    default: "${skill_name_display}"
+    required: true
+    context: "This appears in the dashboard navigation."
+
+  - id: hub_icon
+    text: "What icon should represent this skill?"
+    type: choice
+    options:
+      - Sparkles
+      - Zap
+      - Star
+      - Heart
+      - Briefcase
+      - Code
+      - Database
+      - Globe
+      - Settings
+      - User
+    default: "Sparkles"
+    required: true
+    context: "Lucide icon name for the navigation."

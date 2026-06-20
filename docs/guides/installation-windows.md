@@ -1,6 +1,6 @@
 # Windows Installation Guide
 
-Augur is in soft launch. Native Windows architecture is implemented, but Windows validation is still pending before any firmer support claim.
+Augur is in soft launch. Get to know your AI setup, build your local second brain, and talk with your projects. Native Windows architecture is implemented, but Windows validation is still pending before any firmer support claim.
 
 This guide covers the current native Windows bootstrap path for Augur on Windows 10/11.
 
@@ -26,7 +26,7 @@ This guide covers the current native Windows bootstrap path for Augur on Windows
 
    > **Important**: During installation, check **"Add Python to PATH"**
 
-3. **Node.js 20 LTS** (for dashboard)
+3. **Node.js 22 LTS** (for dashboard)
    ```powershell
    # Option A: Using winget
    winget install OpenJS.NodeJS.LTS
@@ -47,7 +47,29 @@ For accelerated local audio transcription on Intel AI PCs, install the current I
 
 ## Installation
 
-This guide documents the current native Windows validation path. It should be read together with the repo-first setup in [../getting-started.md](../getting-started.md), not as a broader public-ready installer promise.
+The public first-run path starts from a desktop AI chat: paste the Augur install prompt, choose a folder by answering "Which folder should I initialize?", let the agent run `uv run aug onboard run` followed by `uv run aug init --project <folder>` from the Augur install directory, and review the read-only AI artifact inventory. This guide documents the current native Windows validation path for that installer flow, not a broader public-ready installer promise.
+
+### Recommended: one command (`aug onboard run`)
+
+Install prerequisites (PowerShell):
+
+```powershell
+# uv
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+# Node 22+ and Git
+winget install OpenJS.NodeJS
+winget install Git.Git
+```
+
+Then install Augur:
+
+```powershell
+git clone https://github.com/augur-os/augur-os.git
+cd augur-os
+uv run aug onboard run
+```
+
+`uv run aug onboard run` checks prerequisites (and prints the exact per-OS install command if `uv` or Node 22+ is missing — it does not install system tooling for you), installs dependencies, builds the dashboard, wires MCP, seeds a local brain, and verifies the system is up at <http://localhost:3000/browse>. `scripts\onboard.ps1` is the equivalent thin PowerShell launcher for the same engine. Then `uv run aug init --project <folder>` produces the read-only AI artifact inventory.
 
 ### One-click setup from augur.run
 
@@ -56,15 +78,18 @@ Preferred v1 path:
 1. Open `https://augur.run` on the Windows machine.
 2. Copy the Windows onboarding prompt.
 3. Paste it into ChatGPT or Codex.
-4. If the active ChatGPT surface cannot run local commands, run the PowerShell command it prints.
+4. Answer the first folder question: "Which folder should I initialize?"
+5. After the folder answer is collected, let the agent run the bootstrap. If the active ChatGPT surface cannot run local commands, run the PowerShell command it prints.
 
 The command downloads `scripts/windows-one-click-bootstrap.ps1`, installs missing prerequisites with `winget` where supported, installs Codex CLI through the current official npm channel, clones or updates Augur, and hands off to Codex for verification.
 
-Codex sign-in may require a browser interaction. If setup reports `Needs sign-in`, run `codex login`, complete OpenAI authentication, then rerun the bootstrap command.
+Codex sign-in may require a browser interaction after the folder answer. If setup reports `Needs sign-in`, run `codex login`, complete OpenAI authentication, then rerun the bootstrap command.
+
+After the bootstrap is ready, let the agent run `uv run aug init --project <folder>` from the Augur install directory using the already selected folder. The expected first success report is the project brain id, project-brain metadata folder, inventory count, warning count, inventory path, chosen-folder write boundary, and Browse URL: `http://localhost:3000/browse`. Next action: Ask Augur about this project. The first project question is answer-only by default; Augur does not save or retain anything unless you ask.
 
 ### Direct PowerShell bootstrap
 
-If you are not copying the prompt from `augur.run`, use the same bootstrapper directly from PowerShell:
+If you are not copying the prompt from `augur.run`, first choose the folder for Augur to initialize, then use the same bootstrapper directly from PowerShell:
 
 ```powershell
 $script = "$env:TEMP\windows-one-click-bootstrap.ps1"
@@ -118,17 +143,22 @@ Look for:
 - `ocr_engine: glm-ocr`
 - `ocr_engine_available: true` after `ollama pull glm-ocr`
 
-### 2. Start the Dashboard
+### 2. Start the Dashboard For Contributor Validation
+
+`uv run aug onboard run` already installs dashboard dependencies and builds it.
+
+<details>
+<summary>Manual setup (contributors who bootstrapped without the onboard engine)</summary>
 
 ```powershell
 $installDir = if ($env:AUGUR_DIR) { $env:AUGUR_DIR } else { Join-Path $env:USERPROFILE "Projects\augur" }
 cd $installDir
 corepack enable
 pnpm install
-pnpm --filter dashboard dev
 ```
+</details>
 
-Open http://localhost:3000 in your browser.
+Use the managed dev workflow (`uv run aug dev build`) when you need the dashboard for contributor validation, then open http://localhost:3000 in your browser.
 
 ### 3. Configure MCP
 
@@ -151,8 +181,8 @@ $installDir\
 ├── apps\dashboard\         # Dashboard app
 ├── config\                 # System configuration
 ├── docs\                   # Documentation and ADRs
+├── project-brain\capabilities\skills\  # Shared skills and onboarding flows
 ├── scripts\                # Repo scripts
-├── skills\                 # Skills and onboarding flows
 └── .github\                # CI/CD workflows
 ```
 
@@ -207,7 +237,7 @@ uv sync --group dev --extra windows
 
 Ensure Node.js is installed and in PATH:
 ```powershell
-node --version  # Should show v20.x.x
+node --version  # Should show v22.x.x
 npm --version   # Should show 10.x.x
 ```
 

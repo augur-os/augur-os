@@ -1,0 +1,59 @@
+# Stage 2: Hardening Questions
+# These questions gather information for triggers, tiers, and safety constraints
+
+stage: 2
+name: "Hardening"
+description: "Enrich skill with triggers, tiers, and safety constraints"
+
+questions:
+  - id: additional_triggers
+    text: "Current triggers: ${current_triggers}. Add more?"
+    type: text
+    default: "${skill_name} status"
+    required: false
+    context: "Enter comma-separated trigger phrases, e.g., 'process data, analyze results'"
+    validation_related: true
+
+  - id: category
+    text: "What category best describes this skill?"
+    type: choice
+    options:
+      - system
+      - productivity
+      - personal
+      - business
+    default: "personal"
+    required: true
+    context: |
+      system: Internal tooling (dev mode only)
+      productivity: Work efficiency tools
+      personal: Life management
+      business: Professional/client work
+
+  - id: mode
+    text: "What mode should this skill operate in?"
+    type: choice
+    options:
+      - all
+      - dev
+      - operation
+    default: "all"
+    required: true
+    context: |
+      all: Always visible
+      dev: Only in developer mode
+      operation: Only in operation mode
+
+  - id: fast_tools
+    text: "For FAST mode (advisory only), what tools should be available?"
+    type: text
+    default: "Read, Glob"
+    required: true
+    context: "Common tools: Read, Glob, Grep, Edit, Write, Bash"
+
+  - id: plugin_dependencies
+    text: "Does this skill depend on other plugins? (comma-separated)"
+    type: text
+    default: ""
+    required: false
+    context: "e.g., knowledge, notifications, apple"

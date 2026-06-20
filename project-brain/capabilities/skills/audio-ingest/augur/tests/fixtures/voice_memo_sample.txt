@@ -1,0 +1,1 @@
+I keep coming back to this idea that RRF works because retrieval failure modes are roughly orthogonal across rankers. If BM25 misses something semantically, the dense ranker often catches it, and vice versa. So a sum-of-reciprocal-ranks ends up trusting whichever ranker had information for this query. I should write this up properly tomorrow.

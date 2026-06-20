@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "augur-core": {
+      "command": "python3",
+      "args": ["-m", "augur_core", "--client-id", "worktree"],
+      "cwd": "$WORKTREE_PATH",
+      "env": {
+        "AUGUR_ROOT": "$WORKTREE_PATH",
+        "AUGUR_MODE": "dev",
+        "MCP_PORT": "$MCP_PORT",
+        "PYTHONPATH": "$WORKTREE_PATH/project-brain/capabilities:$WORKTREE_PATH:$WORKTREE_PATH/src/mcp",
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  }
+}

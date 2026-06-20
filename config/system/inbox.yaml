@@ -1,0 +1,101 @@
+version: 1
+default_sources:
+  - id: claude-chat
+    type: chat_mcp
+    name: Claude Chat
+    domain: docs
+    write_modes:
+      - mcp_content
+      - filesystem_mcp
+      - pending_drop
+    filesystem_roots:
+      - documents/inbox/claude
+    default_target_vault: personal
+    allowed_targets:
+      - personal
+    enabled: true
+
+  - id: chatgpt
+    type: chat_mcp
+    name: ChatGPT
+    domain: docs
+    write_modes:
+      - mcp_content
+      - pending_drop
+    filesystem_roots:
+      - documents/inbox/chatgpt
+    default_target_vault: personal
+    allowed_targets:
+      - personal
+    enabled: true
+
+  - id: gmail-drop
+    type: email_drop_folder
+    name: Gmail Drop
+    domain: auto
+    path: documents/inbox/email
+    write_modes:
+      - filesystem_drop
+    default_target_vault: personal
+    allowed_targets:
+      - personal
+    enabled: true
+
+  - id: desktop
+    type: watched_folder
+    name: Desktop / Default Inbox
+    domain: auto
+    path: documents/inbox/default
+    write_modes:
+      - filesystem_drop
+    default_target_vault: personal
+    allowed_targets:
+      - personal
+    enabled: true
+
+  - id: filesystem
+    type: filesystem_drop
+    name: Filesystem Drop
+    domain: auto
+    path: documents/inbox/filesystem
+    write_modes:
+      - filesystem_drop
+      - filesystem_mcp
+    default_target_vault: personal
+    allowed_targets:
+      - personal
+    enabled: true
+
+  - id: manual-save
+    type: manual_save
+    name: Manual Save
+    domain: auto
+    path: documents/inbox/manual
+    write_modes:
+      - mcp_content
+      - pending_drop
+    default_target_vault: personal
+    allowed_targets:
+      - personal
+    enabled: true
+
+  - id: chat-save
+    type: chat_save
+    name: Chat Save
+    domain: docs
+    path: documents/inbox/chat
+    write_modes:
+      - mcp_content
+      - filesystem_mcp
+      - pending_drop
+    default_target_vault: personal
+    allowed_targets:
+      - personal
+    enabled: true
+
+discovery:
+  approved_parent_roots:
+    - ~/Projects
+  marker_files:
+    - .augur/vault.yaml
+  max_depth: 3

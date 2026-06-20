@@ -1,0 +1,19 @@
+_schema: command.kpi.pack.v1
+run_id: example
+scenarios:
+  - _schema: command.kpi.scenario.v1
+    id: keep-local-file-example
+    command: keep
+    client: engine
+    input_class: local-file
+    input: /private/documents/evals/commands/scratch/example.md
+    max_duration_ms: 10000
+    allow_cloud_route: false
+    private_refs:
+      - /private/documents/evals/commands/scratch/example.md
+    assertions:
+      expected_route: local-file
+      forbidden_routes:
+        - google-drive
+        - gdrive
+        - cloud

@@ -26,6 +26,11 @@ project-brain/capabilities/skills/ai/scripts/sync_agents/
 
 ## Source to renderer to output
 
+ADR-794 standard brain root files (`IDENTITY.md`, `SOUL.md`, `USER.md`,
+`AGENTS.md`, `MEMORY.md`, `TOOLS.md`, and `HEARTBEAT.md`) are source inputs to
+projection. Client-native instruction files remain generated outputs and should
+not be hand-edited.
+
 The effective source set is client-neutral. The renderer layer understands Augur concepts such as skills, commands, subagents, MCP servers, memory, and capability policy. Adapters translate those concepts into each client's native files.
 
 The main entry point is `PYTHONPATH=project-brain/capabilities python -m skills.ai.scripts.sync_agents`. The package supports `sync all`, `sync agents`, `sync skills`, `sync prompts`, `sync commands`, `check`, `fix`, `validate`, `clean`, and hygiene modes.

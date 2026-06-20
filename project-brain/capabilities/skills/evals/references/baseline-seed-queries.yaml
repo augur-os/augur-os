@@ -1,0 +1,88 @@
+# Baseline seed queries — ADR-742
+#
+# The canonical "Augur's user expects these to work" reference set. `aug eval
+# seed-baseline` runs each query through `unified-search` once with capture
+# mode on, producing the >= 50 captured baseline queries the Phase 2 gate
+# requires.
+#
+# This file contains QUERY STRINGS ONLY — no vault content, no expected
+# answers, no doc ids. Relevance judgments are hand-authored afterward into
+# get_documents_dir()/evals/judgments/<query-id>.md.
+#
+# The list is intentionally broad: it spans the 9 hubs (adaptive, brain,
+# business, career, command, dev, life, studio, websites), the different
+# retrieval scopes (memory, knowledge, skills, decisions, rag), and the
+# query shapes a second brain should answer well — recall questions,
+# how-questions, pattern questions, decision lookups, and project status.
+
+queries:
+  # --- Knowledge / memory recall ---
+  - what did I read about typed knowledge graphs
+  - notes on retrieval-augmented generation
+  - what have I learned about prompt caching
+  - summarize what I know about vector search tradeoffs
+  - what did I capture about the gbrain reference implementation
+  - reading list articles about evaluation harnesses
+  - what sources do I have on RRF fusion
+  - notes about compiled-truth wiki patterns
+  - what did I read last week about agent orchestration
+  - everything I know about local-first software
+
+  # --- Decisions / ADR lookups ---
+  - why did we decide against an embedded database
+  - what ADR covers the adaptive loop engine
+  - decision about storage layer separation
+  - why are eval files stored under the documents directory
+  - what did we decide about capture being off by default
+  - architecture decision about plugin decentralization
+  - which ADR introduced the skill resolvability audit
+  - decision rationale for vendor-neutral design
+  - what ADR governs worktree isolation
+  - why is the dashboard MCP-only
+
+  # --- Skills / capabilities ---
+  - which skill owns the eval harness
+  - how do I run a retrieval replay
+  - what does the ingest skill do
+  - skill for converting a bug into a durable workflow
+  - how does the knowledge skill index documents
+  - what auto-loops run nightly
+  - which skills live in the dev hub
+  - how do I check skill coverage gaps
+  - what command captures a URL into the vault
+  - skill that manages GEO prospects
+
+  # --- How-to / process ---
+  - how do I rebuild the dashboard
+  - how do I create a new ADR
+  - how do I opt in to contributor mode
+  - how do I import an external eval corpus
+  - how do I run the python test suite
+  - how do I merge a worktree branch
+  - how do I sync command surfaces to clients
+  - how do I add a capability exposure entry
+  - how do I score a captured query set
+  - how do I author a relevance judgment
+
+  # --- Patterns / reflection ---
+  - what pattern keeps showing up in how I scope projects
+  - what do I tend to get wrong in long sessions
+  - how do I prefer to handle technical decisions
+  - what is my preferred installation tier for external skills
+  - recurring themes in my architecture decisions
+  - what have I said about shortcuts versus proper refactors
+  - how do I like verification handled before handoff
+
+  # --- Project / status ---
+  - what is the status of the gbrain borrow slate
+  - which phase is the eval harness in
+  - what is left in phase 2 of the slate
+  - what worktrees are currently active
+  - which ADRs in the slate are still proposed
+  - what is the regression baseline for retrieval
+
+  # --- Cross-cutting ---
+  - where do captured eval queries get written
+  - what metrics does the eval harness compute
+  - what is the difference between capture and replay
+  - how is index drift detected during replay

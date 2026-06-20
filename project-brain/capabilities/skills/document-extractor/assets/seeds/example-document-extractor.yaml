@@ -1,0 +1,23 @@
+_seeded: true
+_generated_by: auto-skill-quality
+# Fields inferred from augur/dashboard/ .tsx components
+label: "Label Example"
+engine: "Engine Example"
+pdf_text: "Pdf Text Example"
+docx: "Docx Example"
+pptx: "Pptx Example"
+xlsx: "Xlsx Example"
+html: "Html Example"
+csv: "Csv Example"
+json: "Json Example"
+text: "Text Example"
+images: "Images Example"
+audio: "Audio Example"
+claude_cli: "Claude Cli Example"
+ollama_running: "Ollama Running Example"
+vision_model: "Vision Model Example"
+tier_available: "Tier Available Example"
+markitdown_version: "Markitdown Version Example"
+platform: "2026-01-15"
+requiresLlm: "Requiresllm Example"
+status: "2026-01-15"

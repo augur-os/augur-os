@@ -1,0 +1,513 @@
+# Agentic Coding Tools Comparison - January 2025
+# Organized by use-case categories with interface types and API requirements
+
+metadata:
+  last_updated: "2025-01-30"
+  data_sources:
+    - "SWE-bench Verified"
+    - "SWE-bench Pro"
+    - "Terminal-Bench 2.0"
+    - "Community discussions (Reddit, X, dev blogs)"
+  notes: |
+    Scores and rankings reflect late 2025 benchmarks.
+    Cost estimates are approximate monthly ranges for active developer use.
+
+# =============================================================================
+# CATEGORY 1: COMPLEX ENGINEERING - NEW TASKS
+# For novel problems, large refactors, architecture-level changes
+# =============================================================================
+complex_engineering_new_tasks:
+  description: "Best for tackling novel problems, multi-file refactors, debugging complex systems, architectural decisions"
+
+  winners:
+    - rank: 1
+      tool: "Claude Code"
+      model: "Claude Opus 4.5"
+      interface: "CLI"
+      api_key_required: true
+      swe_bench_verified: 80.9
+      swe_bench_pro: 22.7
+      terminal_bench: 59.3
+      strengths:
+        - "First model to exceed 80% on SWE-bench"
+        - "Best-in-class terminal/CLI proficiency"
+        - "200K true context window (no silent truncation)"
+        - "Deep reasoning for architectural changes"
+        - "CLAUDE.md project configuration persists"
+      weaknesses:
+        - "Expensive at scale ($15/$75 per 1M tokens)"
+        - "CLI-only may be barrier for some"
+        - "Slower iteration than IDE-based tools"
+      monthly_cost_estimate: "$100-300"
+
+    - rank: 2
+      tool: "OpenAI Codex"
+      model: "GPT-5.2"
+      interface: "CLI"
+      api_key_required: true
+      swe_bench_verified: 80.0
+      swe_bench_pro: 55.6  # Leads this benchmark
+      terminal_bench: 47.6
+      strengths:
+        - "SOTA on SWE-bench Pro (55.6%)"
+        - "Perfect 100% on AIME 2025 (math reasoning)"
+        - "Strong abstract reasoning (52.9% ARC-AGI-2)"
+        - "Better for algorithmic/mathematical problems"
+      weaknesses:
+        - "Weaker terminal proficiency than Claude"
+        - "Less mature agentic tooling"
+        - "Pricing can be opaque for long-running tasks"
+      monthly_cost_estimate: "$80-250"
+
+    - rank: 3
+      tool: "Cursor"
+      model: "Claude Opus 4.5"
+      interface: "GUI (IDE)"
+      api_key_required: false  # Bundled in subscription
+      swe_bench_verified: 80.9  # Same model
+      strengths:
+        - "Same powerful model with better UX"
+        - "Visual diffs and checkpoints"
+        - "Multi-agent background mode"
+        - "Familiar VS Code interface"
+      weaknesses:
+        - "Context window often truncated to 70-120K in practice"
+        - "Complex pricing with credits"
+        - "Background agent mode not private"
+      monthly_cost_estimate: "$40-200"
+
+# =============================================================================
+# CATEGORY 2: EXISTING PATTERNS - DESIGNED SOLUTIONS
+# For working within established codebases, autocomplete, iterative dev
+# =============================================================================
+existing_patterns_designed_solutions:
+  description: "Best for daily coding flow, autocomplete, working within existing architectures, incremental changes"
+
+  winners:
+    - rank: 1
+      tool: "Cursor"
+      model: "Claude Sonnet 4.5"
+      interface: "GUI (IDE)"
+      api_key_required: false
+      strengths:
+        - "Best-in-class autocomplete speed"
+        - "RAG-based codebase indexing"
+        - "Stays out of the way during manual edits"
+        - "Visual diff review with cherry-picking"
+        - "Checkpoints for instant rollback"
+        - "Multi-file awareness in Composer mode"
+      weaknesses:
+        - "Context truncation on large codebases"
+        - "Can loop on long-running refactors"
+        - "Pricing changes caused community backlash"
+      monthly_cost_estimate: "$20-40"
+      community_sentiment: "The baseline everyone compares against"
+
+    - rank: 2
+      tool: "GitHub Copilot"
+      model: "Multi-model (GPT-4o, Claude Sonnet, Gemini)"
+      interface: "GUI (IDE extension)"
+      api_key_required: false
+      strengths:
+        - "Lowest friction - already approved in many enterprises"
+        - "Native GitHub integration (PR summaries, code scanning)"
+        - "Model choice flexibility"
+        - "SOC 2, FedRAMP compliant"
+        - "Code Scanning Autofix for security"
+      weaknesses:
+        - "Less impressive on complex reasoning"
+        - "Quotas and limits feel opaque"
+        - "Power users find it limiting"
+      monthly_cost_estimate: "$10-39"
+      community_sentiment: "Not the best, but the easiest to adopt"
+
+    - rank: 3
+      tool: "Windsurf"
+      model: "Cascade Flow architecture"
+      interface: "GUI (IDE)"
+      api_key_required: false
+      strengths:
+        - "Strong value at $15/month Pro tier"
+        - "Maintains context over long sessions"
+        - "Supercomplete predicts intent (auto-imports)"
+        - "Innovative automation controls"
+      weaknesses:
+        - "Smaller plugin ecosystem"
+        - "Less community support than Cursor"
+        - "Newer, less battle-tested"
+      monthly_cost_estimate: "$15-30"
+
+# =============================================================================
+# CATEGORY 3: COST EFFECTIVE OPERATIONS
+# Best bang for buck, budget-conscious, high volume
+# =============================================================================
+cost_effective_operations:
+  description: "Best value for money, suitable for high-volume usage, startups, individual developers"
+
+  winners:
+    - rank: 1
+      tool: "Gemini CLI"
+      model: "Gemini 3 Flash"
+      interface: "CLI"
+      api_key_required: true  # But generous free tier
+      swe_bench_verified: 78.0  # Beats Gemini Pro!
+      strengths:
+        - "Outperforms Gemini Pro while 75% cheaper"
+        - "1M token context window"
+        - "Generous free tier (1000 requests/day)"
+        - "Open source CLI"
+        - "Strong multimodal capabilities"
+      weaknesses:
+        - "Less polished agentic tooling"
+        - "Not as strong on terminal operations"
+      monthly_cost_estimate: "$0-20"
+      price_per_million_tokens:
+        input: "$0.10"
+        output: "$0.40"
+      community_sentiment: "Best overall value for mixed workloads"
+
+    - rank: 2
+      tool: "DeepSeek Coder"
+      model: "DeepSeek V3"
+      interface: "API"
+      api_key_required: true
+      strengths:
+        - "68x cheaper than Claude Opus"
+        - "Competitive coding performance"
+        - "Good for high-volume batch operations"
+      weaknesses:
+        - "Mixed results on complex tasks"
+        - "Less ecosystem integration"
+        - "Concerns about data handling (China-based)"
+      monthly_cost_estimate: "$5-30"
+
+    - rank: 3
+      tool: "Cline"
+      model: "BYOK (Bring Your Own Key)"
+      interface: "GUI (VS Code extension)"
+      api_key_required: true  # Your own key
+      strengths:
+        - "Use any model with your own API key"
+        - "No subscription fees"
+        - "Full control over costs"
+        - "Active open source community"
+      weaknesses:
+        - "Requires API key management"
+        - "Cost depends on your usage patterns"
+      monthly_cost_estimate: "$0 + API costs"
+
+    - rank: 4
+      tool: "Grok"
+      model: "Grok 4.1"
+      interface: "API"
+      api_key_required: true
+      strengths:
+        - "10x cheaper than Claude Opus on input"
+        - "25x cheaper on output"
+        - "455 tokens/sec (6.5x faster than Opus)"
+        - "Best for real-time applications"
+      weaknesses:
+        - "Lower accuracy on complex reasoning"
+        - "Less mature tooling ecosystem"
+      monthly_cost_estimate: "$10-50"
+      price_per_million_tokens:
+        input: "$1.50"
+        output: "$3.00"
+
+# =============================================================================
+# CATEGORY 4: OPEN SOURCE BASED EXECUTION
+# Self-hosted, local, privacy-first, no vendor lock-in
+# =============================================================================
+open_source_execution:
+  description: "Open source tools, self-hostable, privacy-preserving, air-gapped deployments"
+
+  winners:
+    - rank: 1
+      tool: "Gemini CLI"
+      model: "Gemini 2.5 Pro / 3 Flash"
+      interface: "CLI"
+      api_key_required: true  # Google account
+      repo: "https://github.com/google-gemini/gemini-cli"
+      license: "Apache 2.0"
+      strengths:
+        - "Fully open source CLI"
+        - "MCP (Model Context Protocol) support"
+        - "Built-in tools for search, file ops, shell"
+        - "Cross-platform (npm install)"
+        - "ReAct loop implementation"
+      weaknesses:
+        - "Still requires Google API"
+        - "Model is not open source"
+
+    - rank: 2
+      tool: "Cline"
+      model: "Any (BYOK)"
+      interface: "GUI (VS Code extension)"
+      api_key_required: true
+      repo: "https://github.com/cline/cline"
+      license: "Apache 2.0"
+      strengths:
+        - "Fully open source extension"
+        - "Works with any OpenAI-compatible API"
+        - "Can use local models (Ollama, LM Studio)"
+        - "Active community development"
+        - "Structured modes reduce hallucinations"
+      weaknesses:
+        - "Quality depends on model choice"
+        - "Local models much weaker than cloud"
+
+    - rank: 3
+      tool: "OpenCode"
+      model: "Any (BYOK)"
+      interface: "CLI"
+      api_key_required: true
+      repo: "https://github.com/opencode-ai/opencode"
+      license: "MIT"
+      strengths:
+        - "Claude Code alternative, fully open source"
+        - "Monetized through OpenCode Zen (optional)"
+        - "Good for power users migrating from Cursor"
+      weaknesses:
+        - "Less mature than Claude Code"
+        - "Smaller community"
+
+    - rank: 4
+      tool: "Tabnine"
+      model: "Proprietary (on-prem available)"
+      interface: "GUI (IDE extension)"
+      api_key_required: false  # For enterprise on-prem
+      strengths:
+        - "Air-gapped deployment option"
+        - "On-premises for compliance"
+        - "Trains on your codebase only"
+        - "HIPAA, SOC 2 compliant"
+      weaknesses:
+        - "Weaker than cloud models"
+        - "Expensive for on-prem"
+      monthly_cost_estimate: "$12-39 (cloud) / Custom (on-prem)"
+
+# =============================================================================
+# CATEGORY 5: NEWCOMERS WORTH CHECKING
+# Emerging tools with interesting approaches
+# =============================================================================
+newcomers_worth_checking:
+  description: "Emerging tools generating buzz, may become category leaders"
+
+  tools:
+    - name: "Kiro"
+      interface: "GUI (IDE)"
+      api_key_required: false
+      status: "Early access"
+      interesting_because: "Spec-driven development - creates specs before code"
+      strengths:
+        - "Forces architectural planning"
+        - "DevOps automation focus"
+        - "Good for teams wanting structure"
+      concerns:
+        - "Performance issues reported"
+        - "Uneven maturity"
+      watch_for: "Whether spec-driven approach gains traction"
+
+    - name: "Kilo Code"
+      interface: "GUI (VS Code extension)"
+      api_key_required: true
+      status: "Growing adoption"
+      interesting_because: "Structured modes and tighter context handling"
+      strengths:
+        - "Reduces hallucinations through structure"
+        - "Gaining traction in 'what did you settle on' threads"
+      concerns:
+        - "Still early, limited long-term reports"
+      watch_for: "Whether it can dethrone Cline in BYOK space"
+
+    - name: "Zencoder"
+      interface: "GUI"
+      api_key_required: false
+      status: "Beta"
+      interesting_because: "Spec-driven workflows similar to Kiro"
+      concerns:
+        - "Lacks volume of user reports"
+      watch_for: "Enterprise adoption signals"
+
+    - name: "Amazon Q Developer"
+      interface: "GUI (IDE extension)"
+      api_key_required: false  # AWS account
+      status: "GA"
+      interesting_because: "Deep AWS integration"
+      strengths:
+        - "Best for AWS-heavy stacks"
+        - "Infrastructure-as-code generation"
+        - "Security scanning built-in"
+      concerns:
+        - "Weaker general coding than leaders"
+        - "AWS lock-in"
+      watch_for: "Whether it becomes default for AWS shops"
+
+    - name: "Augment Code"
+      interface: "GUI (IDE extension)"
+      api_key_required: false
+      status: "Growing"
+      interesting_because: "Claims 70.6% SWE-bench with 400K file indexing"
+      strengths:
+        - "Massive codebase indexing"
+        - "Enterprise focus"
+      concerns:
+        - "Independent benchmark verification needed"
+      watch_for: "Enterprise adoption vs Copilot"
+
+# =============================================================================
+# CATEGORY 6: BY INTERFACE TYPE
+# Quick reference organized by preferred interaction method
+# =============================================================================
+by_interface:
+  cli:
+    description: "Terminal-first, scriptable, CI/CD integration"
+    no_api_key_required: []
+    api_key_required:
+      - tool: "Claude Code"
+        model: "Opus 4.5 / Sonnet 4.5"
+        best_for: "Complex refactors, autonomous agents"
+      - tool: "Gemini CLI"
+        model: "Gemini 3 Flash/Pro"
+        best_for: "Large context, cost efficiency"
+        note: "Open source CLI, generous free tier"
+      - tool: "OpenAI Codex"
+        model: "GPT-5.2"
+        best_for: "Mathematical/algorithmic tasks"
+      - tool: "OpenCode"
+        model: "BYOK"
+        best_for: "Open source Claude Code alternative"
+
+  gui_ide:
+    description: "Visual editing, familiar workflows, checkpoints"
+    no_api_key_required:
+      - tool: "Cursor"
+        best_for: "Daily flow, autocomplete, visual diffs"
+        note: "Subscription includes model access"
+      - tool: "Windsurf"
+        best_for: "Budget-conscious, long sessions"
+        note: "$15/month Pro tier"
+      - tool: "GitHub Copilot"
+        best_for: "Enterprise, GitHub integration"
+        note: "Lowest friction adoption"
+      - tool: "Kiro"
+        best_for: "Spec-driven development"
+        note: "Early access"
+    api_key_required:
+      - tool: "Cline"
+        best_for: "BYOK flexibility, open source"
+      - tool: "Kilo Code"
+        best_for: "Structured modes, reduced hallucinations"
+      - tool: "Continue"
+        best_for: "Open source, local model support"
+
+  api_only:
+    description: "Programmatic access, custom tooling, batch operations"
+    tools:
+      - tool: "Anthropic API"
+        model: "Claude Opus 4.5"
+        best_for: "Building custom agents"
+      - tool: "OpenAI API"
+        model: "GPT-5.2"
+        best_for: "Broad ecosystem integration"
+      - tool: "Google AI API"
+        model: "Gemini 3 Flash/Pro"
+        best_for: "Cost efficiency, multimodal"
+      - tool: "DeepSeek API"
+        model: "V3"
+        best_for: "Budget batch processing"
+
+# =============================================================================
+# CATEGORY 7: NO API KEY REQUIRED (HUGE ADVANTAGE)
+# Tools that work out of the box with just a subscription
+# =============================================================================
+no_api_key_required:
+  description: "Tools where you pay subscription and start coding - no API key management"
+
+  tier_1_recommended:
+    - tool: "Cursor"
+      monthly_cost: "$20-40"
+      interface: "GUI"
+      why_recommended: "Best balance of power and convenience"
+      models_included: "Claude Sonnet 4, GPT-4o, custom Cursor models"
+      limitations: "Heavy agent use may hit credits"
+
+    - tool: "Windsurf"
+      monthly_cost: "$15-30"
+      interface: "GUI"
+      why_recommended: "Best value, unlimited usage on Pro"
+      models_included: "Cascade (proprietary)"
+      limitations: "Smaller ecosystem"
+
+    - tool: "GitHub Copilot"
+      monthly_cost: "$10-39"
+      interface: "GUI"
+      why_recommended: "Zero friction, enterprise approved"
+      models_included: "GPT-4o, Claude Sonnet, Gemini (selectable)"
+      limitations: "Less powerful agentic mode"
+
+  tier_2_specialized:
+    - tool: "Amazon Q Developer"
+      monthly_cost: "$0-25"
+      interface: "GUI"
+      why_recommended: "AWS shops, infrastructure focus"
+      requires: "AWS account"
+
+    - tool: "Tabnine"
+      monthly_cost: "$12-39"
+      interface: "GUI"
+      why_recommended: "On-prem option, privacy focus"
+
+  free_tiers_worth_noting:
+    - tool: "Gemini CLI"
+      free_tier: "1000 requests/day"
+      requires: "Google account (not API key)"
+      note: "Technically needs auth but very low friction"
+
+    - tool: "Copilot Free"
+      free_tier: "2000 completions/month, 50 chat messages"
+      requires: "GitHub account"
+
+# =============================================================================
+# SUMMARY: RECOMMENDED STACKS BY USE CASE
+# =============================================================================
+recommended_stacks:
+
+  maximum_capability_cost_no_object:
+    primary: "Claude Code + Opus 4.5"
+    secondary: "Cursor + Opus 4.5 for visual work"
+    interface: "CLI + GUI"
+    monthly_cost: "$200-400"
+
+  balanced_professional:
+    primary: "Cursor Pro"
+    secondary: "Claude Code for complex refactors"
+    interface: "GUI + CLI"
+    monthly_cost: "$60-100"
+    note: "Most developers land here"
+
+  cost_conscious_startup:
+    primary: "Windsurf Pro"
+    secondary: "Gemini CLI for heavy lifting"
+    interface: "GUI + CLI"
+    monthly_cost: "$15-40"
+
+  enterprise_compliance:
+    primary: "GitHub Copilot Enterprise"
+    secondary: "Tabnine (on-prem if needed)"
+    interface: "GUI"
+    monthly_cost: "$39-100"
+
+  open_source_purist:
+    primary: "Cline + local models"
+    secondary: "Gemini CLI (open source)"
+    interface: "GUI + CLI"
+    monthly_cost: "$0 + API costs"
+
+  experimenter_trying_everything:
+    tools:
+      - "Cursor (baseline)"
+      - "Claude Code (complex tasks)"
+      - "Kiro (spec-driven experiment)"
+      - "Gemini CLI (large context)"
+    advice: "Commit to one for 60-90 days before switching"

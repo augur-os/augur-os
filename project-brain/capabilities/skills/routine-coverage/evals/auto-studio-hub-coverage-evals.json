@@ -1,0 +1,17 @@
+{
+  "skill_name": "auto-studio-hub-coverage",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run /auto-studio-hub-coverage at difficulty 0 (scan only)",
+      "expected_output": "Scan report with issues list",
+      "files": [],
+      "expectations": [
+        "Returns a scan result with issues array",
+        "No unhandled exceptions",
+        "Follows ops_protocol format"
+      ],
+      "confidence": "seed"
+    }
+  ]
+}

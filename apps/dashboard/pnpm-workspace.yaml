@@ -1,0 +1,11 @@
+packages:
+  - "."
+
+minimumReleaseAge: 10080
+# esbuild 0.28.1 is the only release that fixes GHSA-gv7w-rqvm-qjhr (HIGH) and
+# GHSA-g7r4-m6w7-qqqr; excluded from the maturity guard to pull the official
+# security patch ahead of the 7-day window. Remove once 0.28.1 ages past it.
+minimumReleaseAgeExclude:
+  - esbuild
+  - "@esbuild/*"
+trustPolicy: no-downgrade

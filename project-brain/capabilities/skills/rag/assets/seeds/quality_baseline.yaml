@@ -1,0 +1,117 @@
+# Quality baseline for Contextual Retrieval evaluation
+# Run before and after to measure improvement
+# Each query has an expected result and acceptable rank position
+
+queries:
+  - query: "how do I configure notifications"
+    expected_in_top_10:
+      - "channels"
+      - "attention"
+    category: natural_language
+
+  - query: "circuit breaker configuration"
+    expected_in_top_10:
+      - "rag"
+    category: exact_match
+
+  - query: "set up job tracking"
+    expected_in_top_10:
+      - "career"
+    category: natural_language
+
+  - query: "MCP tool registration"
+    expected_in_top_10:
+      - "patterns"
+    category: technical
+
+  - query: "dashboard page rendering"
+    expected_in_top_10:
+      - "dashboard"
+      - "renderer"
+    category: technical
+
+  - query: "how to add a new skill"
+    expected_in_top_10:
+      - "skill-setup"
+      - "evolve"
+    category: natural_language
+
+  - query: "test coverage analysis"
+    expected_in_top_10:
+      - "test-coverage"
+    category: exact_match
+
+  - query: "file organization and sorting"
+    expected_in_top_10:
+      - "file-manager"
+    category: natural_language
+
+  - query: "schedule recurring tasks"
+    expected_in_top_10:
+      - "schedule"
+      - "daemon"
+    category: natural_language
+
+  - query: "git commit workflow"
+    expected_in_top_10:
+      - "dev-merge"
+      - "patterns"
+    category: technical
+
+  - query: "health tracking wearables"
+    expected_in_top_10:
+      - "health"
+    category: natural_language
+
+  - query: "PDF document extraction"
+    expected_in_top_10:
+      - "document-extractor"
+    category: technical
+
+  - query: "investment portfolio"
+    expected_in_top_10:
+      - "finance"
+    category: natural_language
+
+  - query: "Augur vault integration"
+    expected_in_top_10:
+      - "vault"
+    category: exact_match
+
+  - query: "Obsidian-flavored vault scaffold"
+    expected_in_top_10:
+      - "vault"
+    category: natural_language
+
+  - query: "interview preparation tips"
+    expected_in_top_10:
+      - "coach"
+      - "interview-coach"
+    category: natural_language
+
+  - query: "memory persistence across sessions"
+    expected_in_top_10:
+      - "knowledge"
+    category: technical
+
+  - query: "API route debugging"
+    expected_in_top_10:
+      - "dev-debug"
+      - "runbooks"
+    category: technical
+
+  - query: "plugin architecture design"
+    expected_in_top_10:
+      - "dashboard"
+    category: technical
+
+  - query: "LinkedIn post creation"
+    expected_in_top_10:
+      - "linkedin-writer"
+      - "content"
+    category: exact_match
+
+  - query: "reading list management"
+    expected_in_top_10:
+      - "reading-list"
+    category: exact_match

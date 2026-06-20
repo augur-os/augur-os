@@ -1,0 +1,86 @@
+# Supported platforms for Augur onboarding
+# Used by /onboard --connect and platform detection
+
+platforms:
+  claude-code:
+    detection: "~/.claude/"
+    mcp_config: "~/.claude/mcp.json"
+    getting_started: >
+      Augur is installed. Run /commands to see available commands,
+      or open localhost:3000 for the dashboard.
+
+  codex:
+    detection: "~/.codex/"
+    mcp_config: "~/.codex/config.toml"
+    section: "[mcp_servers.augur-core] and [mcp_servers.augur-framework]"
+    getting_started: >
+      Augur is installed. Codex MCP is configured. Run /commands
+      to see available commands.
+
+  gemini:
+    detection: "~/.gemini/"
+    mcp_config: "~/.gemini/settings.json"
+    getting_started: >
+      Augur is installed. Gemini MCP is configured. The dashboard
+      is at localhost:3000.
+
+  copilot:
+    detection:
+      - "~/.copilot/"
+      - "copilot --version"
+      - "VS Code GitHub Copilot extension"
+    mcp_config:
+      - "~/.copilot/mcp-config.json"
+      - ".vscode/mcp.json"
+    cloud:
+      profile: "copilot"
+      default_mode: "review"
+      mutation_default: false
+    getting_started: >
+      Augur is installed. Copilot cloud review mode is the default.
+      Cloud write/PR execution requires explicit enablement.
+
+  cursor:
+    detection:
+      - "~/.cursor/"
+      - "~/Library/Application Support/Cursor/"
+    mcp_config: ".cursor/mcp.json"
+    getting_started: >
+      Augur is installed and MCP is configured. The dashboard
+      is at localhost:3000.
+
+  windsurf:
+    detection: "~/.codeium/windsurf/"
+    getting_started: >
+      Augur is installed. The dashboard is at localhost:3000.
+
+  opencode:
+    detection: "~/.opencode/"
+    mcp_config: "~/.config/opencode/opencode.json"
+    getting_started: >
+      Augur is installed. The dashboard is at localhost:3000.
+
+  cline:
+    detection: "~/Library/Application Support/Cline/"
+    getting_started: >
+      Augur is installed. The dashboard is at localhost:3000.
+
+  vscode:
+    detection: "running inside VS Code"
+    getting_started: >
+      Augur is installed and MCP is configured. Open the Augur
+      sidebar to check status. The dashboard is at localhost:3000.
+
+  vault:
+    detection: "vault configured"
+    setup_tool: "vault-scaffold"
+    getting_started: >
+      Augur is installed and your vault is configured. The vault works
+      as plain Markdown without any extra apps; if you prefer an
+      Obsidian-flavored view, run `vault-scaffold` to drop in an
+      `.obsidian/` config. The dashboard is at localhost:3000.
+
+  antigravity:
+    detection: "running inside Antigravity"
+    getting_started: >
+      Augur is installed. The dashboard is at localhost:3000.

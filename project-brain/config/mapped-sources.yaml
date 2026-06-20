@@ -1,0 +1,7 @@
+mapped_sources:
+  decisions/adrs: docs/adrs
+  specs: docs/superpowers/specs
+  plans: docs/superpowers/plans
+  instructions/topics: docs/agent-topics
+  capabilities/agents: plugins/agents
+  workflows: docs/agent-topics/WORKFLOWS.md

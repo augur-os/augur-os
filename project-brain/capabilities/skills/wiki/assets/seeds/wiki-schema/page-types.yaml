@@ -1,0 +1,39 @@
+overview:
+  required_sections:
+    - Current Thesis
+    - What This Hub Knows
+    - Recent Additions
+    - Evidence
+  min_tags: 3
+  min_cross_links: 3
+
+topic:
+  required_sections: []
+  min_tags: 3
+  min_cross_links: 2
+
+comparison:
+  required_sections:
+    - Where They Differ
+    - Where They Overlap
+  min_tags: 3
+  min_cross_links: 2
+
+entity:
+  required_sections: []
+  min_tags: 2
+  min_cross_links: 1
+
+concept:
+  description: Synthesized durable concept page generated from merged evidence.
+  required_sections:
+    - Compiled truth
+    - Timeline
+  min_tags: 2
+  min_cross_links: 1
+
+query:
+  description: Synthesized answer page for a reusable wiki query.
+  required_sections: []
+  min_tags: 2
+  min_cross_links: 1

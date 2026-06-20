@@ -18,7 +18,7 @@ Augur OS is licensed under the MIT License. By contributing, you agree that your
 
 - `git` for version control
 - Python 3.11+ for scripts and utilities
-- Node.js 20+ for the dashboard
+- Node.js 22+ for the dashboard
 - A GitHub account for contributions
 
 ### Fork & Clone
@@ -33,9 +33,10 @@ cd augur-os
 ### Install Dependencies
 
 ```bash
-corepack enable && pnpm install
-uv sync
+uv run aug onboard run
 ```
+
+`aug onboard run` checks prerequisites (and prints the exact per-OS install command if `uv` or Node 22+ is missing — it does not install system tooling for you), installs dependencies, builds the dashboard, wires MCP, seeds a local brain, and verifies the system is up at <http://localhost:3000/browse>. See the [README Quickstart](README.md#working-locally) for the one-prompt alternative.
 
 ### Build & Verify
 
@@ -47,11 +48,7 @@ pnpm --filter dashboard build
 
 ### Run Locally
 
-```bash
-pnpm --filter dashboard dev
-```
-
-The dashboard runs at `http://localhost:3000`.
+Use the repo-managed dev workflow from an Augur AI-client session, for example `/dev-build`, when you need the dashboard. Then open `http://localhost:3000` once the workflow reports the dashboard is active.
 
 ## Project Structure
 

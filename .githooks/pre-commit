@@ -1,0 +1,189 @@
+#!/bin/sh
+# Augur Pre-commit Hook
+# Guards: conflict markers, binary files, large files, forbidden paths
+
+FAIL=0
+
+# ── Check for merge conflict markers in staged files ──
+CONFLICT_FILES=$(git diff --cached --name-only --diff-filter=d -z | \
+    xargs -0 grep -l '^<<<<<<<\|^=======\|^>>>>>>>' 2>/dev/null || true)
+
+if [ -n "$CONFLICT_FILES" ]; then
+    echo "❌ Conflict markers found in staged files:"
+    echo "$CONFLICT_FILES" | sed 's/^/   /'
+    FAIL=1
+fi
+
+# ── Block binary files ──
+BINARY_EXTS="png|jpg|jpeg|gif|bmp|tiff|webp|avif|ico|svg|mp3|mp4|wav|avi|mov|mkv|pdf|pptx|ppt|key|pages|numbers|doc|docx|xls|xlsx|zip|tar|gz|rar|7z|dmg|iso|bin|exe|dll|so|dylib|woff|woff2|ttf|eot|otf|sketch|fig|psd|ai"
+BINARY_ALLOWED="\.github/social_preview\.png|apps/dashboard/app/favicon\.ico|docs/adrs/archive/.*\.zip|project-brain/capabilities/skills/routine-vault/evals/fixtures/.*"
+
+BINARY_BLOCKED=$(git diff --cached --name-only --diff-filter=d | \
+    grep -iE "\.($BINARY_EXTS)$" | \
+    grep -vE "$BINARY_ALLOWED" || true)
+
+if [ -n "$BINARY_BLOCKED" ]; then
+    echo "❌ Binary files cannot be committed to the repo."
+    echo "   Move them to ~/Documents/Augur/{bundle}/{skill}/ (ADR-270)."
+    echo "$BINARY_BLOCKED" | sed 's/^/   /'
+    FAIL=1
+fi
+
+# ── Block large files (>200KB) ──
+MAX_SIZE=204800
+LARGE_FOUND=""
+
+for file in $(git diff --cached --name-only --diff-filter=d); do
+    [ -f "$file" ] || continue
+    case "$file" in
+        pnpm-lock.yaml|*/pnpm-lock.yaml|uv.lock|*/uv.lock|*.lock) continue ;;
+        config/system/capability_exposure.yaml) continue ;;
+        project-brain/decisions/adrs/adrs-index.json) continue ;;
+    esac
+    size=$(wc -c < "$file" | tr -d ' ')
+    if [ "$size" -gt "$MAX_SIZE" ]; then
+        kb=$((size / 1024))
+        LARGE_FOUND="${LARGE_FOUND}   ${file} (${kb}KB)\n"
+    fi
+done
+
+if [ -n "$LARGE_FOUND" ]; then
+    echo "❌ Files exceeding 200KB limit:"
+    printf "%b" "$LARGE_FOUND"
+    echo "   Move large files to ~/Documents/Augur/ or reduce their size."
+    FAIL=1
+fi
+
+# ── Block forbidden paths ──
+FORBIDDEN=$(git diff --cached --name-only --diff-filter=d | \
+    grep -E "^(state/|logs/|cache/|ipc/|operations/|\.venv|node_modules/)" || true)
+
+if [ -n "$FORBIDDEN" ]; then
+    echo "❌ Files staged from forbidden directories:"
+    echo "$FORBIDDEN" | sed 's/^/   /'
+    echo "   These directories contain runtime state, not source code."
+    FAIL=1
+fi
+
+# ── Block files in augur/data/ (user-editable content lives in ~/Vault/Augur) ──
+DATA_FILES=$(git diff --cached --name-only --diff-filter=d | \
+    grep -E "plugins/.*/augur/data/" || true)
+
+if [ -n "$DATA_FILES" ]; then
+    echo "❌ Files in plugin augur/data/ directories:"
+    echo "$DATA_FILES" | sed 's/^/   /'
+    echo "   augur/data/ is a forbidden path. User-editable content (prompts, actions)"
+    echo "   belongs in ~/Vault/Augur/{bundle}/{skill}/ (ADR-270)."
+    FAIL=1
+fi
+
+# ── Page storage enforcement ──
+# Rule 1: TSX pages must live in apps/dashboard/features/pages/, not in skills' augur/dashboard/
+TSX_VIOLATIONS=$(git diff --cached --name-only --diff-filter=d | \
+    grep -E "^skills/[^/]+/augur/dashboard/page\.tsx$" || true)
+
+if [ -n "$TSX_VIOLATIONS" ]; then
+    echo "❌ page.tsx found outside apps/dashboard/features/pages/:"
+    echo "$TSX_VIOLATIONS" | sed 's/^/   /'
+    echo "   Move to apps/dashboard/features/pages/{hub}/{skill}/page.tsx"
+    FAIL=1
+fi
+
+# ── Block absolute worktree paths (e.g., /Users/<name>/.../augur-wt-...) ──
+# Prevents content authored inside a worktree from leaking developer-specific
+# absolute paths into main. Cross-agent: fires for any commit (Claude, Codex,
+# Gemini, manual git). Allows relative paths (../augur-wt-foo), fixture names,
+# and regex patterns like `/Users/[^/]+/Projects/augur-wt-` since those have
+# no concrete username.
+WT_LEAKS=$(git diff --cached --name-only --diff-filter=d -z | \
+    xargs -0 grep -nHE '/Users/[a-zA-Z0-9._-]+/[^[:space:]"'"'"']*augur-wt-' 2>/dev/null || true)
+
+if [ -n "$WT_LEAKS" ]; then
+    echo "❌ Absolute worktree path(s) found in staged content:"
+    echo "$WT_LEAKS" | sed 's/^/   /'
+    echo "   These leak developer-specific paths into main and break for other"
+    echo "   agents/users. Replace with a relative path (../augur-wt-<name>),"
+    echo "   the repo-relative path, or a placeholder like <active worktree>."
+    FAIL=1
+fi
+
+# ── Block dev-server shortcuts that bypass /dev-build (CLAUDE.md rule 29) ──
+# Cross-agent commit-time peer for the Claude PreToolUse blocker. Refuses
+# commits that introduce manual `kill <pid>`, `pkill`, `pnpm dev`,
+# `npm run dev`, `next dev`, `next-server`, or `rm -rf .next` into staged
+# scripts/markdown. Source-of-truth patterns live in
+# scripts/hooks/dashboard-shortcut-patterns.sh.
+SCAN_HOOK="$(git rev-parse --show-toplevel)/.githooks/dashboard-shortcut-staged-scan.sh"
+if [ -x "$SCAN_HOOK" ]; then
+    if ! "$SCAN_HOOK"; then
+        FAIL=1
+    fi
+fi
+
+# ── Browse rule-32: BrowseDisplayRenderer must not bifurcate by viewMode ──
+# CLAUDE.md rule 32 + docs/architecture-dashboard.md "Discovery contract":
+# every Browse tab renders the shared file-card mechanism. The only
+# sanctioned exception is an interactive manager surface like
+# extensions-bundles. Refuses staged changes to BrowseDisplayRenderer.tsx
+# that add an `if (viewMode === "X") return ...` early-return outside the
+# manager-surface allowlist.
+RULE32_HOOK="$(git rev-parse --show-toplevel)/.githooks/browse-rule-32-scan.sh"
+if [ -x "$RULE32_HOOK" ]; then
+    if ! "$RULE32_HOOK"; then
+        FAIL=1
+    fi
+fi
+
+# ── ADR-779: Global identity mutations must not target active worktrees ──
+IDENTITY_HOOK="$(git rev-parse --show-toplevel)/.githooks/global-identity-staged-scan.sh"
+if [ -x "$IDENTITY_HOOK" ]; then
+    if ! "$IDENTITY_HOOK"; then
+        FAIL=1
+    fi
+fi
+
+# ── Block skill-specific tests from central tests/ (ADR-762) ──
+ROOT="$(git rev-parse --show-toplevel)"
+SKILL_TEST_PYTHON="${PYTHON:-}"
+if [ -z "$SKILL_TEST_PYTHON" ]; then
+    for candidate in "$ROOT/.venv/bin/python" "$ROOT/.venv/bin/python3" "$ROOT/.venv/Scripts/python.exe" python3 python; do
+        if command -v "$candidate" >/dev/null 2>&1; then
+            SKILL_TEST_PYTHON="$candidate"
+            break
+        fi
+    done
+fi
+
+if ! "$SKILL_TEST_PYTHON" scripts/check_skill_test_placement.py; then
+    echo "Staged-skill test placement violation. See scripts/check_skill_test_placement.py output above."
+    FAIL=1
+fi
+
+# ── Validate protected system config schemas ──
+SYSTEM_CONFIG_STAGED=$(git diff --cached --name-only --diff-filter=ACMR | \
+    grep -E "^config/system/(llm|settings)\.yaml$" || true)
+
+if [ -n "$SYSTEM_CONFIG_STAGED" ]; then
+    ROOT="$(git rev-parse --show-toplevel)"
+    PYTHON_BIN="${PYTHON:-python}"
+    for candidate in "$ROOT/.venv/Scripts/python.exe" "$ROOT/.venv/bin/python3" python "py -3.12"; do
+        # shellcheck disable=SC2086
+        if $candidate -c "import yaml" >/dev/null 2>&1; then
+            PYTHON_BIN="$candidate"
+            break
+        fi
+    done
+    # shellcheck disable=SC2086
+    if ! $PYTHON_BIN -m src.config.precommit_check $SYSTEM_CONFIG_STAGED; then
+        FAIL=1
+    fi
+fi
+
+if [ "$FAIL" -eq 1 ]; then
+    echo ""
+    echo "To override: git commit --no-verify"
+    exit 1
+fi
+
+echo "✅ Pre-commit checks passed."
+exit 0

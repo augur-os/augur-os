@@ -4,7 +4,7 @@ This guide is for using Augur day-to-day — operating your personal brain from 
 
 If you haven't installed Augur yet, see [getting-started.md](./getting-started.md). If you want to know what Augur is (and isn't), see [what-is-augur.md](./what-is-augur.md). For architecture, see [architecture-overview.md](./architecture-overview.md).
 
-Augur is local-first. Everything in this guide happens on your laptop, against your vault, through your existing AI client. Nothing leaves your machine unless you explicitly send it somewhere.
+Augur is local-first. Get to know your AI setup, build your local second brain, and talk with your projects. Everything in this guide happens on your laptop, against your vault, through your existing AI client. Nothing leaves your machine unless you explicitly send it somewhere.
 
 Augur is in soft launch. Native macOS support is implemented. Native Windows architecture is implemented, but Windows validation is still pending before a firmer public support claim.
 
@@ -94,12 +94,17 @@ If you are evaluating Augur on Windows, follow the current validation docs rathe
 
 ## What To Use First
 
-Start with the repo-first workflow and the dashboard.
+Start with fast launch from a desktop AI chat.
 
-- Clone the repo and install dependencies from the project root.
-- Launch the dashboard locally.
-- Use the command and skill docs to discover the workflow you need.
-- Keep your own notes, documents, and generated outputs in the repo-managed locations described by the setup docs.
+- Paste the install prompt into Claude, Codex, Gemini, Cursor, or another supported local AI client.
+- Choose a folder by answering the first question: Which folder should I initialize?
+- Let the agent run `uv run aug onboard run` (installs dependencies, builds the dashboard, wires MCP, seeds a local brain, verifies the system) and then `uv run aug init --project <folder>` from the Augur install directory.
+- Review the project brain id, project-brain metadata folder, inventory count, warning count, inventory path, chosen-folder write boundary, and read-only AI artifact inventory in Browse: `http://localhost:3000/browse`.
+- Next action: Ask Augur about this project.
+
+The first project question is answer-only by default; Augur does not save or retain anything unless you ask.
+
+Use the repo clone and dashboard workflow when you want the full contributor workspace or manual validation path.
 
 ## Good Starting Points
 

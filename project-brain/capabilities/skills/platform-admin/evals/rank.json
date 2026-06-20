@@ -1,0 +1,61 @@
+{
+  "tier": "C",
+  "score": 46.0,
+  "rubric": "domain-low",
+  "structural": {
+    "score": 46.0,
+    "dimensions": {
+      "instruction": {
+        "score": 83,
+        "signals": {
+          "desc_words": 16,
+          "body_lines": 135,
+          "sections": 19,
+          "has_examples": true,
+          "has_references": true,
+          "has_workflow": true,
+          "has_checklist": false
+        },
+        "weight": 0.35,
+        "weighted": 29.0
+      },
+      "product": {
+        "score": 20,
+        "signals": {
+          "has_data_dir": false,
+          "has_mcp_tools": false,
+          "has_api_routes": false,
+          "has_actions": false,
+          "has_scripts": true,
+          "has_references": true
+        },
+        "weight": 0.4,
+        "weighted": 8.0
+      },
+      "ui": {
+        "score": 0,
+        "signals": {
+          "page_count": 0,
+          "mature_pages": 0,
+          "custom_pages": 0,
+          "page_states": []
+        },
+        "weight": 0.05,
+        "weighted": 0.0
+      },
+      "wiring": {
+        "score": 45,
+        "signals": {
+          "has_api_route": false,
+          "no_fs_bypasses": true,
+          "has_mcp_tool": false,
+          "no_fallback_masking": true
+        },
+        "weight": 0.2,
+        "weighted": 9.0
+      }
+    }
+  },
+  "behavioral": null,
+  "computed_at": "2026-06-19T00:04:27.509919+00:00"
+}

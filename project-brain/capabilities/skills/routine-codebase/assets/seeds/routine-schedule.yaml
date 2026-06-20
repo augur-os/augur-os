@@ -1,0 +1,31 @@
+schedules:
+  - id: codex-dev-loop-testing
+    title: Testing
+    loop: testing
+    source: codex
+    rrule: "RRULE:FREQ=WEEKLY;BYDAY=SU;BYHOUR=3;BYMINUTE=0"
+    prompt: "/routines run testing"
+    workspace: "__PROJECT_ROOT__"
+    model: "gpt-5.4"
+    reasoning_effort: "high"
+    runs_in: local
+  - id: codex-dev-loop-code-quality
+    title: Code Quality
+    loop: code-quality
+    source: codex
+    rrule: "RRULE:FREQ=WEEKLY;BYDAY=MO;BYHOUR=3;BYMINUTE=0"
+    prompt: "/routines run code-quality"
+    workspace: "__PROJECT_ROOT__"
+    model: "gpt-5.4"
+    reasoning_effort: "high"
+    runs_in: local
+  - id: codex-dev-loop-ui-quality
+    title: UI Quality
+    loop: ui-quality
+    source: codex
+    rrule: "RRULE:FREQ=WEEKLY;BYDAY=SA;BYHOUR=3;BYMINUTE=40"
+    prompt: "/routines run ui-quality"
+    workspace: "__PROJECT_ROOT__"
+    model: "gpt-5.4"
+    reasoning_effort: "high"
+    runs_in: local

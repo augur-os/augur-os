@@ -1,0 +1,33 @@
+# Augur LLM profiles (OpenAI-compatible contract)
+#
+# Place this file as `llm.yaml` at the root of your user data repo:
+#   ~/Projects/augur-data/llm.yaml
+#
+# Secrets should be set via environment variables referenced by `api_key_env`.
+#
+# Profiles can target:
+# - Local servers (Ollama/LM Studio/vLLM) exposing OpenAI-compatible `/v1/*`
+# - A local router (recommended: LiteLLM Proxy)
+# - Cloud endpoints (OpenAI/OpenRouter/etc via OpenAI-compatible APIs)
+
+active_profile: local
+
+profiles:
+  local:
+    provider: openai_compatible
+    base_url: http://localhost:11434/v1
+    model: llama3.2
+    timeout_s: 60
+
+  router:
+    provider: openai_compatible
+    base_url: http://localhost:4000/v1
+    api_key_env: LITELLM_API_KEY
+    model: gpt-4o-mini
+
+  openai:
+    provider: openai_compatible
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    model: gpt-4o-mini
+

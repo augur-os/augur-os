@@ -1,0 +1,9 @@
+schema_version: 1
+user:
+  name: ""
+  language: "en"
+paths:
+  base: null
+integrations: {}
+skills:
+  enabled: []

@@ -1,0 +1,38 @@
+# Maps directive IDs to labels, sources, and patterns
+# Used by scoring engine and /flag inference
+
+directives:
+  no_fs_in_dashboard:
+    label: "NO fs/spawn in dashboard"
+    sources: ["rule_11", "ADR-453"]
+    description: "All data via useMcpQuery/useMcpMutation. No import fs, no execSync, no spawn."
+
+  no_fallback_fixes:
+    label: "NO fallback-path fixes"
+    sources: ["rule_5", "ADR-453"]
+    description: "When MCP call fails, fix the wiring (tool name, args, response shape), never improve the fallback."
+
+  no_suppression:
+    label: "NO error suppression"
+    sources: ["rule_5"]
+    description: "No @ts-ignore, eslint-disable, @pytest.mark.skip. Fix root cause."
+
+  no_generated_edits:
+    label: "NO generated file edits"
+    sources: ["memory:never-edit-generated-files"]
+    description: "Check for AUTO-GENERATED header before editing; edit the source."
+
+  no_emojis:
+    label: "NO emojis"
+    sources: ["preference:no-emojis-unless-explicitly-requested"]
+    description: "Unless user explicitly requests them."
+
+  no_central_registry:
+    label: "NO centralized registry additions"
+    sources: ["rule_2", "ADR-163"]
+    description: "Data belongs in skill's SKILL.md x-augur-* frontmatter, not centralized config."
+
+  fix_root_cause:
+    label: "Fix root cause, not tests"
+    sources: ["rule_5"]
+    description: "Never update assertions to match broken behavior. Never mock to silence failures."

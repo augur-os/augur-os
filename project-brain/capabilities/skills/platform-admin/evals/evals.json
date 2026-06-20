@@ -1,0 +1,38 @@
+{
+  "skill_name": "platform-admin",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Use the platform-admin skill to check repo health",
+      "expected_output": "The check-repo-health MCP tool executes successfully",
+      "files": [],
+      "expectations": [
+        "The check-repo-health tool is called",
+        "Tool returns structured data without errors"
+      ],
+      "confidence": "seed"
+    },
+    {
+      "id": 2,
+      "prompt": "Use the platform-admin skill to create a data backup",
+      "expected_output": "The data-backup MCP tool executes successfully",
+      "files": [],
+      "expectations": [
+        "The data-backup tool is called",
+        "Tool returns structured data without errors"
+      ],
+      "confidence": "seed"
+    },
+    {
+      "id": 3,
+      "prompt": "Use the platform-admin skill to get adaptive growth",
+      "expected_output": "The get-adaptive-growth MCP tool executes successfully",
+      "files": [],
+      "expectations": [
+        "The get-adaptive-growth tool is called",
+        "Tool returns structured data without errors"
+      ],
+      "confidence": "seed"
+    }
+  ]
+}

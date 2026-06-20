@@ -1,0 +1,52 @@
+providers:
+  glama:
+    id: glama
+    enabled: true
+    apiKeyEnv: GLAMA_API_KEY
+    hasApiKey: true
+    lastTested: '2026-05-08T06:45:30.681Z'
+    oauthToken: oauth:glama:1778222730681
+    defaultModel: glm-4.7
+  openrouter:
+    id: openrouter
+    enabled: false
+    apiKeyEnv: OPENROUTER_API_KEY
+  anthropic:
+    id: anthropic
+    enabled: false
+    apiKeyEnv: ANTHROPIC_API_KEY
+  openai:
+    id: openai
+    enabled: false
+    apiKeyEnv: OPENAI_API_KEY
+  gemini:
+    id: gemini
+    enabled: false
+    apiKeyEnv: GOOGLE_AI_API_KEY
+  groq:
+    id: groq
+    enabled: false
+    apiKeyEnv: GROQ_API_KEY
+  together:
+    id: together
+    enabled: false
+    apiKeyEnv: TOGETHER_API_KEY
+  custom:
+    id: custom
+    enabled: false
+    apiKeyEnv: CUSTOM_LLM_API_KEY
+security:
+  requireExplicitConsent: true
+  warnOnPii: true
+  blockOnSecrets: true
+  sensitiveFolders: []
+budget:
+  dailyLimitUsd: 10
+  monthlyLimitUsd: 100
+  warnAtPercentage: 80
+audit:
+  logAllRequests: true
+  logPrompts: false
+  logResponses: false
+  retentionDays: 30
+schema_version: 1

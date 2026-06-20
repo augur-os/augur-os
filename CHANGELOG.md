@@ -7,6 +7,7 @@
 - Unified background routine discovery across per-skill schedules, daemon services, daemon scripts, launchd agents, GitHub Actions cron workflows, and MCP background tasks.
 
 ### Changed
+- `ingest` URL capture (`/keep <url>` → `url-extract`) now falls back to a plain-text source feed when a page is JS-rendered (returns a stub) or errors: GitHub repo URLs capture the **raw README** instead of a JS-shell stub or HTTP 504. *Incident:* two `/keep` GitHub captures on 2026-06-08 saved a 39-word stub / failed with 504, requiring a manual raw-README workaround — now automatic (`url_ingest._source_fallback`, 8 new tests).
 - Browse category `scheduled-executions` is renamed to `background-routines`; the legacy URL redirects for one release.
 - Routine table/detail views now surface cadence, next run, last run, spawn kind, and estimated AI CLI token cost.
 

@@ -1,0 +1,21 @@
+# Augur LLM Configuration Template
+# Copy this file to your data repo as `llm.yaml` to configure profiles.
+
+active_profile: default
+
+profiles:
+  # Mode 1: Remote (OpenAI, Groq, etc.)
+  default:
+    provider: openai_compatible
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    model: gpt-4-turbo-preview
+    timeout_s: 60
+
+  # Mode 2: Local (Ollama, LM Studio)
+  local:
+    provider: openai_compatible
+    base_url: http://localhost:11434/v1  # Default for Ollama
+    api_key: "ollama"                    # Often ignored but required by some clients
+    model: llama3                        # Replace with your local model name
+    timeout_s: 300                       # Local models can be slower

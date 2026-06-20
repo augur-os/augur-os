@@ -1,6 +1,6 @@
 # Getting Started with Augur OS
 
-Augur is local-first AI infrastructure for your laptop. After install, the Harness — your constitution, skills, hooks, subagents, plugins — lands in every supported AI client. Switch from Claude Code to Codex CLI to Gemini CLI without rebuilding anything.
+Augur is local-first AI infrastructure for your laptop. Get to know your AI setup, build your local second brain, and talk with your projects. After install, the Harness — your constitution, skills, hooks, subagents, plugins — lands in every supported AI client. Switch from Claude Code to Codex CLI to Gemini CLI without rebuilding anything.
 
 This guide walks through the first install, the first session, and the hardware tiers that gate optional features.
 
@@ -20,34 +20,48 @@ Augur runs on any laptop. Some features are NPU- or GPU-accelerated; if your har
 
 All tiers are optional. Start at T1; add T2 and T3 later if your hardware supports them. The default install assumes T1.
 
-## Prerequisites
+## Fast Launch
 
-- Python 3.11+
-- Node.js 20+
-- `corepack`
-- `uv`
+Two ways to install — both cross-OS, both end at a working local second brain.
 
-## Clone The Repo
+**One prompt (desktop AI chat).** Open `project-brain/capabilities/skills/onboard/install.md`, paste it into Claude, Codex, Gemini, Cursor, or another supported AI client, and choose a folder by answering "Which folder should I initialize?". The agent runs the onboard engine for you and reports a read-only inventory of your existing AI setup. Next action: Ask Augur about this project.
 
-The current source-of-truth workflow is repo-first:
+**Requires** `uv` and Node 22+.
 
-```bash
+**One command (terminal).**
+
+```
 git clone https://github.com/augur-os/augur-os.git
 cd augur-os
-corepack enable
-pnpm install
-uv sync
+uv run aug onboard run
 ```
 
-## Run The Dashboard
+`aug onboard run` checks prerequisites (and prints the exact per-OS install command if `uv` or Node 22+ is missing — it does not install system tooling for you), installs dependencies, builds the dashboard, wires MCP, seeds a local brain, and verifies the system is up at <http://localhost:3000/browse>.
 
-```bash
-pnpm --filter dashboard dev
+Then point Augur at any project folder to inventory its existing AI artifacts:
+
+```
+uv run aug init --project <folder>
 ```
 
-The dashboard runs at `http://localhost:3000`.
+The first success moment is the read-only AI artifact inventory, not the dashboard or full onboarding.
+The first project question is answer-only by default; Augur does not save or retain anything unless you ask.
 
-## Configure MCP
+## Contributor Full Workspace
+
+<details>
+<summary>Manual setup (contributors who want direct control of bootstrap)</summary>
+
+```
+git clone https://github.com/augur-os/augur-os.git
+cd augur-os
+corepack enable && pnpm install && uv sync
+```
+
+Then `uv run aug dev build` for the dashboard and `uv run aug init --project .` to attach the checkout as a project brain.
+</details>
+
+## Configure MCP For Manual Full-Workspace Work
 
 Use the repo-managed config writer instead of hand-editing example files:
 
@@ -60,7 +74,7 @@ For Windows-specific setup and validation, see [guides/installation-windows.md](
 
 ## Your first hour with Augur
 
-Once the dashboard is running, you'll see a **Setup Completeness Widget** in the sidebar tracking 11 milestones. The widget auto-detects what's done and what's pending — no manual checkboxes. This section walks through each milestone explicitly so you know what to expect.
+After fast launch creates or attaches `project-brain/`, continue with the first-hour milestones. If you are using the full contributor workspace dashboard, the **Setup Completeness Widget** in the sidebar tracks 11 milestones and auto-detects what's done and what's pending. This section walks through each milestone explicitly so you know what to expect.
 
 ### Phase 1 — Foundation (connect Augur to your laptop)
 

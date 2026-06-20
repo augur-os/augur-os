@@ -1,0 +1,38 @@
+{
+  "skill_name": "document-extractor",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Use the document-extractor skill to extract a document",
+      "expected_output": "The extract-document MCP tool executes successfully",
+      "files": [],
+      "expectations": [
+        "The extract-document tool is called",
+        "Tool returns structured data without errors"
+      ],
+      "confidence": "seed"
+    },
+    {
+      "id": 2,
+      "prompt": "Use the document-extractor skill to submit a extract document result",
+      "expected_output": "The submit-extract-document-result MCP tool executes successfully",
+      "files": [],
+      "expectations": [
+        "The submit-extract-document-result tool is called",
+        "Tool returns structured data without errors"
+      ],
+      "confidence": "seed"
+    },
+    {
+      "id": 3,
+      "prompt": "Use the document-extractor skill to extract a document batch",
+      "expected_output": "The extract-document-batch MCP tool executes successfully",
+      "files": [],
+      "expectations": [
+        "The extract-document-batch tool is called",
+        "Tool returns structured data without errors"
+      ],
+      "confidence": "seed"
+    }
+  ]
+}

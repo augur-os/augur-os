@@ -1,0 +1,17 @@
+"""Auto-generated importability test for chunker."""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+
+def test_chunker_importable():
+    """Verify that chunker can be imported without errors."""
+    import src.lib.index.chunker
+
+    assert src.lib.index.chunker is not None

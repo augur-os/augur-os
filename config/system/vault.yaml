@@ -1,0 +1,9 @@
+vault:
+  path: ~/Projects/Au-vault
+  git:
+    auto_commit: true
+    auto_push: true
+    remote: origin
+    branch: main
+  # User-configured at onboard: point this at your own private vault repo.
+  remote: "https://github.com/<your-org>/augur-vault.git"

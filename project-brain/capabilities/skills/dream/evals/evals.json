@@ -1,0 +1,17 @@
+{
+  "skill_name": "dream",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Use the dream skill: Cross-client overnight synthesis routine. Authored once in Augur, projected as a scheduled routine i",
+      "expected_output": "The skill executes and produces relevant output",
+      "files": [],
+      "expectations": [
+        "The dream skill is triggered",
+        "Output is non-empty and relevant",
+        "No errors or stack traces"
+      ],
+      "confidence": "seed"
+    }
+  ]
+}

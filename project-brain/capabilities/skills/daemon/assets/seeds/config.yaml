@@ -1,0 +1,7 @@
+_seeded: true
+schema_version: 1
+monitoring:
+  log_level: info
+  health_check_interval: 300
+  alert_on_failure: true
+  max_log_size_mb: 50

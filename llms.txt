@@ -1,0 +1,39 @@
+# Augur — Local Second Brain for Your AI Clients
+
+Augur is a local-first second brain that runs on your laptop and is operated by your AI clients. The same skills, prompts, vault, and MCP tools work across Claude Code, Codex CLI, Gemini CLI, Cursor, Copilot, and any other client that can read this repo. This file gives any AI agent landing in the Augur repository a client-neutral pointer map so it can ground itself in a few thousand tokens without hunting through the wider docs tree. For per-client constitution rules see `CLAUDE.md`, `CODEX.md`, `AGENTS.md`, `.cursor/rules/`, `.gemini/GEMINI.md`, and `.github/copilot-instructions.md`; for richer context load the agent-topic files listed below; for the full inlined version of the load-bearing topics see `llms-full.txt`.
+
+## Entry points
+
+- README.md — repository overview and install entry
+- ROADMAP.md — release roadmap and milestone tracking
+- docs/what-is-augur.md — Augur vs. agents vs. LLM wrappers
+- docs/architecture-overview.md — The Harness, five layers, runtime substrate
+
+## Agent topics (load on demand)
+
+- docs/agent-topics/agent-rules.md — Augur is a local-first personal knowledge/automation system ("second brain"). This is the global instruction map — load topic docs on demand for deeper guidance
+- docs/agent-topics/AGENTS.md — Load this doc when working in agent teams, checking mode system, or understanding agent tiering
+- docs/agent-topics/ARCHITECTURE.md — Load this doc when working on file structure, path resolution, plugin mounting, data separation, or API routes
+- docs/agent-topics/CODING.md — Load this doc when writing code, making commits, or reviewing code style conventions
+- docs/agent-topics/CONTEXT.md — Load this doc when managing MCP tools, context windows, agent teams, or subagent handoffs
+- docs/agent-topics/DASHBOARD.md — Load this doc when working on dashboard UI components, pages, layouts, or AI integration patterns
+- docs/agent-topics/DEBUGGING.md — Load this doc when debugging errors, investigating failures, or verifying fixes in the browser
+- docs/agent-topics/SKILLS.md — Load this doc when working on a specific skill, creating new skills, or managing plugin dependencies
+- docs/agent-topics/WIKI.md — Load this when handling durable knowledge work, session-end compounding, URL ingest, or `/ask` retention
+- docs/agent-topics/WORKFLOWS.md — Load this doc when running commands, executing workflows, using action dispatch, or syncing repos
+
+## ADRs
+
+- project-brain/decisions/adrs/adrs-index.json — central JSON index of Architecture Decision Records
+- docs/generated/adr-index.md — human-readable status summary
+- project-brain/decisions/adrs/ — full ADR markdown files (per ADR-811)
+
+## References
+
+- docs/references/surface-decision-matrix.md — canonical map of skills, commands, MCP tools, and CLI surfaces
+- docs/references/agent-vs-mcp-checklist.md — when to use an agent vs. an MCP tool
+- docs/references/design-standards.md — UI/UX and code design standards
+
+## Full version
+
+- llms-full.txt — same map with `agent-rules.md`, `architecture-overview.md`, and `what-is-augur.md` inlined

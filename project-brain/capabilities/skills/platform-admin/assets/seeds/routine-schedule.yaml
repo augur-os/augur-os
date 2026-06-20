@@ -1,0 +1,11 @@
+schedules:
+  - id: codex-dev-loop-duplication
+    title: Duplication
+    loop: duplication
+    source: codex
+    rrule: "RRULE:FREQ=WEEKLY;BYDAY=SA;BYHOUR=3;BYMINUTE=20"
+    prompt: "/routines run duplication"
+    workspace: "__PROJECT_ROOT__"
+    model: "gpt-5.4"
+    reasoning_effort: "high"
+    runs_in: local

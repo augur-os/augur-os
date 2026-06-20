@@ -1,0 +1,7 @@
+classifier:
+  heuristic_threshold: 0.9
+  llm_assisted: true
+  voice_memo_max_seconds: 360
+attendee_resolution:
+  enabled: true
+  min_speaker_count: 2

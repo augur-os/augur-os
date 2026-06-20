@@ -1,0 +1,97 @@
+{
+  "skill_name": "onboard",
+  "run_id": "eval_20260405_213200",
+  "timestamp": "2026-04-05T21:32:00Z",
+  "method": "structural_validation",
+  "confidence": "seed",
+  "summary": {
+    "total_tests": 6,
+    "passed": 6,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "avg_score": 0.95
+  },
+  "results": [
+    {
+      "eval_id": 1,
+      "prompt": "/onboard --status",
+      "passed": true,
+      "score": 1.0,
+      "criteria_results": {
+        "Reads onboard-complete.json from state directory": true,
+        "Shows installed status (yes/no)": true,
+        "Lists connected platforms": true,
+        "Shows vault scaffolded status": true,
+        "Pings dashboard and MCP endpoints": true
+      },
+      "evidence": "mode-status.md steps 1-2 cover all expectations with field-level mapping"
+    },
+    {
+      "eval_id": 2,
+      "prompt": "/onboard --help",
+      "passed": true,
+      "score": 1.0,
+      "criteria_results": {
+        "Does NOT execute any onboarding steps": true,
+        "Displays usage section from SKILL.md": true,
+        "Shows all mode flags": true,
+        "Shows mode selection table": true
+      },
+      "evidence": "SKILL.md lines 31-63 contain Usage, Options, Mode Selection. CLAUDE.md rule 15 enforces --help stops execution."
+    },
+    {
+      "eval_id": 3,
+      "prompt": "/onboard --connect cursor",
+      "passed": true,
+      "score": 1.0,
+      "criteria_results": {
+        "Verifies Augur is installed first": true,
+        "Runs configure_mcp.py --client cursor": true,
+        "Updates configured_clients in state file": true,
+        "Shows getting-started message for Cursor": true
+      },
+      "evidence": "mode-connect.md steps 1-5 map to all expectations. Cursor getting-started message present."
+    },
+    {
+      "eval_id": 4,
+      "prompt": "/onboard --migrate",
+      "passed": true,
+      "score": 1.0,
+      "criteria_results": {
+        "Detects legacy data locations": true,
+        "Migrates vault data to new paths": true,
+        "Verifies plugin configurations": true,
+        "Verifies MCP server health": true
+      },
+      "evidence": "mode-migrate.md steps 1-4 map 1:1 with expectations. Includes vault recovery and connect vault subsections."
+    },
+    {
+      "eval_id": 5,
+      "prompt": "/onboard (default, no flags)",
+      "passed": true,
+      "score": 0.83,
+      "criteria_results": {
+        "Detects current platform": true,
+        "Clones or verifies repository": true,
+        "Installs dependencies (pnpm, uv)": true,
+        "Configures MCP server": true,
+        "Scaffolds vault directories": false,
+        "Offers to start dashboard": true
+      },
+      "evidence": "mode-default.md Steps 1-6 cover 5/6 expectations. Vault scaffolding implicit via augur init but not explicit in default mode steps. Platform detection in SKILL.md environment block."
+    },
+    {
+      "eval_id": 6,
+      "prompt": "augur init my-project --port 3001",
+      "passed": true,
+      "score": 1.0,
+      "criteria_results": {
+        "Clones augur-os repository": true,
+        "Writes project.yaml with port 3001": true,
+        "Creates external directories (vault, docs, state, rag, logs, cache)": true,
+        "Generates .claude/mcp.json with correct AUGUR_ROOT": true
+      },
+      "evidence": "augur_init.py implements init_project() with clone, write_project_yaml(port), create_external_dirs(6 dirs), write_mcp_config()."
+    }
+  ]
+}

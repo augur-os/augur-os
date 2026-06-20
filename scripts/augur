@@ -1,0 +1,28 @@
+#!/bin/sh
+# Worktree-aware Augur CLI launcher.
+
+set -eu
+
+script_dir="$(CDPATH= cd "$(dirname "$0")" && pwd -P)"
+if [ "$(basename "$script_dir")" = "scripts" ]; then
+    root="$(CDPATH= cd "$script_dir/.." && pwd -P)"
+else
+    root="$script_dir"
+fi
+
+py="$root/.venv/bin/python3"
+if [ ! -x "$py" ]; then
+    py="$root/.venv/bin/python"
+fi
+if [ ! -x "$py" ]; then
+    py="python3"
+fi
+
+export AUGUR_ROOT="$root"
+export AUGUR_CORE="$root"
+export AUGUR_REPO="$root"
+project_capabilities="$root/project-brain/capabilities"
+export PYTHONPATH="$project_capabilities:$root:$root/src/mcp${PYTHONPATH:+:$PYTHONPATH}"
+
+cd "$root"
+exec "$py" -m src.cli "$@"

@@ -1,0 +1,10 @@
+# Unified page-surface actions for the dream skill (ADR-807).
+# Folded from the retired augur/actions/dream-overview.yaml (Fork 4).
+actions:
+  - id: dream-overview
+    label: Dream Overview
+    icon: Moon
+    kind: mcp
+    mcp_tool: get-skill-health
+    dispatch: fire
+    surfaces: [page]
