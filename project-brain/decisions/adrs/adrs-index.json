@@ -20072,6 +20072,35 @@
     "superseded_by": null
   },
   {
+    "adr_number": "ADR-814",
+    "title": "Brain Publishable by Construction — Owner-Private Memory Layer",
+    "state": "live",
+    "status": "Accepted",
+    "date": "2026-06-11",
+    "deciders": [],
+    "related": [
+      "ADR-811"
+    ],
+    "hub": null,
+    "tags": [
+      "project-brain",
+      "visibility",
+      "memory",
+      "release"
+    ],
+    "decision_summary": "**1. The project brain ships with the product release.** ADR-811's visibility model is enforced continuously from day 0, not at release time. Every commit that touches `project-brain/` must be publishable.",
+    "status_notes": "",
+    "impact": {
+      "paths_renamed": [],
+      "apis_changed": [],
+      "patterns_deprecated": [],
+      "files_affected": []
+    },
+    "spec_file": null,
+    "plan_file": null,
+    "superseded_by": null
+  },
+  {
     "adr_number": "ADR-815",
     "title": "Local speaker diarization",
     "state": "live",
@@ -20089,8 +20118,8 @@
       "transcription",
       "diarization"
     ],
-    "decision_summary": "> **ADR-815 is an index file.** The substantive design and implementation steps live in the linked spec + plan. This file carries pointers, status, and a one-line decision summary.",
-    "status_notes": "",
+    "decision_summary": "Add native, opt-in speaker diarization to the audio pipeline by porting `island-io/mila`'s pyannote.audio pipeline (Apache-2.0) as a best-effort overlay on the whisper provider, and prefer the ivrit.ai `large-v3` Hebrew model when installed.",
+    "status_notes": "Accepted 2026-06-14. Extends — does not reverse — ADR-752, which left `speaker_labels` as a per-call seam and named provider-supplied diarization as a future addition. Diarization is gated behind an optional `diarization` extra and gated model weights, so the default install and the lean whisper path are unchanged. Real-data verification on Hebrew speech requires the user's Hugging Face token (the pyannote models are gated) and is reported separately.",
     "impact": {
       "paths_renamed": [],
       "apis_changed": [],
@@ -20099,8 +20128,42 @@
     },
     "spec_file": "2026-06-14-audio-diarization-design.md",
     "plan_file": "2026-06-14-audio-diarization.md",
-    "superseded_by": null,
-    "_legacy_filename": "ADR-815-local-speaker-diarization.md",
-    "_legacy_body": "\n# ADR-815: Local speaker diarization\n\n> **ADR-815 is an index file.** The substantive design and implementation steps live in the linked spec + plan. This file carries pointers, status, and a one-line decision summary.\n\n## Decision summary\n\nAdd native, opt-in speaker diarization to the audio pipeline by porting\n`island-io/mila`'s pyannote.audio pipeline (Apache-2.0) as a best-effort overlay\non the whisper provider, and prefer the ivrit.ai `large-v3` Hebrew model when\ninstalled.\n\n## Spec (canonical)\n\n- [`docs/superpowers/specs/2026-06-14-audio-diarization-design.md`](../../../docs/superpowers/specs/2026-06-14-audio-diarization-design.md)\n\n## Plan (canonical, drives `/adr implement`)\n\n- [`docs/superpowers/plans/2026-06-14-audio-diarization.md`](../../../docs/superpowers/plans/2026-06-14-audio-diarization.md)\n\n## Status notes\n\nAccepted 2026-06-14. Extends — does not reverse — ADR-752, which left\n`speaker_labels` as a per-call seam and named provider-supplied diarization as a\nfuture addition. Diarization is gated behind an optional `diarization` extra and\ngated model weights, so the default install and the lean whisper path are\nunchanged. Real-data verification on Hebrew speech requires the user's Hugging\nFace token (the pyannote models are gated) and is reported separately.\n\n## Related\n\n- ADR-752 (audio-ingest skill; diarization seam + non-goal it now fills)\n\n## Impact Manifest\n\n```yaml\nimpact:\n  paths_renamed: []\n  apis_changed:\n    - \"transcribe(..., options={'speaker_labels': True}) now overlays pyannote turns when the diarization extra + models are present\"\n  patterns_deprecated: []\n  files_affected:\n    - src/lib/extraction/transcription/diarize.py\n    - src/lib/extraction/transcription/diarize_setup.py\n    - src/lib/extraction/transcription/whisper_cpp.py\n    - pyproject.toml\n    - NOTICE\n```\n"
+    "superseded_by": null
+  },
+  {
+    "adr_number": "ADR-816",
+    "title": "Cross-machine vault write coordination",
+    "state": "live",
+    "status": "Proposed",
+    "date": "2026-06-22",
+    "deciders": [
+      "Gur"
+    ],
+    "related": [
+      "ADR-195",
+      "ADR-449",
+      "ADR-474",
+      "ADR-464",
+      "ADR-101"
+    ],
+    "hub": null,
+    "tags": [
+      "vault",
+      "concurrency",
+      "merge-lock",
+      "cross-client",
+      "inbox-triage"
+    ],
+    "decision_summary": "Adopt a **remote advisory lease** (an extension of the ADR-195 dev-merge lock onto the vault git remote) as the durable fix for concurrent vault writers across machines/clients, while keeping the already-shipped machine-local lock + push-rebase-retry as the cheap first line of defense. **Proposed —...",
+    "status_notes": "",
+    "impact": {
+      "paths_renamed": [],
+      "apis_changed": [],
+      "patterns_deprecated": [],
+      "files_affected": []
+    },
+    "spec_file": null,
+    "plan_file": null,
+    "superseded_by": null
   }
 ]

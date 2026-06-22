@@ -145,3 +145,62 @@ class TestCachedExtraction:
 
         cache_files = list(cache_dir.glob("*.json"))
         assert len(cache_files) == 2
+
+
+# ---------------------------------------------------------------------------
+# Transient lock-contention resilience (EDEADLK under concurrent indexing)
+# ---------------------------------------------------------------------------
+
+
+def test_is_transient_lock_error_detects_edeadlk_and_message():
+    import errno
+
+    from src.lib.index.ocr_extractor import is_transient_lock_error
+
+    assert is_transient_lock_error(OSError(errno.EDEADLK, "Resource deadlock avoided"))
+    assert is_transient_lock_error(Exception("Resource deadlock avoided"))
+    assert not is_transient_lock_error(OSError(errno.ENOENT, "No such file"))
+    assert not is_transient_lock_error(ValueError("bad value"))
+
+
+def test_read_source_bytes_retries_then_succeeds(tmp_path):
+    import errno
+
+    from src.lib.index import ocr_extractor
+
+    f = tmp_path / "doc.bin"
+    f.write_bytes(b"hello-bytes")
+
+    calls = {"n": 0}
+    real_read_bytes = Path.read_bytes
+
+    def flaky_read_bytes(self):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise OSError(errno.EDEADLK, "Resource deadlock avoided")
+        return real_read_bytes(self)
+
+    with patch.object(ocr_extractor, "_time"):  # no real sleeping in the test
+        with patch.object(Path, "read_bytes", flaky_read_bytes):
+            assert ocr_extractor.read_source_bytes(f) == b"hello-bytes"
+    assert calls["n"] == 3  # two EDEADLK failures, third attempt succeeds
+
+
+def test_read_source_bytes_reraises_non_transient(tmp_path):
+    import errno
+
+    from src.lib.index import ocr_extractor
+
+    f = tmp_path / "doc.bin"
+    f.write_bytes(b"x")
+
+    def boom(self):
+        raise OSError(errno.ENOENT, "No such file")
+
+    with patch.object(Path, "read_bytes", boom):
+        try:
+            ocr_extractor.read_source_bytes(f)
+            raised = False
+        except OSError as exc:
+            raised = exc.errno == errno.ENOENT
+    assert raised
