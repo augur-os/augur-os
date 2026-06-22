@@ -20,9 +20,9 @@ from src.plugins.skill_discovery import discover_all_skills
 def _relative_path(path: Path, base: Path) -> str:
     """Return path relative to base if it's under base, else absolute."""
     try:
-        return str(path.relative_to(base))
+        return path.relative_to(base).as_posix()
     except ValueError:
-        return str(path)
+        return path.as_posix()
 
 
 def _compact_dict(d: dict) -> dict | None:

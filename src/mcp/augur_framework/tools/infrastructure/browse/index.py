@@ -145,6 +145,9 @@ def browse_index_impl(
         scheduled_items = scheduled_executions.list_scheduled_execution_items(search=search)
         for entry in scheduled_items:
             entry["type"] = "background-routines"
+        # A declared routine that a schedule actually runs (`/routines run <id>`)
+        # is the same routine surfaced by both pipelines; drop the declared twin.
+        items = background_routines.dedupe_routine_items_against_schedules(items, scheduled_items)
         items = [*items, *scheduled_items]
         if hub:
             items = [item for item in items if item.get("hub") == hub]
