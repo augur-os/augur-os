@@ -87,12 +87,12 @@ def test_render_entry_dict_matches_mcp_runtime_contract(
     )
 
     assert rendered == {
-        "command": str(python_path),
+        "command": python_path.as_posix(),
         "args": ["-m", "augur_core", "--client-id", "gemini"],
-        "cwd": str(project_root),
+        "cwd": project_root.as_posix(),
         "env": {
-            "AUGUR_ROOT": str(project_root),
-            "PYTHONPATH": f"{project_root}/project-brain/capabilities:{project_root}:{project_root}/src/mcp",
+            "AUGUR_ROOT": project_root.as_posix(),
+            "PYTHONPATH": f"{project_root.as_posix()}/project-brain/capabilities:{project_root.as_posix()}:{project_root.as_posix()}/src/mcp",
             "PYTHONUNBUFFERED": "1",
         },
     }
