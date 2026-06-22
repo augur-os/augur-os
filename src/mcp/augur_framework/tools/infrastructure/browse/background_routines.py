@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from dataclasses import asdict
 from typing import Any
 
 from src.config.paths import get_project_brain_dir, get_project_root
+
+# A schedule whose prompt is `/routines run <id>` is the autonomous trigger source
+# for that declared routine; the leading token after `run` is the declared id.
+_ROUTINES_RUN_PATTERN = re.compile(r"/routines\s+run\s+([a-z0-9][\w-]*)", re.IGNORECASE)
 
 _PROJECT_BRAIN_CAPABILITIES = get_project_brain_dir(get_project_root()) / "capabilities"
 if str(_PROJECT_BRAIN_CAPABILITIES) not in sys.path:
@@ -124,6 +129,44 @@ def list_background_routine_items(search: str | None = None) -> list[dict[str, A
             or needle in routine.spawn_kind.lower()
         ]
     return [_routine_to_item(routine) for routine in routines]
+
+
+def dedupe_routine_items_against_schedules(
+    routine_items: list[dict[str, Any]],
+    scheduled_items: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Drop declared-routine rows that a scheduled execution already surfaces.
+
+    The Routines tab merges two pipelines: routine_discovery (which emits ADR-758
+    ``declared-routine`` rows from SKILL.md frontmatter) and scheduled_executions
+    (codex/claude/augur-internal schedules). When a declared routine is actually
+    scheduled — the schedule prompt invokes ``/routines run <id>`` — both pipelines
+    surface the SAME routine, producing the duplicate cards a user sees in the tab.
+
+    routine_discovery's own dedup only sees its sibling discoverers, never the
+    separately-loaded schedules, so the twin survives until this merge step. Keep
+    the schedule (richer: real cadence, drift status, conflict actions) and drop the
+    declared twin, matching the DeclaredRoutineDiscoverer's documented intent of
+    surfacing only declared routines with *no other* autonomous trigger source.
+    """
+
+    scheduled_routine_ids: set[str] = set()
+    for item in scheduled_items:
+        match = _ROUTINES_RUN_PATTERN.search(str(item.get("description") or ""))
+        if match:
+            scheduled_routine_ids.add(match.group(1).lower())
+
+    if not scheduled_routine_ids:
+        return routine_items
+
+    return [
+        item
+        for item in routine_items
+        if not (
+            str((item.get("metadata") or {}).get("source_kind")) == "declared-routine"
+            and str(item.get("id") or "").lower() in scheduled_routine_ids
+        )
+    ]
 
 
 def get_background_routine_detail_impl(routine_id: str) -> str:

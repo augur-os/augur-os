@@ -87,7 +87,10 @@ def _looks_like_path(value: object) -> bool:
     """True for strings that are filesystem paths (not tokens, ids, modules)."""
     if not isinstance(value, str) or not value:
         return False
-    return value.startswith(("/", "~", "$"))
+    if value.startswith(("/", "~", "$", "\\\\")):  # posix / home / env-token / UNC
+        return True
+    # Windows drive-absolute: "C:\..." or "C:/..."
+    return len(value) >= 3 and value[1] == ":" and value[2] in ("\\", "/") and value[0].isalpha()
 
 
 def _collapse_home(path_abs: str) -> str:

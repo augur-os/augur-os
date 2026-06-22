@@ -36,7 +36,7 @@ def _server_payload(server: ServerEntry) -> dict[str, object]:
         "args": list(resolved.args),
     }
     if resolved.cwd_required:
-        payload["cwd"] = str(get_project_root())
+        payload["cwd"] = get_project_root().as_posix()
     if resolved.env:
         payload["env"] = dict(resolved.env)
     return payload
