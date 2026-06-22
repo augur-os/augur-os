@@ -12,7 +12,7 @@ Use this reference when deciding where a new file, skill, export, or knowledge a
 On this machine:
 
 - `get_vault_dir()` → `Au-vault/`
-- `get_documents_dir()` → `~/Documents/Augur`
+- `get_documents_dir()` → `~/Documents`
 
 ## Matrix
 

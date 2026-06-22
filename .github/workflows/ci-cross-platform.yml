@@ -131,7 +131,7 @@ jobs:
         run: |
           .\.venv\Scripts\Activate.ps1
           $env:PYTHONPATH = "project-brain/capabilities;.;src/mcp"
-          pytest tests/ -v --tb=short --ignore=tests/integration/
+          pytest tests/ -v --tb=short --full-trace --ignore=tests/integration/
 
   # ============================================
   # PATH HANDLING TESTS (Cross-Platform)

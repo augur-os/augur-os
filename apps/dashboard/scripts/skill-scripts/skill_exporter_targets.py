@@ -23,6 +23,12 @@ import tarfile
 from pathlib import Path
 from typing import Any
 
+try:
+    from src.config.paths import get_project_root
+    _ROOT_PREFIX = str(get_project_root()) + "/"
+except Exception:  # pragma: no cover - fallback when src is not importable
+    _ROOT_PREFIX = str(Path(__file__).resolve().parents[5]) + "/"
+
 from skill_exporter_parse import (
     generate_agent_md,
     generate_commands,
@@ -46,7 +52,7 @@ def copy_layer1_resources(skill_path: Path, output_dir: Path):
             content = py_file.read_text(encoding="utf-8")
             # Strip Augur-specific path references
             content = content.replace("plugins/data/", "")
-            content = content.replace("~/Projects/Augur/", "")
+            content = content.replace(_ROOT_PREFIX, "").replace("~/Projects/Augur/", "")
             (target_dir / py_file.name).write_text(content, encoding="utf-8")
 
     # Copy tests/ (Layer 1)
@@ -68,7 +74,7 @@ def copy_layer1_resources(skill_path: Path, output_dir: Path):
             for md_file in source_dir.glob("*.md"):
                 content = md_file.read_text(encoding="utf-8")
                 content = content.replace("plugins/data/", "")
-                content = content.replace("~/Projects/Augur/", "")
+                content = content.replace(_ROOT_PREFIX, "").replace("~/Projects/Augur/", "")
                 (target_dir / md_file.name).write_text(content, encoding="utf-8")
 
     # Copy requirements.txt if it exists (Layer 1)
@@ -377,7 +383,7 @@ Homepage = "https://github.com/augur/augur-{name}"
                 continue
             content = py_file.read_text(encoding="utf-8")
             content = content.replace("plugins/data/", "")
-            content = content.replace("~/Projects/Augur/", "")
+            content = content.replace(_ROOT_PREFIX, "").replace("~/Projects/Augur/", "")
             (pkg_dir / "src" / pkg_name / py_file.name).write_text(content, encoding="utf-8")
 
     # 5. SKILL.md and README
