@@ -680,6 +680,10 @@ def test_build_contract_checks_main_checkout_branch(tmp_path: Path, monkeypatch)
     import src.config.paths as config_paths
 
     monkeypatch.setattr(config_paths, "get_runtime_dir", lambda: runtime_dir)
+    # The branch guard is bypassed in CI; this test asserts developer-machine
+    # behaviour, so clear the CI markers the runner itself sets.
+    monkeypatch.delenv("CI", raising=False)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
 
     report = worktree_preflight.build_contract(repo, "shell", repair=False)
 

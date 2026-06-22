@@ -5,7 +5,7 @@
  * Consolidates duplicated scanning logic from mcp/capabilities and setup/skills/manager.
  */
 import path from "path";
-import matter from "gray-matter";
+import { parseMatter } from "./frontmatter";
 
 import { getRepoRoot } from "./repo";
 import { normalizeSkillSlug } from "./skillSlug";
@@ -56,7 +56,7 @@ function parseFrontmatter(markdown: string): {
   name: string;
   description: string;
 } {
-  const parsed = matter(markdown);
+  const parsed = parseMatter(markdown);
   const name =
     typeof parsed.data?.name === "string" ? parsed.data.name.trim() : "";
   const description =

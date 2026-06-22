@@ -61,7 +61,7 @@ def test_no_vault_skill_string_literals_in_src(skill_name: str) -> None:
         rel = path.relative_to(project_root).as_posix()
         if rel in ALLOWED_FILES:
             continue
-        for lineno, line in enumerate(path.read_text().splitlines(), start=1):
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
             if pattern.search(line):
                 # Skip comments
                 stripped = line.split("#", 1)[0]

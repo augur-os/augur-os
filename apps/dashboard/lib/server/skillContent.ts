@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import type { Dirent } from "fs";
 import path from "path";
-import matter from "gray-matter";
+import { parseMatter } from "./frontmatter";
 
 import type { SkillCommand, SkillPrompt } from "@/lib/browse/types";
 import { getProjectBrainSkillsRoot } from "@/lib/plugin-discovery/paths";
@@ -63,7 +63,7 @@ async function readMarkdownFile(
 ): Promise<MarkdownSkillContent | null> {
   try {
     const raw = await fs.readFile(filePath, "utf8");
-    const parsed = matter(raw);
+    const parsed = parseMatter(raw);
     const data = parsed.data ?? {};
     const fallbackId = path.basename(filePath, path.extname(filePath));
     const id = frontmatterString(data, "id") ?? fallbackId;

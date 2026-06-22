@@ -120,8 +120,21 @@ def test_score_all_commands_real_data():
     assert set(sample["dimensions"]) == {"docs", "wiring"}
 
 
-def test_browse_commands_include_quality_metadata():
+def test_browse_commands_include_quality_metadata(tmp_path, monkeypatch):
+    from src.config import paths
+    from src.lib.index._scanners_knowledge import index_commands
     from src.mcp.augur_framework.tools.infrastructure.browse import index as browse_index
+
+    # Browse renders command cards from the on-disk RAG index. That index is
+    # runtime state living under the cache dir — it exists on a developer machine
+    # that has indexed before, but NOT in a clean CI checkout, so this test used
+    # to pass locally and fail in CI with an empty command grid. Build a real
+    # commands index from the repo's own skill command docs into a tmp rag dir
+    # and point Browse at it, so the assertion is deterministic everywhere.
+    rag_dir = tmp_path / "rag"
+    indexed = index_commands(paths.get_project_root(), rag_dir)
+    assert indexed > 0, "expected the repo's skill command docs to index"
+    monkeypatch.setattr(paths, "get_rag_category_dir", lambda category: rag_dir / category)
 
     browse_index._populate_command_enrichment()
     result = json.loads(browse_index.browse_index_impl("commands", limit=20))

@@ -86,6 +86,25 @@ def test_infer_title_skips_frontmatter_block_for_meaningful_line():
     assert _infer_title(text, fallback="note") == "The first real sentence of the note."
 
 
+def test_infer_title_ignores_hash_comment_buried_deep_in_body():
+    """A '#'-prefixed line deep in the body — e.g. a shell comment in a code
+    block of a pymupdf/plaintext-extracted PDF — is NOT a markdown H1 and must
+    not beat the real title at the top of the document.
+
+    Regression: pymupdf extraction has no markdown structure, so the heading
+    scan was returning ``# One-time setup`` from a code example hundreds of
+    lines deep instead of the document's actual title on line 1.
+    """
+    from src.lib.index.document_understanding import _infer_title
+
+    lines = ["The New SDLC", "With Vibe Coding", ""]
+    lines += [f"Body paragraph number {i} with enough text." for i in range(40)]
+    lines += ["# One-time setup", "# Then in your coding agent:"]
+    text = "\n".join(lines)
+
+    assert _infer_title(text, fallback="1781556923656") == "The New SDLC"
+
+
 def test_understand_document_uses_markdown_title_not_stem(tmp_path):
     """A markdown file's frontmatter/H1 title beats the bare filename stem."""
     from src.lib.index import document_understanding

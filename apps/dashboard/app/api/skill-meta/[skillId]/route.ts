@@ -21,7 +21,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import matter from "gray-matter";
+import { parseMatter } from "@/lib/server/frontmatter";
 import { callMCPTool, MCPBridge } from "@/lib/mcp/MCPBridge";
 import type { AugurYaml, SkillMeta, SkillMetaSkill, DataSource } from "./_types";
 import { mcpReadFile } from "./_mcp";
@@ -148,7 +148,7 @@ export async function GET(
     : getSkillContent;
   if (skillMdContent && skillMdContent.startsWith("---")) {
     try {
-      cfg = (matter(skillMdContent).data as AugurYaml) || {};
+      cfg = (parseMatter(skillMdContent).data as AugurYaml) || {};
     } catch {
       return NextResponse.json(
         { error: `Failed to parse metadata for skill '${skillId}'` },

@@ -3,6 +3,7 @@
 Launchd-safe (never unloads the service) and instance-scoped (never uses the
 broad `pgrep -f mcp`). Used by the `aug dev build` engine and `/dev build`.
 """
+
 from __future__ import annotations
 
 import logging
@@ -55,29 +56,62 @@ def release_gate_stopped(*, actor: str, reason: str, instance_id: str) -> dict:
 
 
 def scan_mcp_candidates() -> list[dict[str, str]]:
-    if platform.system() != "Darwin":
-        raise NotImplementedError("scan_mcp_candidates requires macOS `ps -E`; extend for other platforms")
-    out = subprocess.run(["ps", "-E", "-o", "pid=,command="],
-                         capture_output=True, text=True, check=False).stdout
-    rows: list[dict[str, str]] = []
-    for line in out.splitlines():
-        if "-m augur_core" not in line and "-m augur_framework" not in line:
-            continue
-        parts = line.strip().split(None, 1)
-        if len(parts) != 2:
-            continue
-        pid, cmd = parts
-        client_id = ""
-        for tok in cmd.split():
-            if tok.startswith("AUGUR_MCP_CLIENT_ID="):
-                client_id = tok.split("=", 1)[1]
-        rows.append({"pid": pid, "client_id": client_id, "cwd": _proc_cwd(pid)})
-    return rows
+    system = platform.system()
+    if system == "Darwin":
+        # macOS `ps -E` inlines the process env into the command column, so
+        # AUGUR_MCP_CLIENT_ID is visible directly in the listed line.
+        out = subprocess.run(["ps", "-E", "-o", "pid=,command="], capture_output=True, text=True, check=False).stdout
+        rows: list[dict[str, str]] = []
+        for line in out.splitlines():
+            if "-m augur_core" not in line and "-m augur_framework" not in line:
+                continue
+            parts = line.strip().split(None, 1)
+            if len(parts) != 2:
+                continue
+            pid, cmd = parts
+            client_id = ""
+            for tok in cmd.split():
+                if tok.startswith("AUGUR_MCP_CLIENT_ID="):
+                    client_id = tok.split("=", 1)[1]
+            rows.append({"pid": pid, "client_id": client_id, "cwd": _proc_cwd(pid)})
+        return rows
+    if system == "Linux":
+        # Linux `ps` has no env-inlining flag; read env + cwd from /proc instead.
+        out = subprocess.run(["ps", "-e", "-o", "pid=,args="], capture_output=True, text=True, check=False).stdout
+        rows = []
+        for line in out.splitlines():
+            if "-m augur_core" not in line and "-m augur_framework" not in line:
+                continue
+            parts = line.strip().split(None, 1)
+            if len(parts) != 2:
+                continue
+            pid, _cmd = parts
+            rows.append({"pid": pid, "client_id": _proc_env_value(pid, "AUGUR_MCP_CLIENT_ID"), "cwd": _proc_cwd(pid)})
+        return rows
+    raise NotImplementedError(f"scan_mcp_candidates is unsupported on {system}; extend for this platform")
+
+
+def _proc_env_value(pid: str, key: str) -> str:
+    """Read one env var of a process from /proc/<pid>/environ (Linux)."""
+    try:
+        with open(f"/proc/{pid}/environ", "rb") as fh:
+            for entry in fh.read().split(b"\0"):
+                if entry.startswith(key.encode() + b"="):
+                    return entry.split(b"=", 1)[1].decode("utf-8", "replace")
+    except OSError:
+        pass
+    return ""
 
 
 def _proc_cwd(pid: str) -> str:
-    out = subprocess.run(["lsof", "-a", "-p", pid, "-d", "cwd", "-Fn"],
-                         capture_output=True, text=True, check=False).stdout
+    if platform.system() == "Linux":
+        try:
+            return os.readlink(f"/proc/{pid}/cwd")
+        except OSError:
+            return ""
+    out = subprocess.run(
+        ["lsof", "-a", "-p", pid, "-d", "cwd", "-Fn"], capture_output=True, text=True, check=False
+    ).stdout
     for ln in out.splitlines():
         if ln.startswith("n"):
             return ln[1:]
@@ -89,8 +123,12 @@ def _own_tree_pids() -> set[str]:
     for _ in range(12):
         pids.add(str(pid))
         try:
-            ppid = int(subprocess.run(["ps", "-o", "ppid=", "-p", str(pid)],
-                                      capture_output=True, text=True, check=False).stdout.strip() or "0")
+            ppid = int(
+                subprocess.run(
+                    ["ps", "-o", "ppid=", "-p", str(pid)], capture_output=True, text=True, check=False
+                ).stdout.strip()
+                or "0"
+            )
         except ValueError:
             break
         if ppid <= 1:
@@ -107,7 +145,8 @@ def instance_mcp_pids(instance: Any, own: set[str] | None = None) -> list[str]:
     own = _own_tree_pids() if own is None else own
     proj = str(instance.project_root)
     return sorted(
-        c["pid"] for c in scan_mcp_candidates()
+        c["pid"]
+        for c in scan_mcp_candidates()
         if c["client_id"].startswith("dashboard-") and c["cwd"] == proj and c["pid"] not in own
     )
 
@@ -116,8 +155,7 @@ DEV_SERVER_MARKERS = ("next dev", "next-server", "start-dev.sh", "start-dev.mjs"
 
 
 def scan_dev_server_candidates() -> list[dict[str, str]]:
-    out = subprocess.run(["ps", "-axo", "pid=,command="],
-                         capture_output=True, text=True, check=False).stdout
+    out = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True, check=False).stdout
     rows: list[dict[str, str]] = []
     for line in out.splitlines():
         parts = line.strip().split(None, 1)
@@ -143,28 +181,47 @@ def instance_dev_server_pids(instance: Any, own: set[str] | None = None) -> list
     root = str(instance.project_root).rstrip("/")
     prefix = root + "/"
     return sorted(
-        c["pid"] for c in scan_dev_server_candidates()
+        c["pid"]
+        for c in scan_dev_server_candidates()
         if c["pid"] not in own and (c["cwd"] == root or c["cwd"].startswith(prefix))
     )
 
 
 def stop_instance(instance: Any, *, dry_run: bool = False) -> dict:
-    decision = request_gate(actor="agent:aug-dev-build", action="restart",
-                            reason="aug dev build scoped restart", instance_id=instance.instance_id)
+    decision = request_gate(
+        actor="agent:aug-dev-build",
+        action="restart",
+        reason="aug dev build scoped restart",
+        instance_id=instance.instance_id,
+    )
     logger.info("scoped restart gate for %s: %s", instance.instance_id, decision.get("decision"))
     if decision.get("decision") != "granted":
-        return {"decision": "denied", "reason": decision.get("reason", ""),
-                "stopped_port_pids": [], "recycled_mcp_pids": [], "stopped_drifted_pids": []}
+        return {
+            "decision": "denied",
+            "reason": decision.get("reason", ""),
+            "stopped_port_pids": [],
+            "recycled_mcp_pids": [],
+            "stopped_drifted_pids": [],
+        }
     own = _own_tree_pids()
     port_pids = sorted(p for p in pids_on_port(instance.dashboard_port) if p not in own)
     drifted_pids = [p for p in instance_dev_server_pids(instance, own=own) if p not in port_pids]
     mcp_pids = instance_mcp_pids(instance, own=own)
-    logger.info("scoped restart for %s: port pids %s, drifted dev-server pids %s, mcp pids %s",
-                instance.instance_id, port_pids, drifted_pids, mcp_pids)
+    logger.info(
+        "scoped restart for %s: port pids %s, drifted dev-server pids %s, mcp pids %s",
+        instance.instance_id,
+        port_pids,
+        drifted_pids,
+        mcp_pids,
+    )
     if dry_run:
-        return {"decision": "granted", "stopped_port_pids": port_pids,
-                "recycled_mcp_pids": mcp_pids, "stopped_drifted_pids": drifted_pids,
-                "dry_run": True}
+        return {
+            "decision": "granted",
+            "stopped_port_pids": port_pids,
+            "recycled_mcp_pids": mcp_pids,
+            "stopped_drifted_pids": drifted_pids,
+            "dry_run": True,
+        }
     for pid in port_pids:
         kill_process_group(pid, graceful=True)
     for pid in drifted_pids:
@@ -179,5 +236,9 @@ def stop_instance(instance: Any, *, dry_run: bool = False) -> dict:
         reason="scoped stop complete; gate released for restart",
         instance_id=instance.instance_id,
     )
-    return {"decision": "granted", "stopped_port_pids": port_pids,
-            "recycled_mcp_pids": mcp_pids, "stopped_drifted_pids": drifted_pids}
+    return {
+        "decision": "granted",
+        "stopped_port_pids": port_pids,
+        "recycled_mcp_pids": mcp_pids,
+        "stopped_drifted_pids": drifted_pids,
+    }

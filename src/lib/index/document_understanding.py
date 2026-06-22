@@ -17,7 +17,7 @@ try:
 except ImportError:  # pragma: no cover — extraction library always available post-Track-1
     extract = None  # type: ignore[assignment]
 
-UNDERSTANDING_VERSION = "v2"
+UNDERSTANDING_VERSION = "v3"
 
 
 def understand_document(path: Path) -> dict[str, Any]:
@@ -152,15 +152,30 @@ def _empty_result(path: Path) -> dict[str, Any]:
     }
 
 
+# A genuine document title (H1) sits at the very top. Bound the heading scan to
+# the first N non-empty lines so a "#"-prefixed code/shell comment deep in the
+# body of a plaintext/pymupdf-extracted document can never be picked as a title.
+_TITLE_HEADING_WINDOW = 15
+
+
 def _infer_title(text: str, fallback: str) -> str:
     # 1. YAML frontmatter `title:` wins when present.
     fm_title = _frontmatter_title(text)
     if fm_title:
         return fm_title[:140]
     body = _strip_frontmatter(text)
-    # 2. First markdown heading (# ...).
+    # 2. First markdown heading (# ...), but only in the title region near the
+    # top. Plaintext/pymupdf extraction has no markdown structure, so a "#" line
+    # deep in the body is a code/shell comment (e.g. "# One-time setup" inside a
+    # snippet), not an H1 — a real title lives at the top of the document.
+    nonempty_seen = 0
     for line in body.splitlines():
         stripped = line.strip()
+        if not stripped:
+            continue
+        nonempty_seen += 1
+        if nonempty_seen > _TITLE_HEADING_WINDOW:
+            break
         if stripped.startswith("#"):
             heading = stripped.lstrip("#").strip()
             if len(heading) >= 3 and not is_noise_title(heading):
