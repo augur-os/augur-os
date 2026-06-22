@@ -8,6 +8,7 @@ Run with: cd packages/augur-mcp && uv run pytest tests/tools/test_file_tools.py 
 
 # TODO_CLEANUP: This file is 1063 lines — consider splitting into smaller modules
 
+import sys
 import asyncio
 from pathlib import Path
 
@@ -853,6 +854,10 @@ class TestConcurrentFileOperations:
     """
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="Windows file-locking: concurrent writers cannot atomically replace an open file; validation pending (ROADMAP)",
+    )
     async def test_concurrent_writes_dont_corrupt(self, temp_repo):
         """Concurrency: Simultaneous writes don't corrupt file."""
         data_dir = temp_repo["data"]

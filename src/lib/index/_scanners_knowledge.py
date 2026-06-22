@@ -359,7 +359,7 @@ def index_adrs(root: Path, rag_dir: Path) -> int:
     central_index_path = decisions_dir / "adrs-index.json"
     if central_index_path.exists():
         try:
-            central_index_rel = str(central_index_path.relative_to(root))
+            central_index_rel = central_index_path.relative_to(root).as_posix()
         except ValueError:
             central_index_rel = str(central_index_path)
 
@@ -746,7 +746,7 @@ def index_agents(root: Path, rag_dir: Path) -> int:
                     "type": "agent",
                     "hub": "dev",
                     "name": name,
-                    "source_path": str(md_file.relative_to(root)),
+                    "source_path": md_file.relative_to(root).as_posix(),
                     "description": description,
                     "tier": role,
                     "mode": mode,
@@ -779,7 +779,7 @@ def index_agents(root: Path, rag_dir: Path) -> int:
             "type": "agent",
             "hub": "dev",
             "name": agent_name,
-            "source_path": str(registry_file.relative_to(root)) if registry_file.exists() else "",
+            "source_path": registry_file.relative_to(root).as_posix() if registry_file.exists() else "",
             "description": description,
             "tier": role,
             "mode": mode,
@@ -913,7 +913,7 @@ def index_integrations(root: Path, rag_dir: Path) -> int:
 
         skill_name = skill_dir.name
         try:
-            source_path = str(skill_md.relative_to(root))
+            source_path = skill_md.relative_to(root).as_posix()
         except ValueError:
             source_path = str(skill_md)
         raw_name = fm.get("name") or data.get("name", skill_name)

@@ -70,7 +70,7 @@ async def list_directory_impl(
                     stat = item.stat()
                     entries.append(
                         {
-                            "name": str(item.relative_to(path)),
+                            "name": item.relative_to(path).as_posix(),
                             "type": "directory" if item.is_dir() else "file",
                             "size": stat.st_size if item.is_file() else None,
                             "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
@@ -145,7 +145,7 @@ async def search_files_impl(
                     for i, line in enumerate(lines):
                         if regex.search(line):
                             match_entry = {
-                                "file": str(file_path.relative_to(search_path)),
+                                "file": file_path.relative_to(search_path).as_posix(),
                                 "line": i + 1,
                                 "content": line.rstrip(),
                             }

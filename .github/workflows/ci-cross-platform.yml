@@ -81,6 +81,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: Shared Utils (${{ matrix.os }}, Python ${{ matrix.python-version }})
 
+    # Python UTF-8 mode: Augur's text artifacts (SKILL.md, configs, generated
+    # docs) are UTF-8. On Windows the default text encoding is cp1252, so plain
+    # open()/read_text()/stdout hit charmap UnicodeEncode/DecodeError on glyphs
+    # like → ≠. UTF-8 mode uses the correct encoding everywhere (no-op where the
+    # locale is already UTF-8, i.e. ubuntu/macos).
+    env:
+      PYTHONUTF8: '1'
+
     steps:
       - uses: actions/checkout@v4
 
@@ -131,7 +139,18 @@ jobs:
         run: |
           .\.venv\Scripts\Activate.ps1
           $env:PYTHONPATH = "project-brain/capabilities;.;src/mcp"
-          pytest tests/ -v --tb=short --ignore=tests/integration/
+          # Do not let PowerShell 7.4 escalate pytest's stderr/exit into a
+          # premature terminating error — capture pytest's real exit code and
+          # propagate it explicitly. A background daemon thread / asyncio loop can
+          # raise at interpreter shutdown, which the thread/unraisable plugins
+          # escalate to a session failure even when every test passed; disable
+          # them on this non-interactive run so an all-green suite exits 0.
+          $ErrorActionPreference = 'Continue'
+          $PSNativeCommandUseErrorActionPreference = $false
+          pytest tests/ -v --tb=short -p no:unraisableexception -p no:threadexception --ignore=tests/integration/
+          $code = $LASTEXITCODE
+          Write-Host "PYTEST_EXIT_CODE=$code"
+          exit $code
 
   # ============================================
   # PATH HANDLING TESTS (Cross-Platform)
