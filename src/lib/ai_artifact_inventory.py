@@ -191,6 +191,46 @@ def load_ai_artifact_inventory(brain_root: Path) -> AiArtifactInventory | None:
     )
 
 
+# Agent projection priority: the canonical Augur source wins, then a stable
+# client order so a client-only agent (no source) collapses deterministically.
+_AGENT_CLIENT_PRIORITY = {"augur": 0, "claude": 1, "codex": 2}
+
+
+def _collapse_agent_profile_records(
+    records: list["AiArtifactRecord"],
+) -> list[tuple["AiArtifactRecord", list[str]]]:
+    """Collapse per-client agent projections into one card per logical agent.
+
+    ``.claude/agents`` and ``.codex/agents`` files are generated projections of
+    the canonical ``plugins/agents`` source (the agent-sync generator writes them
+    with a ``Source:`` header), so the same agent otherwise surfaces 2-3× in the
+    Agents tab. Group by agent stem, keep the canonical source record (or the
+    deterministic client projection when no source exists, e.g. codex-only
+    agents), and return the set of clients the agent is projected to so the card
+    can carry ``client_sources`` badges — mirroring the skills clientSources
+    pattern rather than dropping the generated copies outright.
+    """
+
+    groups: dict[str, list[AiArtifactRecord]] = {}
+    for record in records:
+        stem = Path(record.relative_path).stem.lower()
+        groups.setdefault(stem, []).append(record)
+
+    collapsed: list[tuple[AiArtifactRecord, list[str]]] = []
+    for group in groups.values():
+        winner = min(
+            group,
+            key=lambda record: (
+                0 if record.classification == "source" else 1,
+                _AGENT_CLIENT_PRIORITY.get(record.client, 9),
+                record.relative_path,
+            ),
+        )
+        clients = sorted({record.client for record in group if record.client})
+        collapsed.append((winner, clients))
+    return collapsed
+
+
 def inventory_browse_entries_for_category(category: str) -> list[dict[str, object]]:
     mapping = {
         "skills": {"skill"},
@@ -203,6 +243,17 @@ def inventory_browse_entries_for_category(category: str) -> list[dict[str, objec
         return []
     entries: list[dict[str, object]] = []
     for inventory in load_registered_project_inventories():
+        if category == "agent-profiles":
+            agent_records = [r for r in inventory.artifacts if r.artifact_type in wanted]
+            for winner, clients in _collapse_agent_profile_records(agent_records):
+                entry = _record_to_browse_entry(winner, category, inventory.artifacts)
+                if clients:
+                    entry["client_sources"] = clients
+                    metadata = entry.get("metadata")
+                    if isinstance(metadata, dict):
+                        metadata["clientSources"] = ",".join(clients)
+                entries.append(entry)
+            continue
         for record in inventory.artifacts:
             if record.artifact_type not in wanted:
                 continue

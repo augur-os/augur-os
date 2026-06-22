@@ -638,7 +638,7 @@ def _read_workflows(_params: dict[str, Any]) -> dict[str, Any]:
                 commands.append(
                     {
                         "name": skill_dir.name,
-                        "path": str(skill_md.relative_to(project_root)),
+                        "path": skill_md.relative_to(project_root).as_posix(),
                         "type": "skill",
                     }
                 )
@@ -663,7 +663,7 @@ def _read_plugin_data(params: dict[str, Any]) -> dict[str, Any]:
                 files.append(
                     {
                         "name": f.name,
-                        "path": str(f.relative_to(project_root)),
+                        "path": f.relative_to(project_root).as_posix(),
                         "size": str(f.stat().st_size),
                     }
                 )

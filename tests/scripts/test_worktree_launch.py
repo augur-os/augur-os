@@ -3,6 +3,13 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+import sys as _sys
+import pytest as _pytest
+
+pytestmark = _pytest.mark.skipif(
+    _sys.platform == "win32", reason="POSIX shell (.sh) script; Windows uses the .ps1 adapter"
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = PROJECT_ROOT / "scripts" / "worktree-launch.sh"
 

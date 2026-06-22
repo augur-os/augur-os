@@ -2,7 +2,7 @@
 
 This ledger records the target migration outcome for every skill currently visible in
 the Augur brain stack: global/project skills from `project-brain/capabilities/skills`
-and personal skills from `~/Projects/Au-vault/capabilities/skills`.
+and personal skills from `~/Projects/Au-vault/_augur/capabilities/skills`.
 
 The migration rule is conservative: a skill becomes standard only when the portable
 agent logic can live without Augur runtime metadata, MCP bindings, dashboard pages,

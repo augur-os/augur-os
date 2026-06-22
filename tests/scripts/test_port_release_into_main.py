@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from subprocess import run
 
@@ -88,7 +89,7 @@ def test_port_release_cli_ports_staged_payload(tmp_path: Path) -> None:
 
     result = run(
         [
-            "python3",
+            sys.executable,
             "scripts/port_release_into_main.py",
             "--repo-root",
             str(repo_root),
