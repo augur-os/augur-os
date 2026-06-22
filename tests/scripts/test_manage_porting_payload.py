@@ -1,4 +1,5 @@
 from pathlib import Path
+import sys
 from subprocess import run
 
 from scripts import manage_porting_payload
@@ -8,7 +9,7 @@ def test_init_release_creates_expected_payload_layout(tmp_path: Path) -> None:
     drafts_root = tmp_path / "vault" / "drafts" / "staging"
     result = run(
         [
-            "python3",
+            sys.executable,
             "scripts/manage_porting_payload.py",
             "init-release",
             "--drafts-root",
@@ -61,7 +62,7 @@ def test_validate_release_rejects_unexpected_payload_files(tmp_path: Path) -> No
 
     result = run(
         [
-            "python3",
+            sys.executable,
             "scripts/manage_porting_payload.py",
             "validate-release",
             "--release-root",
@@ -83,7 +84,7 @@ def test_end_to_end_stage_then_port(tmp_path: Path) -> None:
 
     init = run(
         [
-            "python3",
+            sys.executable,
             "scripts/manage_porting_payload.py",
             "init-release",
             "--drafts-root",
@@ -108,7 +109,7 @@ def test_end_to_end_stage_then_port(tmp_path: Path) -> None:
 
     validate = run(
         [
-            "python3",
+            sys.executable,
             "scripts/manage_porting_payload.py",
             "validate-release",
             "--release-root",
@@ -122,7 +123,7 @@ def test_end_to_end_stage_then_port(tmp_path: Path) -> None:
 
     port = run(
         [
-            "python3",
+            sys.executable,
             "scripts/port_release_into_main.py",
             "--repo-root",
             str(repo_root),

@@ -35,7 +35,7 @@ def _build_note_entry(note_path: Path, skill_root: Path, skill_name: str) -> dic
             body = content[end + 4 :].lstrip("\n")
 
     entry = {
-        "name": str(note_path.relative_to(skill_root)),
+        "name": note_path.relative_to(skill_root).as_posix(),
         "skill": skill_name,
         "modified": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
         "preview": body[:500].strip(),

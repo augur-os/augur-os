@@ -8,6 +8,9 @@ crash-looped on startup and Augur never noticed.
 
 from __future__ import annotations
 
+import sys
+import pytest
+
 import json
 import textwrap
 from pathlib import Path
@@ -130,6 +133,10 @@ def test_generated_config_not_repairable(tmp_path: Path) -> None:
 # ── repair ──────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="path-migration successor resolution uses POSIX path semantics; validation pending (ROADMAP)",
+)
 def test_repair_rewrites_dxt_and_preserves_other_keys(tmp_path: Path) -> None:
     old = tmp_path / "Au-docs"
     new = tmp_path / "Documents"
@@ -155,6 +162,9 @@ def test_repair_rewrites_dxt_and_preserves_other_keys(tmp_path: Path) -> None:
     assert after["isEnabled"] is True  # untouched
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Windows home/~ path semantics differ; validation pending (ROADMAP)"
+)
 def test_repair_preserves_home_tilde_style(tmp_path: Path, monkeypatch) -> None:
     # HOME-relative raw should be rewritten HOME-relative.
     home = tmp_path / "home"

@@ -77,7 +77,7 @@ name: Augur
 port: 3000
 paths:
   vault: ~/Projects/Au-vault
-  documents: ~/Projects/Au-docs
+  documents: ~/Documents
 ```
 
 Enterprise deployments should replace these with approved local or managed storage paths. Code should resolve them through `src.config.paths`.
