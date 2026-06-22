@@ -25,11 +25,18 @@ export function isOverlayViewMode(value: string): value is OverlayViewMode {
  * scopes is a distinct card per scope. Those variants are only distinguished by
  * scope/source/path, so the React key (and the dedup key in useBrowseState)
  * must fold those fields in; keying by `item.id` alone collapses or duplicates
- * cards (React "two children with the same key"). Non-overlay views dedup by id
- * alone, so the bare id is already unique there.
+ * cards (React "two children with the same key").
+ *
+ * Non-overlay views also fold the path in defensively: if a backend id ever
+ * collides across distinct files (e.g. filename-stem ids like four `README.md`
+ * or many `bootstrap_paths.py`), keying by bare id would make the dedup in
+ * useBrowseState silently DROP the real twins. Including the path keeps each
+ * distinct file as its own card instead of hiding it.
  */
 export function browseItemKey(item: BrowseItem, viewMode: string): string {
-  if (!isOverlayViewMode(viewMode)) return item.id;
+  if (!isOverlayViewMode(viewMode)) {
+    return [item.id, item.path ?? item.metadata?.source_path ?? ""].join("::");
+  }
   return [
     item.id,
     item.metadata?.vault_scope ?? "",

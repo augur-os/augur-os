@@ -72,7 +72,7 @@ Errors: if `extract-audio` fails because the audio is corrupt or the provider is
 
 Triggered when the user runs `/note --memo` (or `/note memo`) with no path argument. The user wants the most recent macOS Voice Memos recording ingested without manually exporting it.
 
-1. Call atomic MCP tool `voice-memo-latest` with `copy_to` set to the registered Voice Memos inbox folder (the lane named `voice-memos` returned by `inbox-folders`, falling back to `~/Projects/Au-docs/inbox/voice-memos`). The tool reads the macOS Voice Memos sandboxed container and returns `{success, source_path, copied_to, filename, modified_at, size_bytes}` or `{success: false, error, hint}` when the container is TCC-blocked.
+1. Call atomic MCP tool `voice-memo-latest` with `copy_to` set to the registered Voice Memos inbox folder (the lane named `voice-memos` returned by `inbox-folders`, falling back to `~/Documents/inbox/voice-memos`). The tool reads the macOS Voice Memos sandboxed container and returns `{success, source_path, copied_to, filename, modified_at, size_bytes}` or `{success: false, error, hint}` when the container is TCC-blocked.
 2. If `success: false` with the FDA hint, surface the hint to the user verbatim and stop. The user must grant Full Disk Access to their Terminal (or the Python interpreter that runs Augur) in System Settings -> Privacy & Security before this branch can work.
 3. If `success: true`, set `audio_path = copied_to` and continue with the **Audio** flow above. The forced sub-type stays `voice-memo` because the original `--memo` flag is still in effect. The agent should also surface `source_path` and `filename` in the final note-report so the user knows which recording was ingested.
 
