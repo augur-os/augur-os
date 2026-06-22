@@ -15,6 +15,19 @@ from unittest.mock import MagicMock
 import pytest
 
 # =============================================================================
+# WINDOWS ASYNCIO TEARDOWN
+# =============================================================================
+# pytest-asyncio's default ProactorEventLoop emits a spurious KeyboardInterrupt
+# during loop teardown on Windows CI, exit-coding the run as failed even when
+# every test passes. No test here drives asyncio subprocesses (the only feature
+# that requires Proactor), so force the Selector loop on Windows for a clean
+# teardown. No effect on macOS/Linux.
+if sys.platform == "win32":
+    import asyncio
+
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+# =============================================================================
 # PATH SETUP
 # =============================================================================
 

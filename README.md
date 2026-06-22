@@ -9,6 +9,8 @@
 
 Technical review path: [Architecture Review](docs/technical-architecture-review.md) · [Architecture Overview](docs/architecture-overview.md) · [Connection Layer](docs/architecture-mcp-gateway.md)
 
+> 🚧 **Soft launch.** Augur is in active soft launch: the architecture and runtime are public, macOS is supported, and Windows validation is still in progress. Treat this as pre-1.0 — expect rough edges, pin versions, and check the [Roadmap](ROADMAP.md) before depending on it. Issues and feedback are very welcome.
+
 > **Get to know your AI setup, build your local second brain, and talk with your projects.**
 >
 > Ingest your documents, compound them into a wiki, save prompts and skills, ask questions across your local knowledge. The same effective brain context works in Claude Code, Codex CLI, Gemini CLI, Cursor, and Copilot — no vendor lock-in, no Augur-managed API key by default, no cloud service.
@@ -25,6 +27,28 @@ Current support status:
 - Native Windows architecture is implemented.
 - Windows validation is still pending before we make a firmer public support claim.
 - The canonical roadmap lives at [ROADMAP.md](ROADMAP.md).
+
+## Quick Start
+
+> Soft launch: macOS is supported today; Windows validation is in progress.
+
+**Recommended — install through your AI client:**
+
+1. Open [`project-brain/capabilities/skills/onboard/install.md`](project-brain/capabilities/skills/onboard/install.md) and paste its prompt into Claude Code, Codex CLI, Gemini CLI, Cursor, or another supported client.
+2. Answer the first question — **"Which folder should I initialize?"**
+3. The agent runs `uv run aug onboard run` (installs dependencies, builds the dashboard, wires MCP, seeds a local brain, verifies the system), then `uv run aug init --project <folder>`. The dashboard comes up at [localhost:3000](http://localhost:3000).
+
+**Shell install — for contributors who want the repo-first workspace:**
+
+```bash
+git clone https://github.com/augur-os/augur-os.git
+cd augur-os
+uv run aug onboard run
+```
+
+**Requirements:** Python 3.11+, Node 22+, [uv](https://docs.astral.sh/uv/), and pnpm (enabled via corepack).
+
+The full first-run walkthrough and the first-brain workflow are in [Working Locally](#working-locally) below.
 
 ## What is Augur?
 

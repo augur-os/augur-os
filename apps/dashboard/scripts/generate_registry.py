@@ -100,10 +100,10 @@ def _display_path(path: Path) -> str:
     resolved = path.resolve()
     for base in (PROJECT_ROOT, VAULT_ROOT):
         try:
-            return str(resolved.relative_to(base))
+            return resolved.relative_to(base).as_posix()
         except ValueError:
             continue
-    return str(resolved)
+    return resolved.as_posix()
 
 
 def _extract_skill_description(skill_md: Path, fallback: str) -> str:
@@ -202,9 +202,9 @@ def scan_skills() -> dict[str, dict[str, Any]]:
         )
 
         try:
-            rel_path = str(skill_dir.relative_to(PROJECT_ROOT))
+            rel_path = skill_dir.relative_to(PROJECT_ROOT).as_posix()
         except ValueError:
-            rel_path = str(skill_dir)
+            rel_path = skill_dir.as_posix()
 
         skills[skill_dir.name] = {
             "bundle": bundle,
