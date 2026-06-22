@@ -9,3 +9,10 @@ minimumReleaseAgeExclude:
   - esbuild
   - "@esbuild/*"
 trustPolicy: no-downgrade
+# semver@6.3.1 (transitive via eslint-config-next > eslint-plugin-react-hooks >
+# @babel/core) has no provenance attestation while an earlier release did, so the
+# no-downgrade guard rejects it. Excluded to allow the @babel/core>=7.29.6
+# security bump (Dependabot #111). semver@6.3.1 is a long-stable, widely-used
+# release; revisit when the eslint/babel chain ships a provenance-attested semver.
+trustPolicyExclude:
+  - semver@6.3.1
