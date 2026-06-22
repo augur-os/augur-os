@@ -109,14 +109,14 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           . .venv/bin/activate
-          uv pip install pytest pytest-cov pyyaml tomli-w
+          uv pip install pytest pytest-cov pytest-asyncio pyyaml httpx tomli-w
           uv pip install -e src/mcp
 
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
           .\.venv\Scripts\Activate.ps1
-          uv pip install pytest pytest-cov pyyaml tomli-w
+          uv pip install pytest pytest-cov pytest-asyncio pyyaml httpx tomli-w
           uv pip install -e src/mcp
 
       - name: Run shared tests (Unix)

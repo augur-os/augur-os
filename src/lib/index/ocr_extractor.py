@@ -45,6 +45,58 @@ except ImportError:  # pragma: no cover
 _HAS_MLX_VLM: bool | None = None  # None = not yet checked
 
 # ---------------------------------------------------------------------------
+# Transient file-read resilience under concurrent indexing
+# ---------------------------------------------------------------------------
+# When two indexers read the same source at once (the background daemon plus a
+# manual/CLI run), or iCloud is materializing a ~/Documents file, a read can
+# fail with EDEADLK ("Resource deadlock avoided"). That is transient — a short
+# retry succeeds — and must never be recorded as a failed extraction.
+import errno as _errno  # noqa: E402
+import time as _time  # noqa: E402
+
+_LOCK_RETRY_ATTEMPTS = 4
+_LOCK_RETRY_BASE_DELAY = 0.25
+
+
+def is_transient_lock_error(exc: BaseException) -> bool:
+    """True for transient OS/file-lock contention worth retrying (e.g. EDEADLK)."""
+    if isinstance(exc, OSError) and getattr(exc, "errno", None) == _errno.EDEADLK:
+        return True
+    msg = str(exc).lower()
+    return "deadlock avoided" in msg or "resource deadlock" in msg
+
+
+def read_source_bytes(path: Path) -> bytes:
+    """Read a file's bytes, retrying briefly on transient lock contention."""
+    last: BaseException | None = None
+    for attempt in range(_LOCK_RETRY_ATTEMPTS):
+        try:
+            return path.read_bytes()
+        except OSError as exc:
+            last = exc
+            if is_transient_lock_error(exc) and attempt < _LOCK_RETRY_ATTEMPTS - 1:
+                _time.sleep(_LOCK_RETRY_BASE_DELAY * (attempt + 1))
+                continue
+            raise
+    raise last  # type: ignore[misc]
+
+
+def _open_pdf(path: Path) -> "Any":
+    """Open a PDF via pymupdf, retrying briefly on transient lock contention."""
+    last: BaseException | None = None
+    for attempt in range(_LOCK_RETRY_ATTEMPTS):
+        try:
+            return _pymupdf.open(str(path))  # type: ignore[union-attr]
+        except Exception as exc:  # noqa: BLE001 — retry transient locks, re-raise the rest
+            last = exc
+            if is_transient_lock_error(exc) and attempt < _LOCK_RETRY_ATTEMPTS - 1:
+                _time.sleep(_LOCK_RETRY_BASE_DELAY * (attempt + 1))
+                continue
+            raise
+    raise last  # type: ignore[misc]
+
+
+# ---------------------------------------------------------------------------
 # Extension maps
 # ---------------------------------------------------------------------------
 
@@ -102,7 +154,7 @@ def _classify_pdf(path: Path) -> "tuple[str, Any]":
         return "scanned_pdf", None
 
     try:
-        doc = _pymupdf.open(str(path))  # type: ignore[union-attr]
+        doc = _open_pdf(path)
         pages_to_check = min(3, len(doc))
         total_chars = sum(len(doc[i].get_text("text").strip()) for i in range(pages_to_check))
         doc_type = "text_pdf" if total_chars > 50 else "scanned_pdf"
@@ -178,7 +230,7 @@ def _extract_pymupdf(path: Path, doc: "Any | None" = None) -> dict:
     try:
         owned = doc is None
         if owned:
-            doc = _pymupdf.open(str(path))  # type: ignore[union-attr]
+            doc = _open_pdf(path)
         pages: list[str] = []
         for page in doc:
             pages.append(page.get_text("text"))
@@ -199,7 +251,7 @@ def render_pdf_pages_to_png(path: Path, *, dpi: int = 200, max_pages: int | None
     if not _HAS_PYMUPDF:
         return []
     try:
-        doc = _pymupdf.open(str(path))  # type: ignore[union-attr]
+        doc = _open_pdf(path)
     except Exception:  # noqa: BLE001 — unreadable/corrupt PDF; skip, never crash the batch
         return []
     matrix = _pymupdf.Matrix(dpi / 72, dpi / 72)  # type: ignore[union-attr]

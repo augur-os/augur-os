@@ -7,8 +7,13 @@ from pathlib import Path
 from src.lib.onboard.result import OnboardContext, StepResult
 
 
-def _run(cmd: list[str], ctx: OnboardContext, env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, cwd=str(ctx.repo_root), text=True, capture_output=True, env=env)
+def _run(
+    cmd: list[str],
+    ctx: OnboardContext,
+    env: dict[str, str] | None = None,
+    cwd: Path | None = None,
+) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, cwd=str(cwd or ctx.repo_root), text=True, capture_output=True, env=env)
 
 
 def _aug(args: list[str]) -> list[str]:
@@ -25,8 +30,15 @@ def sync_deps(ctx: OnboardContext) -> StepResult:
     # pinned packageManager triggers corepack's interactive "about to download"
     # prompt, which fails non-interactively (fresh users + CI). Auto-approve it.
     sync_env = {**os.environ, "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0"}
-    for cmd in (["corepack", "enable"], ["pnpm", "install"], ["uv", "sync"]):
-        proc = _run(cmd, ctx, env=sync_env)
+    # The pnpm workspace root is apps/dashboard (root has no package.json), so
+    # `pnpm install` must run there; corepack/uv run from the repo root.
+    dashboard_dir = ctx.repo_root / "apps" / "dashboard"
+    for cmd, cwd in (
+        (["corepack", "enable"], None),
+        (["pnpm", "install"], dashboard_dir),
+        (["uv", "sync"], None),
+    ):
+        proc = _run(cmd, ctx, env=sync_env, cwd=cwd)
         if proc.returncode != 0:
             return StepResult.fail(
                 f"`{' '.join(cmd)}` failed: {proc.stderr.strip() or proc.stdout.strip()}",

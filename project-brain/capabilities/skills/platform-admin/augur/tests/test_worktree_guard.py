@@ -79,10 +79,14 @@ def test_main_checkout_guard_passes_on_unborn_main_branch(tmp_path: Path) -> Non
     assert result.is_main_checkout is True
 
 
-def test_main_checkout_guard_blocks_non_main_primary_checkout(tmp_path: Path) -> None:
+def test_main_checkout_guard_blocks_non_main_primary_checkout(tmp_path: Path, monkeypatch) -> None:
     mod = _module()
     repo = _init_repo(tmp_path)
     _git(repo, "checkout", "-b", "feature")
+    # The guard is bypassed in CI; this test asserts the developer-machine
+    # behaviour, so clear the CI markers the runner itself sets.
+    monkeypatch.delenv("CI", raising=False)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
 
     result = mod.check_main_checkout_branch(repo)
 
@@ -90,6 +94,21 @@ def test_main_checkout_guard_blocks_non_main_primary_checkout(tmp_path: Path) ->
     assert result.branch == "feature"
     assert result.is_main_checkout is True
     assert "main checkout is on feature" in result.message
+
+
+def test_main_checkout_guard_bypassed_in_ci_on_non_main(tmp_path: Path, monkeypatch) -> None:
+    mod = _module()
+    repo = _init_repo(tmp_path)
+    _git(repo, "checkout", "-b", "release/v9.9.9")
+    monkeypatch.setenv("CI", "true")
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+
+    result = mod.check_main_checkout_branch(repo)
+
+    assert result.ok is True
+    assert result.branch == "release/v9.9.9"
+    assert result.is_main_checkout is True
+    assert "bypassed in CI" in result.message
 
 
 def test_main_checkout_guard_allows_non_main_linked_worktree(tmp_path: Path) -> None:

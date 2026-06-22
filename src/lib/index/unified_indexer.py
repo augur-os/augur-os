@@ -255,7 +255,15 @@ _DOCUMENT_UNDERSTANDING_FIELDS = {
 def _needs_document_understanding_refresh(meta: dict[str, Any]) -> bool:
     if not _DOCUMENT_UNDERSTANDING_FIELDS.issubset(meta):
         return True
-    return str(meta.get("document_understanding_version") or "") < "v2"
+    # A failed/empty prior extraction must never stick: always retry it so a
+    # transient read failure (e.g. EDEADLK under concurrent indexing) self-heals
+    # on the next index instead of caching an unreadable-source result forever.
+    if str(meta.get("document_extraction_method") or "") == "failed":
+        return True
+    warnings = meta.get("document_low_signal_warnings") or []
+    if "unreadable_source" in warnings or "empty_body" in warnings:
+        return True
+    return str(meta.get("document_understanding_version") or "") < "v3"
 
 
 def _backfill_document_title(meta: dict[str, Any], body: str, stem: str) -> None:
@@ -310,11 +318,21 @@ def _best_effort_document_body(path: Path) -> str:
 
 
 def _document_checksum(path: Path) -> tuple[str, OSError | None]:
-    """Return a content checksum, degrading when macOS refuses a source read."""
+    """Return a content checksum, degrading when macOS refuses a source read.
+
+    Uses the retrying reader so transient lock contention (EDEADLK under
+    concurrent indexing / iCloud materialization) does not get recorded as an
+    unreadable source.
+    """
     import hashlib
 
     try:
-        return hashlib.md5(path.read_bytes(), usedforsecurity=False).hexdigest(), None  # noqa: S324
+        from .ocr_extractor import read_source_bytes
+    except ImportError:  # pragma: no cover - script-path import fallback
+        from ocr_extractor import read_source_bytes  # type: ignore
+
+    try:
+        return hashlib.md5(read_source_bytes(path), usedforsecurity=False).hexdigest(), None  # noqa: S324
     except OSError as exc:
         return "", exc
 
@@ -560,9 +578,9 @@ def _index_document_source(
                 remote_modified_at = catalog_entry.remote_modified_at or source.remote_modified_at
                 if project_root is not None:
                     try:
-                        catalog_entry_path = str(catalog_entry.path.relative_to(project_root))
+                        catalog_entry_path = catalog_entry.path.relative_to(project_root).as_posix()
                     except ValueError:
-                        catalog_entry_path = str(catalog_entry.path)
+                        catalog_entry_path = catalog_entry.path.as_posix()
                 else:
                     catalog_entry_path = ""
             else:

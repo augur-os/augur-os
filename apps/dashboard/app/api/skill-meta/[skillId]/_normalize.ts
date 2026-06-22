@@ -4,7 +4,7 @@
  * Extracted from route.ts (WS5 decomposition). No I/O, no MCP calls.
  */
 
-import matter from "gray-matter";
+import { parseMatter } from "@/lib/server/frontmatter";
 import type { SkillOwnership, SkillUpstream, SkillStatusPayload, MarkdownSkillContent } from "./_types";
 
 export function normalizeOwnership(value: unknown): SkillOwnership {
@@ -80,7 +80,7 @@ export function parseMarkdownContent(
   content: string,
 ): MarkdownSkillContent | null {
   try {
-    const parsed = matter(content);
+    const parsed = parseMatter(content);
     const data = parsed.data ?? {};
 
     const id = frontmatterString(data, "id") ?? filenameStem(fileName);
