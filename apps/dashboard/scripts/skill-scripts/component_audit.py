@@ -46,7 +46,7 @@ def get_dashboard_root() -> Path:
         dashboard = parent / "apps" / "dashboard"
         if dashboard.exists():
             return dashboard
-    return Path.home() / "Projects" / "augur" / "apps" / "dashboard"
+    return Path(__file__).resolve().parents[2]  # apps/dashboard
 
 
 def find_components(dashboard_root: Path) -> list[dict]:

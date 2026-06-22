@@ -22,9 +22,9 @@ def codex_mcp_pythonpath(project_root: str | Path, platform_name: str | None = N
     separator = ";" if _is_windows(platform_name) else ":"
     return separator.join(
         [
-            str(root / "project-brain" / "capabilities"),
-            str(root),
-            str(root / "src" / "mcp"),
+            (root / "project-brain" / "capabilities").as_posix(),
+            root.as_posix(),
+            (root / "src" / "mcp").as_posix(),
         ]
     )
 
@@ -53,13 +53,13 @@ def build_codex_mcp_entry(
                 "-ExecutionPolicy",
                 "Bypass",
                 "-File",
-                str(root / CODEX_MCP_WINDOWS_LAUNCHER),
+                (root / CODEX_MCP_WINDOWS_LAUNCHER).as_posix(),
                 *server_args,
             ],
         }
     else:
         entry = {
-            "command": str(root / CODEX_MCP_LAUNCHER),
+            "command": (root / CODEX_MCP_LAUNCHER).as_posix(),
             "args": list(server_args),
         }
     if startup_timeout_sec is not None:

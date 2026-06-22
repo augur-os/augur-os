@@ -5,7 +5,9 @@ Run with: pytest tests/scripts/test_install_flags.py -v
 """
 
 import subprocess
+import sys
 
+import pytest
 
 from src.config.paths import get_project_root
 
@@ -16,6 +18,7 @@ INSTALL_SCRIPT = PROJECT_ROOT / "scripts" / "install.sh"
 class TestInstallShSyntax:
     """Verify install.sh syntax and structure."""
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX install.sh; bash unavailable on native Windows (uses .ps1)")
     def test_bash_syntax_valid(self):
         result = subprocess.run(
             ["bash", "-n", str(INSTALL_SCRIPT)],

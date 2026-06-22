@@ -138,7 +138,7 @@ class TestMCPConfigTemplateResolution:
         """Cursor config gets client-id 'cursor'."""
         template = (project_root / "src" / "config" / "mcp_config.template.json").read_text()
 
-        resolved = template.replace("${AUGUR_ROOT}", str(project_root))
+        resolved = template.replace("${AUGUR_ROOT}", project_root.as_posix())
         resolved = resolved.replace("${AUGUR_PYTHON}", "python3")
         resolved = resolved.replace("${AUGUR_CLIENT_ID}", "cursor")
 
@@ -149,7 +149,7 @@ class TestMCPConfigTemplateResolution:
         """Windsurf config gets client-id 'windsurf'."""
         template = (project_root / "src" / "config" / "mcp_config.template.json").read_text()
 
-        resolved = template.replace("${AUGUR_ROOT}", str(project_root))
+        resolved = template.replace("${AUGUR_ROOT}", project_root.as_posix())
         resolved = resolved.replace("${AUGUR_PYTHON}", "python3")
         resolved = resolved.replace("${AUGUR_CLIENT_ID}", "windsurf")
 
@@ -160,21 +160,21 @@ class TestMCPConfigTemplateResolution:
         """Environment variables contain resolved project root."""
         template = (project_root / "src" / "config" / "mcp_config.template.json").read_text()
 
-        resolved = template.replace("${AUGUR_ROOT}", str(project_root))
+        resolved = template.replace("${AUGUR_ROOT}", project_root.as_posix())
         resolved = resolved.replace("${AUGUR_PYTHON}", "python3")
         resolved = resolved.replace("${AUGUR_CLIENT_ID}", "cursor")
 
         config = json.loads(resolved)
         env = config["mcpServers"]["augur-core"]["env"]
-        assert env["AUGUR_ROOT"] == str(project_root)
-        assert str(project_root) in env["PYTHONPATH"]
+        assert env["AUGUR_ROOT"] == project_root.as_posix()
+        assert project_root.as_posix() in env["PYTHONPATH"]
         assert str(project_root / "project-brain" / "capabilities") in env["PYTHONPATH"]
 
     def test_no_unresolved_variables(self, project_root):
         """All ${...} variables are resolved — none remain."""
         template = (project_root / "src" / "config" / "mcp_config.template.json").read_text()
 
-        resolved = template.replace("${AUGUR_ROOT}", str(project_root))
+        resolved = template.replace("${AUGUR_ROOT}", project_root.as_posix())
         resolved = resolved.replace("${AUGUR_PYTHON}", "python3")
         resolved = resolved.replace("${AUGUR_CLIENT_ID}", "cursor")
 
@@ -184,12 +184,12 @@ class TestMCPConfigTemplateResolution:
         """MCP server cwd is set to project root."""
         template = (project_root / "src" / "config" / "mcp_config.template.json").read_text()
 
-        resolved = template.replace("${AUGUR_ROOT}", str(project_root))
+        resolved = template.replace("${AUGUR_ROOT}", project_root.as_posix())
         resolved = resolved.replace("${AUGUR_PYTHON}", "python3")
         resolved = resolved.replace("${AUGUR_CLIENT_ID}", "cursor")
 
         config = json.loads(resolved)
-        assert config["mcpServers"]["augur-core"]["cwd"] == str(project_root)
+        assert config["mcpServers"]["augur-core"]["cwd"] == project_root.as_posix()
 
 
 class TestConfigureMcpPythonResolution:
@@ -362,7 +362,7 @@ class TestIDEConfigOutput:
         """Config file is placed at the correct IDE-specific path."""
         template = (project_root / "src" / "config" / "mcp_config.template.json").read_text()
 
-        resolved = template.replace("${AUGUR_ROOT}", str(project_root))
+        resolved = template.replace("${AUGUR_ROOT}", project_root.as_posix())
         resolved = resolved.replace("${AUGUR_PYTHON}", "python3")
         resolved = resolved.replace("${AUGUR_CLIENT_ID}", client_id)
 
@@ -384,7 +384,7 @@ class TestIDEConfigOutput:
         """Written config is parseable JSON."""
         template = (project_root / "src" / "config" / "mcp_config.template.json").read_text()
 
-        resolved = template.replace("${AUGUR_ROOT}", str(project_root))
+        resolved = template.replace("${AUGUR_ROOT}", project_root.as_posix())
         resolved = resolved.replace("${AUGUR_PYTHON}", "python3")
         resolved = resolved.replace("${AUGUR_CLIENT_ID}", client_id)
 
@@ -511,7 +511,7 @@ class TestConfigureMcpRuntimeArgs:
 
         assert set(entries) == {"augur-core"}
         assert entries["augur-core"]["args"] == ["-m", "augur_core", "--client-id", "copilot"]
-        assert entries["augur-core"]["cwd"] == str(project_root)
+        assert entries["augur-core"]["cwd"] == project_root.as_posix()
 
     def test_vscode_copilot_config_path_is_repo_root_scoped(self):
         registry_path = Path(__file__).resolve().parents[4] / "config" / "agents" / "ide_mcp_configs.yaml"
