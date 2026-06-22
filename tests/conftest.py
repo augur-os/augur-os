@@ -14,18 +14,35 @@ from unittest.mock import MagicMock
 
 import pytest
 
-# =============================================================================
-# WINDOWS ASYNCIO TEARDOWN
-# =============================================================================
-# pytest-asyncio's default ProactorEventLoop emits a spurious KeyboardInterrupt
-# during loop teardown on Windows CI, exit-coding the run as failed even when
-# every test passes. No test here drives asyncio subprocesses (the only feature
-# that requires Proactor), so force the Selector loop on Windows for a clean
-# teardown. No effect on macOS/Linux.
-if sys.platform == "win32":
-    import asyncio
 
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+# =============================================================================
+# NO REAL INLINE RAG SYNC IN UNIT TESTS
+# =============================================================================
+@pytest.fixture(autouse=True)
+def _no_real_inline_index_sync(request, monkeypatch):
+    """Keep unit tests off the real index-staleness gate.
+
+    `ensure_fresh_index` spawns a worker thread that runs a real `sync_categories`
+    (subprocess indexing). On Windows those child processes share pytest's console
+    process group, so a console Ctrl event one emits is delivered to pytest as a
+    spurious KeyboardInterrupt that aborts an otherwise-green run (production is
+    immune — the MCP bridge ignores SIGINT/SIGBREAK; pytest does not). It is also
+    slow and side-effectful. Stub it everywhere except the tests that exercise the
+    gate itself. (test_unified_search_fusion.py already stubs it locally.)
+    """
+    if "test_staleness" in request.node.nodeid:
+        return
+    try:
+        from src.lib.index import staleness
+    except Exception:
+        return
+    monkeypatch.setattr(
+        staleness,
+        "ensure_fresh_index",
+        lambda *a, **k: {"stale": False, "synced": False, "warning": None},
+        raising=False,
+    )
+
 
 # =============================================================================
 # PATH SETUP
