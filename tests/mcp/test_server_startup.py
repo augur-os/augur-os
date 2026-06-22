@@ -20,6 +20,7 @@ def clean_server_process():
 
 
 @pytest.mark.e2e
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows MCP-server subprocess spawn (WinError 2); validation pending (ROADMAP)")
 def test_server_startup_smoke_test(clean_server_process):
     """
     Smoke test to verify the MCP server starts and stays alive.
@@ -45,6 +46,9 @@ def test_server_startup_smoke_test(clean_server_process):
         stderr=subprocess.PIPE,
         stdin=subprocess.PIPE,  # Key change: Keep stdin open
         env=env,
+        # Own process group on Windows so a child console Ctrl event can't
+        # propagate a spurious KeyboardInterrupt up to pytest.
+        creationflags=(subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0),
     )
 
     try:

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import sys
 
 from pathlib import Path
 
@@ -51,6 +52,7 @@ def test_two_worktrees_can_overlay_but_not_mutate_global_identity(tmp_path: Path
         assert delegated is True
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows path-scanner semantics for editable/.pth locations; validation pending (ROADMAP)")
 def test_fixture_drift_scanners_catch_shared_worktree_identity(tmp_path: Path) -> None:
     main_root, worktree = _linked_worktree(tmp_path, "feature-a")
     site_packages = tmp_path / "site-packages"

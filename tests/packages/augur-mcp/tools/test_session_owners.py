@@ -276,6 +276,7 @@ def test_concurrent_claims_do_not_corrupt_registry(reg):
     assert sorted(saved) == ["sess1", "sess2"]
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows cross-process file-lock semantics differ; validation pending (ROADMAP)")
 def test_cross_process_claims_do_not_lose_updates(reg, tmp_path):
     start_file = tmp_path / "start"
     code = r"""

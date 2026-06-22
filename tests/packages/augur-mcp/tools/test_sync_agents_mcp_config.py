@@ -10,6 +10,7 @@ Priority: Kimi CLI, Claude CLI, Antigravity, Codex, Cursor, VS Code.
 Run with: pytest tests/packages/augur-mcp/tools/test_sync_agents_mcp_config.py -v
 """
 
+import os
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -138,7 +139,7 @@ class TestMCPConfigTemplateResolution:
         """Cursor config gets client-id 'cursor'."""
         template = (project_root / "src" / "config" / "mcp_config.template.json").read_text()
 
-        resolved = template.replace("${AUGUR_ROOT}", str(project_root))
+        resolved = template.replace("${AUGUR_ROOT}", project_root.as_posix())
         resolved = resolved.replace("${AUGUR_PYTHON}", "python3")
         resolved = resolved.replace("${AUGUR_CLIENT_ID}", "cursor")
 
@@ -149,7 +150,7 @@ class TestMCPConfigTemplateResolution:
         """Windsurf config gets client-id 'windsurf'."""
         template = (project_root / "src" / "config" / "mcp_config.template.json").read_text()
 
-        resolved = template.replace("${AUGUR_ROOT}", str(project_root))
+        resolved = template.replace("${AUGUR_ROOT}", project_root.as_posix())
         resolved = resolved.replace("${AUGUR_PYTHON}", "python3")
         resolved = resolved.replace("${AUGUR_CLIENT_ID}", "windsurf")
 
@@ -160,21 +161,21 @@ class TestMCPConfigTemplateResolution:
         """Environment variables contain resolved project root."""
         template = (project_root / "src" / "config" / "mcp_config.template.json").read_text()
 
-        resolved = template.replace("${AUGUR_ROOT}", str(project_root))
+        resolved = template.replace("${AUGUR_ROOT}", project_root.as_posix())
         resolved = resolved.replace("${AUGUR_PYTHON}", "python3")
         resolved = resolved.replace("${AUGUR_CLIENT_ID}", "cursor")
 
         config = json.loads(resolved)
         env = config["mcpServers"]["augur-core"]["env"]
-        assert env["AUGUR_ROOT"] == str(project_root)
-        assert str(project_root) in env["PYTHONPATH"]
-        assert str(project_root / "project-brain" / "capabilities") in env["PYTHONPATH"]
+        assert env["AUGUR_ROOT"] == project_root.as_posix()
+        assert project_root.as_posix() in env["PYTHONPATH"]
+        assert (project_root / "project-brain" / "capabilities").as_posix() in env["PYTHONPATH"]
 
     def test_no_unresolved_variables(self, project_root):
         """All ${...} variables are resolved — none remain."""
         template = (project_root / "src" / "config" / "mcp_config.template.json").read_text()
 
-        resolved = template.replace("${AUGUR_ROOT}", str(project_root))
+        resolved = template.replace("${AUGUR_ROOT}", project_root.as_posix())
         resolved = resolved.replace("${AUGUR_PYTHON}", "python3")
         resolved = resolved.replace("${AUGUR_CLIENT_ID}", "cursor")
 
@@ -184,12 +185,12 @@ class TestMCPConfigTemplateResolution:
         """MCP server cwd is set to project root."""
         template = (project_root / "src" / "config" / "mcp_config.template.json").read_text()
 
-        resolved = template.replace("${AUGUR_ROOT}", str(project_root))
+        resolved = template.replace("${AUGUR_ROOT}", project_root.as_posix())
         resolved = resolved.replace("${AUGUR_PYTHON}", "python3")
         resolved = resolved.replace("${AUGUR_CLIENT_ID}", "cursor")
 
         config = json.loads(resolved)
-        assert config["mcpServers"]["augur-core"]["cwd"] == str(project_root)
+        assert config["mcpServers"]["augur-core"]["cwd"] == project_root.as_posix()
 
 
 class TestConfigureMcpPythonResolution:
@@ -223,7 +224,12 @@ class TestConfigureMcpPythonResolution:
         from scripts.configure_mcp import _resolve_python
 
         repo_root = tmp_path / "other-worktree"
-        venv_python = repo_root / ".venv" / "bin" / "python3"
+        # _resolve_python looks for the platform venv layout: Scripts/python.exe
+        # on Windows, bin/python3 elsewhere. Create the matching one.
+        if os.name == "nt":
+            venv_python = repo_root / ".venv" / "Scripts" / "python.exe"
+        else:
+            venv_python = repo_root / ".venv" / "bin" / "python3"
         venv_python.parent.mkdir(parents=True)
         venv_python.write_text("")
 
@@ -362,7 +368,7 @@ class TestIDEConfigOutput:
         """Config file is placed at the correct IDE-specific path."""
         template = (project_root / "src" / "config" / "mcp_config.template.json").read_text()
 
-        resolved = template.replace("${AUGUR_ROOT}", str(project_root))
+        resolved = template.replace("${AUGUR_ROOT}", project_root.as_posix())
         resolved = resolved.replace("${AUGUR_PYTHON}", "python3")
         resolved = resolved.replace("${AUGUR_CLIENT_ID}", client_id)
 
@@ -384,7 +390,7 @@ class TestIDEConfigOutput:
         """Written config is parseable JSON."""
         template = (project_root / "src" / "config" / "mcp_config.template.json").read_text()
 
-        resolved = template.replace("${AUGUR_ROOT}", str(project_root))
+        resolved = template.replace("${AUGUR_ROOT}", project_root.as_posix())
         resolved = resolved.replace("${AUGUR_PYTHON}", "python3")
         resolved = resolved.replace("${AUGUR_CLIENT_ID}", client_id)
 
@@ -462,11 +468,14 @@ class TestConfigureMcpRuntimeArgs:
         """Codex CLI config must resolve Augur from the active workspace/worktree."""
         from scripts.configure_mcp import _build_augur_server_entries_for_ide
 
-        entries = _build_augur_server_entries_for_ide("codex_cli", Path("python3"), project_root)
+        # Pin a non-Windows platform: this asserts the POSIX launcher path.
+        # The Windows powershell.exe launcher is covered by the sibling test.
+        with patch("src.cli_config.codex_runtime.platform.system", return_value="Linux"):
+            entries = _build_augur_server_entries_for_ide("codex_cli", Path("python3"), project_root)
 
         assert set(entries) == {"augur-core"}
         entry = entries["augur-core"]
-        assert entry["command"] == str(project_root / "scripts" / "augur-codex-mcp")
+        assert entry["command"] == (project_root / "scripts" / "augur-codex-mcp").as_posix()
         assert entry["args"] == ["-m", "augur_core", "--client-id", "codex"]
         assert entry["startup_timeout_sec"] == 90
         assert "augur_mcp" not in " ".join(entry["args"])
@@ -489,7 +498,7 @@ class TestConfigureMcpRuntimeArgs:
         entry = entries["augur-core"]
         assert entry["command"] == "powershell.exe"
         assert entry["args"][:4] == ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]
-        assert entry["args"][4] == str(project_root / "scripts" / "augur-codex-mcp.ps1")
+        assert entry["args"][4] == (project_root / "scripts" / "augur-codex-mcp.ps1").as_posix()
         assert entry["args"][5:] == ["-m", "augur_core", "--client-id", "codex"]
         assert "cwd" not in entry
         assert "env" not in entry
@@ -502,7 +511,7 @@ class TestConfigureMcpRuntimeArgs:
 
         assert set(entries) == {"augur-core"}
         assert entries["augur-core"]["args"] == ["-m", "augur_core", "--client-id", "cursor"]
-        assert str(project_root / "project-brain" / "capabilities") in entries["augur-core"]["env"]["PYTHONPATH"]
+        assert (project_root / "project-brain" / "capabilities").as_posix() in entries["augur-core"]["env"]["PYTHONPATH"]
 
     def test_copilot_cli_config_uses_copilot_client_id(self, project_root):
         from scripts.configure_mcp import _build_augur_server_entries_for_ide
@@ -511,7 +520,7 @@ class TestConfigureMcpRuntimeArgs:
 
         assert set(entries) == {"augur-core"}
         assert entries["augur-core"]["args"] == ["-m", "augur_core", "--client-id", "copilot"]
-        assert entries["augur-core"]["cwd"] == str(project_root)
+        assert entries["augur-core"]["cwd"] == project_root.as_posix()
 
     def test_vscode_copilot_config_path_is_repo_root_scoped(self):
         registry_path = Path(__file__).resolve().parents[4] / "config" / "agents" / "ide_mcp_configs.yaml"

@@ -14,12 +14,12 @@ from src.plugins.skill_discovery import SkillRecord
 def _relative_path(path: Path, project_root: Path) -> str:
     vault_root = get_vault_dir()
     try:
-        return str(path.relative_to(project_root))
+        return path.relative_to(project_root).as_posix()
     except ValueError:
         try:
-            return str(Path("vault") / path.relative_to(vault_root))
+            return (Path("vault") / path.relative_to(vault_root)).as_posix()
         except ValueError:
-            return str(path)
+            return path.as_posix()
 
 
 def _load_rank(skill_dir: Path) -> tuple[str | None, float | None]:

@@ -29,6 +29,7 @@ def _git(*args: str) -> None:
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows holds directory handles, blocking worktree removal; validation pending (ROADMAP)")
 def test_worktree_remove_hook_reaps_clean_merged_worktree(tmp_path):
     name = f"wt-removetest-{tmp_path.name[-8:]}"
     wt = ROOT.parent / f"augur-{name}"

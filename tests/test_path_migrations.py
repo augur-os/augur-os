@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import sys
 import textwrap
+
+import pytest
 from pathlib import Path
 
 from src.lib import path_migrations as pm
@@ -23,6 +26,7 @@ def _write_map(tmp_path: Path, old: str, new: str) -> Path:
     return cfg
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX path-semantics fixtures (unix-absolute paths); os.path.abspath drive-anchors them on Windows")
 def test_load_migrations_expands_and_skips_malformed(tmp_path: Path) -> None:
     cfg = tmp_path / "m.yaml"
     cfg.write_text(
@@ -101,6 +105,7 @@ def test_append_migration_dedups(tmp_path: Path) -> None:
     assert len(pm.load_migrations(cfg)) == 1
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX path-semantics fixtures (unix-absolute paths); os.path.abspath drive-anchors them on Windows")
 def test_append_migration_preserves_comments(tmp_path: Path) -> None:
     cfg = tmp_path / "m.yaml"
     cfg.write_text("# leading comment\nmigrations:\n", encoding="utf-8")
@@ -123,6 +128,7 @@ def test_reconcile_first_run_seeds_snapshot_no_records(tmp_path: Path, monkeypat
     assert pm.load_migrations(cfg) == []
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX path-semantics fixtures (unix-absolute paths); os.path.abspath drive-anchors them on Windows")
 def test_reconcile_records_moved_root(tmp_path: Path, monkeypatch) -> None:
     cfg = tmp_path / "m.yaml"
     cfg.write_text("migrations:\n", encoding="utf-8")
