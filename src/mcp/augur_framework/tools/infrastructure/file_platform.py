@@ -329,8 +329,11 @@ def resolve_secure_path(
             raise ValueError(f"Repository '{repo}' is not available (available: {list(roots.keys())})")
         repos_to_check = [repo]
 
-    # If path is absolute, validate it's in allowed roots
-    if path_obj.is_absolute():
+    # If path is absolute, validate it's in allowed roots. A leading "/" is
+    # absolute on POSIX but NOT per Path.is_absolute() on Windows (no drive), so
+    # treat it as absolute explicitly — otherwise "/etc/passwd" would be handled
+    # as a relative path and silently escape the outside-roots check on Windows.
+    if path_obj.is_absolute() or str(path).startswith("/"):
         resolved = path_obj.resolve()
         for repo_name in repos_to_check:
             root = roots[repo_name]

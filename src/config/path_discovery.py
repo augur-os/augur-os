@@ -233,7 +233,7 @@ def update_project_yaml(key: str, new_path: Path) -> None:
     data = yaml.safe_load(project_yaml.read_text(encoding="utf-8")) or {}
     if "paths" not in data or not isinstance(data["paths"], dict):
         data["paths"] = {}
-    data["paths"][key] = str(new_path)
+    data["paths"][key] = new_path.as_posix()
 
     tmp_fd, tmp_path = tempfile.mkstemp(dir=project_yaml.parent, suffix=".yaml")
     try:
