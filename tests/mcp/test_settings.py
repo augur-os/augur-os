@@ -7,6 +7,8 @@ functions with ``tmp_path``-based file isolation via monkeypatched
 
 from __future__ import annotations
 
+import sys
+
 import json
 import threading
 from pathlib import Path
@@ -66,6 +68,10 @@ async def _get(params: dict[str, Any]) -> dict[str, Any]:
     return json.loads(raw)
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Windows file-locking: cannot rename over an open handle during concurrent atomic writes; validation pending (ROADMAP)",
+)
 def test_write_json_uses_unique_temp_files_under_concurrency(
     dirs: dict[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:

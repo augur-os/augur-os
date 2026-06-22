@@ -51,7 +51,10 @@ _FORBIDDEN_CHARS = set("\\[]|#")
 def _validate_entry(entry: str, line: str) -> str:
     if any(c in _FORBIDDEN_CHARS or ord(c) < 32 or ord(c) == 127 for c in entry):
         raise SystemExit(f"FATAL: forbidden character in map line: {line!r}")
-    if Path(entry).is_absolute() or ".." in Path(entry).parts:
+    # Map files are posix-relative. `Path("/abs").is_absolute()` is False on
+    # Windows (no drive), so also reject a leading "/" explicitly — an absolute
+    # path must be rejected on every platform, not just where it has a drive.
+    if entry.startswith("/") or Path(entry).is_absolute() or ".." in Path(entry).parts:
         raise SystemExit(f"FATAL: absolute or parent-escaping path in map line: {line!r}")
     return entry
 
