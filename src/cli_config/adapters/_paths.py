@@ -12,21 +12,26 @@ import string
 from pathlib import Path
 
 from src.cli_config.manifest import ServerEntry
-from src.config.paths import get_project_root
+from src.config.paths import get_project_root, get_vault_dir
 
 
 def resolve_entry(entry: ServerEntry) -> ServerEntry:
     """Expand template variables and resolve interpreter path in a server entry.
 
     Substitutes ``${AUGUR_ROOT}`` with the absolute path to the current
-    Augur checkout. If ``command == "python"``, resolves to the project
-    venv interpreter when present; otherwise leaves it as the bare
+    Augur checkout and ``${AUGUR_VAULT}`` with the configured vault root
+    (so vault-tier bundle paths follow a relocated vault instead of a baked
+    ``~/Projects/Au-vault`` literal). If ``command == "python"``, resolves to
+    the project venv interpreter when present; otherwise leaves it as the bare
     ``python`` to fall back on the user's PATH.
 
     Returns a new ``ServerEntry`` with expanded values; does not mutate.
     """
-    augur_root = str(get_project_root())
-    substitutions = {"AUGUR_ROOT": augur_root}
+    # Forward slashes: these land in JSON/TOML client configs. Native Windows
+    # backslashes are invalid JSON escapes ("\U", "\t" ...) and break posix path
+    # assertions; "/" is valid JSON and a legal path separator on Windows.
+    augur_root = get_project_root().as_posix()
+    substitutions = {"AUGUR_ROOT": augur_root, "AUGUR_VAULT": get_vault_dir().as_posix()}
 
     def expand(s: str) -> str:
         return string.Template(s).safe_substitute(substitutions)
@@ -39,7 +44,7 @@ def resolve_entry(entry: ServerEntry) -> ServerEntry:
         else:
             venv_python = Path(augur_root) / ".venv" / "bin" / "python3"
         if venv_python.exists():
-            command = str(venv_python)
+            command = venv_python.as_posix()
 
     return ServerEntry(
         id=entry.id,
