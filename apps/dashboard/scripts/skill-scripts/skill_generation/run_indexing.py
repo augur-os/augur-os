@@ -41,7 +41,7 @@ def main():
     os.environ['AUGUR_RAG_PROJECT_ID'] = project_id
 
     # Determine data directory
-    data_root = os.environ.get('AUGUR_ROOT') or str(Path.home() / 'Projects' / 'augur')
+    data_root = os.environ.get('AUGUR_ROOT') or str(REPO_ROOT)
 
     user_data_dir = str(Path(data_root) / 'local-rag' / 'projects' / project_id)
 

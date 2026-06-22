@@ -121,7 +121,7 @@ def _is_relative_to(path: Path, parent: Path) -> bool:
 def _path_for_source(py_file: Path, root: Path | None) -> str:
     if root is not None:
         try:
-            return str(py_file.relative_to(root))
+            return py_file.relative_to(root).as_posix()
         except ValueError:
             pass
     return str(py_file)

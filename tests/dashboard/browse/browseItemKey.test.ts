@@ -13,11 +13,17 @@ function makeItem(overrides: Partial<BrowseItem>): BrowseItem {
 }
 
 describe("browseItemKey", () => {
-  it("returns the bare id for non-overlay view modes", () => {
-    const item = makeItem({ id: "summary", path: "/a/summary.md", metadata: { vault_scope: "shared" } });
-    // documents/pages/etc dedup by id alone, so the key is just the id.
-    expect(browseItemKey(item, "documents")).toBe("summary");
-    expect(browseItemKey(item, "pages")).toBe("summary");
+  it("folds the path into non-overlay keys so colliding ids never drop distinct files", () => {
+    // documents/scripts/tests can emit filename-stem ids that collide across
+    // distinct files (four README.md, many bootstrap_paths.py). Keying by bare
+    // id would make useBrowseState's dedup silently drop the twins, so the path
+    // is folded in: same id + different path => different key.
+    const a = makeItem({ id: "README", path: "/a/README.md" });
+    const b = makeItem({ id: "README", path: "/b/README.md" });
+    expect(browseItemKey(a, "documents")).not.toBe(browseItemKey(b, "documents"));
+    // Same id + same path is still a genuine duplicate => identical key.
+    const c = makeItem({ id: "README", path: "/a/README.md" });
+    expect(browseItemKey(a, "documents")).toBe(browseItemKey(c, "documents"));
   });
 
   it("disambiguates same-id items across overlay scopes (the duplicate-key bug)", () => {

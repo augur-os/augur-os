@@ -131,6 +131,28 @@ __all__ = [
 ]
 
 
+# Categories whose index entries carry no explicit `id` field and key off the
+# bare filename `name`, which collides across directories (many bootstrap_paths.py,
+# four README.md). Colliding ids make the client dedup (browseItemKey) silently
+# DROP distinct files and misroute detail clicks, so these derive a unique id from
+# the per-entry index-file path instead.
+_FILENAME_ID_COLLISION_CATEGORIES = {"documents", "scripts", "tests"}
+
+
+def _unique_index_id(index_path: object, cat_dir: object) -> str:
+    """Derive a collision-free browse id from an entry's index-file path."""
+    if not index_path:
+        return ""
+    from pathlib import Path
+
+    path = Path(str(index_path))
+    try:
+        rel = path.resolve().relative_to(Path(str(cat_dir)).resolve())
+        return rel.with_suffix("").as_posix()
+    except (ValueError, OSError):
+        return path.stem
+
+
 def browse_index_impl(
     category: str,
     hub: str | None = None,
@@ -145,6 +167,9 @@ def browse_index_impl(
         scheduled_items = scheduled_executions.list_scheduled_execution_items(search=search)
         for entry in scheduled_items:
             entry["type"] = "background-routines"
+        # A declared routine that a schedule actually runs (`/routines run <id>`)
+        # is the same routine surfaced by both pipelines; drop the declared twin.
+        items = background_routines.dedupe_routine_items_against_schedules(items, scheduled_items)
         items = [*items, *scheduled_items]
         if hub:
             items = [item for item in items if item.get("hub") == hub]
@@ -312,6 +337,16 @@ def browse_index_impl(
         name = entry.get("name", "")
         item_id = entry.get("id", "") or name
         item_title = entry.get("title", "") or name
+        if category in _FILENAME_ID_COLLISION_CATEGORIES and not entry.get("id"):
+            unique_id = _unique_index_id(entry.get("_index_path"), cat_dir)
+            if unique_id:
+                item_id = unique_id
+                # scripts/tests carry no `title`, so the bare stem repeats across
+                # skills (14x bootstrap_paths); qualify with the parent dir so each
+                # card is self-distinguishing. documents keep their inferred title.
+                if category != "documents" and not entry.get("title"):
+                    parts = unique_id.split("/")
+                    item_title = "/".join(parts[-2:]) if len(parts) >= 2 else unique_id
         entry_metadata = entry.get("metadata")
         metadata: dict[str, str] = {}
 

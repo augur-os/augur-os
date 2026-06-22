@@ -360,7 +360,7 @@ class CodexAdapter(BaseAdapter):
         config_path = CODEX_HOME / "config.toml"
         config_path.parent.mkdir(parents=True, exist_ok=True)
         desired_marketplace = {
-            "source": str(authority_root.expanduser().resolve()),
+            "source": authority_root.expanduser().resolve().as_posix(),
             "source_type": "local",
         }
 

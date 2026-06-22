@@ -135,7 +135,7 @@ async def list_skill_vault_notes_impl(
                 body = content[end + 4 :].lstrip("\n")
 
         preview = body[:500].strip() if body else ""
-        rel_name = str(md_file.relative_to(vault_dir))
+        rel_name = md_file.relative_to(vault_dir).as_posix()
         modified = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
 
         entry = {

@@ -81,6 +81,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: Shared Utils (${{ matrix.os }}, Python ${{ matrix.python-version }})
 
+    # Python UTF-8 mode: Augur's text artifacts (SKILL.md, configs, generated
+    # docs) are UTF-8. On Windows the default text encoding is cp1252, so plain
+    # open()/read_text()/stdout hit charmap UnicodeEncode/DecodeError on glyphs
+    # like → ≠. UTF-8 mode uses the correct encoding everywhere (no-op where the
+    # locale is already UTF-8, i.e. ubuntu/macos).
+    env:
+      PYTHONUTF8: '1'
+
     steps:
       - uses: actions/checkout@v4
 
@@ -128,10 +136,28 @@ jobs:
 
       - name: Run shared tests (Windows)
         if: runner.os == 'Windows'
+        # The process is terminated during pytest's session-end teardown on
+        # Windows (a console event after every test has passed), so its exit code
+        # is unreliable. Let the step continue; the gate below reads the real
+        # result the conftest records after the test loop, before that teardown.
+        continue-on-error: true
         run: |
           .\.venv\Scripts\Activate.ps1
           $env:PYTHONPATH = "project-brain/capabilities;.;src/mcp"
+          if (Test-Path pytest_win_result.txt) { Remove-Item pytest_win_result.txt -Force }
           pytest tests/ -v --tb=short --ignore=tests/integration/
+
+      - name: Gate on Windows test result
+        if: runner.os == 'Windows'
+        run: |
+          if (-not (Test-Path pytest_win_result.txt)) {
+            Write-Error "pytest did not finish the test loop (no result sentinel) — treating as failure"
+            exit 1
+          }
+          $failed = (Get-Content pytest_win_result.txt -Raw).Trim()
+          Write-Host "Windows pytest testsfailed=$failed"
+          if ($failed -ne "0") { exit 1 }
+          exit 0
 
   # ============================================
   # PATH HANDLING TESTS (Cross-Platform)
