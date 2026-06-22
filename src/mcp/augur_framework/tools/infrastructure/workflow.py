@@ -458,7 +458,7 @@ def register_workflow_tools(
                             "slug": slug,
                             "title": params.name.replace("-", " ").title(),
                             "layer": params.layer,
-                            "path": str(skill_dir.relative_to(PROJECT_ROOT)),
+                            "path": skill_dir.relative_to(PROJECT_ROOT).as_posix(),
                         },
                         "generated": {
                             "structure": True,
