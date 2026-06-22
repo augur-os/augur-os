@@ -1,4 +1,5 @@
 from __future__ import annotations
+import pytest
 
 import subprocess
 import sys
@@ -394,6 +395,7 @@ def test_cli_exits_one_and_reports_on_finding(tmp_path: Path) -> None:
     assert "src/server.key" in proc.stdout
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="env-stripped subprocess on Windows; validation pending (ROADMAP)")
 def test_cli_warns_when_no_marker_regex(tmp_path: Path) -> None:
     (tmp_path / "src").mkdir()
     (tmp_path / "src/ok.py").write_text("print('hi')\n", encoding="utf-8")

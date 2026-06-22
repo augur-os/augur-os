@@ -65,7 +65,7 @@ def test_codex_adapter_global_config_uses_authority_root(tmp_path: Path, monkeyp
         "_build_codex_mcp_servers",
         lambda existing_server_ids=None, **kwargs: {
             "augur-core": {
-                "command": str(main_root / "scripts" / "augur-codex-mcp"),
+                "command": (main_root / "scripts" / "augur-codex-mcp").as_posix(),
                 "args": ["-m", "augur_core", "--client-id", "codex"],
             }
         },
@@ -74,8 +74,8 @@ def test_codex_adapter_global_config_uses_authority_root(tmp_path: Path, monkeyp
     codex.CodexAdapter().generate_mcp_config()
 
     written = (codex_home / "config.toml").read_text(encoding="utf-8")
-    assert str(main_root.resolve()) in written
-    assert str(worktree_root.resolve()) not in written
+    assert main_root.resolve().as_posix() in written
+    assert worktree_root.resolve().as_posix() not in written
 
 
 def test_codex_runtime_check_from_worktree_uses_authority_root(tmp_path: Path) -> None:
@@ -89,12 +89,12 @@ def test_codex_runtime_check_from_worktree_uses_authority_root(tmp_path: Path) -
     (codex_home / "config.toml").write_text(
         f"""\
 [marketplaces.augur-local]
-source = "{main_root.resolve()}"
+source = "{main_root.resolve().as_posix()}"
 source_type = "local"
 
 [mcp_servers.augur-core]
 args = ["-m", "augur_core", "--client-id", "codex"]
-command = "{main_root.resolve() / "scripts" / "augur-codex-mcp"}"
+command = "{(main_root.resolve() / "scripts" / "augur-codex-mcp").as_posix()}"
 startup_timeout_sec = 90
 
 [plugins."augur@augur-local"]

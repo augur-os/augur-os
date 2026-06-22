@@ -127,7 +127,7 @@ def artifacts_list_impl(*, docs_dir: Path) -> dict[str, Any]:
                 "kind": sc.kind,
                 "hub": sc.hub,
                 "url": f"/artifact/{sc.slug}",
-                "path": str(html_path),
+                "path": html_path.as_posix(),
                 "tags": sc.tags,
                 "promoted_at": sc.promoted_at,
                 "created_at": sc.created_at,
@@ -196,8 +196,8 @@ def artifacts_reindex_impl(
             target = target_dir / f"{slug}.html"
             sidecar_path = _sidecar_path_for_html(target)
             proposal = {
-                "html": str(target),
-                "sidecar": str(sidecar_path),
+                "html": target.as_posix(),
+                "sidecar": sidecar_path.as_posix(),
                 "slug": slug,
                 "title": title,
                 "hub": import_hub,
@@ -235,8 +235,8 @@ def artifacts_reindex_impl(
         )
         hub = _hub_from_path(html_path, docs_dir)
         proposal = {
-            "html": str(html_path),
-            "sidecar": str(sidecar_path),
+            "html": html_path.as_posix(),
+            "sidecar": sidecar_path.as_posix(),
             "slug": slug,
             "title": title,
             "hub": hub,
@@ -324,7 +324,7 @@ def save_artifact_impl(
             promoted_at=_now_iso(),
         ),
     )
-    return {"slug": final_slug, "target": str(target), "sidecar": str(sidecar_path)}
+    return {"slug": final_slug, "target": target.as_posix(), "sidecar": sidecar_path.as_posix()}
 
 
 def register_artifacts_tools(

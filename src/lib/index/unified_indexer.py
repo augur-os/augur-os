@@ -993,7 +993,7 @@ def reindex_all(
                         "name": fm_data.get("name", entry_file.stem),
                         "category": category_dir.name,
                         "hub": fm_data.get("hub", ""),
-                        "path": str(entry_file.relative_to(rag_dir)),
+                        "path": entry_file.relative_to(rag_dir).as_posix(),
                         "description": fm_data.get("description", ""),
                     }
                 )

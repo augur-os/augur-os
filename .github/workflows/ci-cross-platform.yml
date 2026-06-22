@@ -81,6 +81,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: Shared Utils (${{ matrix.os }}, Python ${{ matrix.python-version }})
 
+    # Python UTF-8 mode: Augur's text artifacts (SKILL.md, configs, generated
+    # docs) are UTF-8. On Windows the default text encoding is cp1252, so plain
+    # open()/read_text()/stdout hit charmap UnicodeEncode/DecodeError on glyphs
+    # like → ≠. UTF-8 mode uses the correct encoding everywhere (no-op where the
+    # locale is already UTF-8, i.e. ubuntu/macos).
+    env:
+      PYTHONUTF8: '1'
+
     steps:
       - uses: actions/checkout@v4
 
@@ -131,7 +139,7 @@ jobs:
         run: |
           .\.venv\Scripts\Activate.ps1
           $env:PYTHONPATH = "project-brain/capabilities;.;src/mcp"
-          pytest tests/ -v --tb=short --ignore=tests/integration/
+          pytest tests/ -v --tb=short --full-trace --ignore=tests/integration/
 
   # ============================================
   # PATH HANDLING TESTS (Cross-Platform)

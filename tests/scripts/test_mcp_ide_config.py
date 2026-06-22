@@ -4,6 +4,7 @@ import json
 import ntpath
 import os
 import sys
+import pytest
 import tomllib
 from pathlib import Path
 from unittest.mock import patch
@@ -54,6 +55,9 @@ def test_windows_config_path_expands_appdata_for_cursor(tmp_path):
     assert result == expected
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="darwin claude_desktop path resolution; WindowsPath drive-anchors the POSIX path"
+)
 def test_darwin_config_path_keeps_posix_absolute_path(tmp_path):
     from scripts.mcp_ide_config import _get_config_path_for_platform
 

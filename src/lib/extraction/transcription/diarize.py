@@ -1,14 +1,23 @@
 """Speaker diarization via pyannote.audio (optional ``diarization`` extra).
 
 Ported from `island-io/mila <https://github.com/island-io/mila>`_ (Apache-2.0):
-the offline pyannote pipeline configuration, the two monkey-patches required to
-run pyannote 3.x on recent torch/speechbrain, and the path-substring model
-naming that routes the embedding to the torch backend. See NOTICE for
-attribution.
+the offline pyannote pipeline configuration and the path-substring model naming
+that routes the embedding to the torch backend. See NOTICE for attribution.
+
+Runs on pyannote.audio 4.x + torch 2.10. pyannote 4.x keeps the same offline
+SpeakerDiarization config schema used below, and no longer imports the
+``torchaudio.AudioMetaData`` symbol (removed in torchaudio 2.9) or depends on
+speechbrain — so the only compat shim still needed is the ``torch.load``
+``weights_only=False`` patch for the pickled checkpoints (see
+:func:`_apply_compat_patches`).
 
 This module is import-safe without torch/pyannote installed — every heavy
 import is deferred. ``is_available()`` gates callers; the whisper provider only
 runs diarization when both the libraries and the bundled models are present.
+
+Runtime note: pyannote 4.x decodes audio through ``torchcodec``, which loads the
+system FFmpeg shared libraries. A matching FFmpeg install must be discoverable
+for actual diarization (it is not exercised when the gated models are absent).
 
 Models are not redistributed. They are gated on Hugging Face and downloaded
 once via :mod:`src.lib.extraction.transcription.diarize_setup`.
@@ -19,7 +28,6 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 import os
 import tempfile
-import types
 from pathlib import Path
 from typing import TYPE_CHECKING, Sequence
 
@@ -103,31 +111,18 @@ def is_available() -> bool:
 
 
 def _apply_compat_patches() -> None:
-    """Apply the pyannote 3.x compatibility patches (ported from mila).
+    """Apply the pyannote compatibility patch (ported from mila).
 
-    Required as of pyannote.audio 3.x + torch >= 2.6 + recent speechbrain:
-    1. ``torch.load`` defaults to ``weights_only=True`` since torch 2.6, which
-       rejects the pickled pyannote checkpoints.
-    2. speechbrain's ``LazyModule`` raises ``ImportError`` when the lightning
-       stack inspects optional modules; swallow it with a stub module.
-    Remove if a future pyannote/speechbrain release fixes these.
+    ``torch.load`` defaults to ``weights_only=True`` since torch 2.6, which
+    rejects the pickled pyannote checkpoints; force ``weights_only=False`` so the
+    bundled model weights load. This unpickles arbitrary objects, so it is scoped
+    to the operator-installed, license-gated pyannote checkpoints downloaded via
+    ``diarize_setup`` (trusted provenance) — never user-supplied files. Remove if
+    a future pyannote release ships safetensors-only weights.
+
+    (The pyannote 3.x speechbrain ``LazyModule`` shim was dropped — pyannote 4.x
+    no longer depends on speechbrain.)
     """
-    try:
-        import speechbrain.utils.importutils as _sbiu  # type: ignore
-
-        _orig_ensure = _sbiu.LazyModule.ensure_module
-
-        def _safe_ensure(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-            try:
-                return _orig_ensure(self, *args, **kwargs)
-            except ImportError:
-                self.lazy_module = types.ModuleType(self.target)
-                return self.lazy_module
-
-        _sbiu.LazyModule.ensure_module = _safe_ensure
-    except Exception:  # speechbrain optional / API drift — non-fatal
-        logger.debug("speechbrain LazyModule patch skipped", exc_info=True)
-
     import torch  # type: ignore
 
     _orig_torch_load = torch.load

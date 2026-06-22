@@ -126,7 +126,7 @@ class TestCLISubcommands:
             f"Metadata folder: {brain_root}",
             f"Attached folder: {project_root}",
             "AI artifact inventory: 3 records, 1 warnings",
-            f"Inventory path: {brain_root / 'config' / 'inventory' / 'ai-artifacts.json'}",
+            f"Inventory path: {(brain_root / 'config' / 'inventory' / 'ai-artifacts.json').as_posix()}",
             "Chosen-folder writes: project-brain metadata and inventory only",
             (
                 "Existing vendor files: read-only inventory; not adopted, rewritten, "
@@ -224,7 +224,7 @@ class TestCLISubcommands:
             f"Metadata folder: {brain_root}",
             f"Attached folder: {project_root}",
             "AI artifact inventory: 0 records, 0 warnings",
-            f"Inventory path: {brain_root / 'config' / 'inventory' / 'ai-artifacts.json'}",
+            f"Inventory path: {(brain_root / 'config' / 'inventory' / 'ai-artifacts.json').as_posix()}",
             (
                 "Chosen-folder writes: project-brain metadata, inventory, and "
                 "requested generated AI-client projections"
