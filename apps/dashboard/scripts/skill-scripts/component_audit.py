@@ -209,7 +209,7 @@ These components have 0 detected usages (may still be used dynamically):
 3. **Use design tokens** - Replace hardcoded colors and sizes with theme values
 """
 
-    output_path.write_text(report)
+    output_path.write_text(report, encoding="utf-8")
     return report
 
 

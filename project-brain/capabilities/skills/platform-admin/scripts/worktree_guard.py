@@ -100,14 +100,30 @@ def _branch(repo_root: Path) -> str:
     return branch or "HEAD"
 
 
+def _is_ci_environment() -> bool:
+    """True on an ephemeral CI runner (GitHub Actions et al.).
+
+    CI checkouts are single-purpose and short-lived — a PR build routinely sits
+    on a ``release/*`` or detached branch — with no shared developer dashboard or
+    live AI session to strand. The main-checkout-branch protection exists to keep
+    a developer from breaking their shared :3000 by switching the main checkout
+    onto a feature branch, which never applies in CI.
+    """
+    return os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true"
+
+
 def check_main_checkout_branch(repo_root: Path, allowed_branch: str = "main") -> MainCheckoutGuardResult:
     root = repo_root.resolve()
     main_checkout = _main_checkout(root)
     branch = _branch(root)
     is_main_checkout = root == main_checkout
-    ok = (not is_main_checkout) or branch == allowed_branch
+    in_ci = _is_ci_environment()
+    ok = in_ci or (not is_main_checkout) or branch == allowed_branch
     if ok:
-        message = f"branch guard passed: root={root} branch={branch} main_checkout={main_checkout}"
+        if in_ci and is_main_checkout and branch != allowed_branch:
+            message = f"branch guard bypassed in CI: root={root} branch={branch} (ephemeral runner)"
+        else:
+            message = f"branch guard passed: root={root} branch={branch} main_checkout={main_checkout}"
     else:
         message = (
             f"main checkout is on {branch}; continue branch work in a worktree or "

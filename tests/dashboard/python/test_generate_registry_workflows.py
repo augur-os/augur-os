@@ -95,5 +95,6 @@ def test_scan_skills_excludes_repo_root_transitional_records(monkeypatch, tmp_pa
 
     assert sorted(skills) == ["apple", "knowledge"]
     assert skills["knowledge"]["path"] == "project-brain/capabilities/skills/knowledge"
-    assert skills["apple"]["path"] == str(private_skill)
+    # Paths are normalised to forward slashes (Path.as_posix) for cross-OS parity.
+    assert skills["apple"]["path"] == private_skill.as_posix()
     assert all(not meta["path"].startswith("skills/") for meta in skills.values())

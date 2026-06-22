@@ -1,7 +1,7 @@
 """Recovery stages for the dashboard monitor.
 
 Each stage is progressively more aggressive:
-1. restart -- kill zombies, start via npm run dev
+1. restart -- kill zombies, start via the gate-aware start-dev wrapper
 2. clear_cache -- remove .next cache, then restart
 3. reinstall -- remove node_modules, npm install, then restart
 4. full_rebuild -- npm run build, start production server
@@ -230,7 +230,14 @@ def _spawn_dashboard_process(command: list[str], dashboard_dir: Path) -> None:
 def _start_dashboard_dev(dashboard_dir: Path) -> None:
     if _start_launchd_dashboard_service():
         return
-    _spawn_dashboard_process(["npm", "run", "dev"], dashboard_dir)
+    # Start through the gate-aware wrapper (lifecycle-gate coordination +
+    # port-owner detection) instead of `npm run dev` directly. A bare `npm run
+    # dev` bypasses both and can squat a foreign port or resurrect a stale dev
+    # server holding :3000 with a broken in-memory state (CLAUDE.md rule 18/29).
+    if sys.platform == "win32":
+        _spawn_dashboard_process(["node", "scripts/start-dev.mjs"], dashboard_dir)
+    else:
+        _spawn_dashboard_process(["bash", "scripts/start-dev.sh"], dashboard_dir)
 
 
 def _start_dashboard_after_rebuild(dashboard_dir: Path) -> None:
@@ -255,7 +262,7 @@ def _clear_next_dir(next_dir: Path) -> None:
 
 
 def stage_restart() -> bool:
-    """Stage 1: Kill zombies, then restart via npm run dev."""
+    """Stage 1: Kill zombies, then restart via the gate-aware start-dev wrapper."""
     logger.info("Recovery Stage 1: Attempting restart...")
     dashboard_dir = get_dashboard_dir()
 
