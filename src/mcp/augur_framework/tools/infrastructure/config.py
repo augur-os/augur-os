@@ -658,7 +658,7 @@ def register_config_tools(
             if plugin_path.is_file():
                 files = [plugin_path.name]
             else:
-                files = sorted(str(f.relative_to(plugin_path)) for f in plugin_path.rglob("*") if f.is_file())
+                files = sorted(f.relative_to(plugin_path).as_posix() for f in plugin_path.rglob("*") if f.is_file())
 
             return json.dumps(
                 {

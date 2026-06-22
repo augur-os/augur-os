@@ -49,19 +49,23 @@ audio = [
     "pywhispercpp>=1.2.0",
 ]
 diarization = [
-    # Pinned to the 3.x line: the ported pyannote config (version 3.1.0) and the
-    # compat monkey-patches in diarize.py are validated against pyannote 3.x.
-    # pyannote 4.x changed model loading and the pipeline config schema.
-    "pyannote.audio>=3.3.2,<4",
-    # torch/torchaudio on the 2.8.x line. pyannote.audio 3.3.2 itself only requires
-    # torch>=2.0 / torchaudio>=2.2 (no upper bound); torch>=2.6 clears the critical
-    # CVE (vulnerable <2.6.0). The real ceiling is torchaudio>=2.9, which removed the
-    # top-level ``torchaudio.AudioMetaData`` symbol that pyannote 3.x imports against
-    # (breaks `from pyannote.audio import Pipeline`) — so cap <2.9. diarize.py already
-    # carries the torch>=2.6 compat patches (torch.load weights_only=False, speechbrain
-    # LazyModule stub). numpy cap dropped: torch>=2.6 is built against the numpy 2.x ABI.
-    "torch>=2.6,<2.9",
-    "torchaudio>=2.6,<2.9",
+    # pyannote.audio 4.x: it no longer imports the top-level
+    # ``torchaudio.AudioMetaData`` symbol (removed in torchaudio 2.9), which is
+    # what previously forced the torchaudio<2.9 cap. 4.x keeps the SAME offline
+    # SpeakerDiarization config schema (version 3.1.0 + local segmentation/
+    # embedding .bin paths) that diarize.py's _CONFIG_TEMPLATE already uses, so
+    # the ported config carries over unchanged. Note: 4.x dropped the sox/
+    # soundfile audio backends (ffmpeg or in-memory only) — diarize feeds a
+    # 16 kHz mono WAV path, decoded via ffmpeg.
+    "pyannote.audio>=4,<5",
+    # torch/torchaudio on the 2.10.x line clears the remaining torch advisories
+    # (Dependabot #107 <2.9.1, #108 <2.10.0) on top of the earlier critical CVE
+    # (<2.6.0). pyannote 4.x only requires torch>=2.0/torchaudio>=2.0 (no upper
+    # bound). diarize.py keeps the torch.load(weights_only=False) compat patch
+    # for the pickled pyannote checkpoints. torch>=2.x is built against the
+    # numpy 2.x ABI.
+    "torch>=2.10,<2.11",
+    "torchaudio>=2.10,<2.11",
     "huggingface-hub>=0.36.0",
 ]
 ocr = [
