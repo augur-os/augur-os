@@ -60,7 +60,7 @@ vault_tier:
     command: python
     args: [-m, augur_shared.bundle_server, vault]
     bundle: vault
-    bundle_path: ~/Projects/Au-vault/capabilities/skills/vault
+    bundle_path: ${AUGUR_VAULT}/_augur/capabilities/skills/vault
     env:
       PYTHONPATH: "${AUGUR_ROOT}/project-brain/capabilities:${AUGUR_ROOT}:${AUGUR_ROOT}/src/mcp"
       PYTHONUNBUFFERED: "1"
