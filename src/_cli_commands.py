@@ -90,7 +90,7 @@ def _handle_project_init(args: argparse.Namespace, remaining: list[str] | None =
         {
             "created": result.created,
             "sync_returncode": result.sync_returncode,
-            "inventory_path": str(result.inventory_path) if result.inventory_path is not None else None,
+            "inventory_path": result.inventory_path.as_posix() if result.inventory_path is not None else None,
             "inventory_count": result.inventory_count,
             "inventory_warning_count": result.inventory_warning_count,
             "launch_journey": build_project_init_launch_journey(result),

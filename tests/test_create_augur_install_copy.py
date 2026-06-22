@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import subprocess
+import pytest
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -103,6 +105,10 @@ def test_create_augur_readme_distinguishes_fast_launch_and_shell_fallback() -> N
     assert "installs Python and Node dependencies" in text
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="spawns `npm exec` which Windows subprocess cannot resolve (npm.cmd); create-augur CLI content is OS-agnostic",
+)
 def test_create_augur_help_names_supported_setup() -> None:
     package_json = json.loads(_read("packages/create-augur/package.json"))
     bin_target = package_json["bin"]["create-augur"]

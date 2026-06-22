@@ -263,18 +263,21 @@ def _build_server_entry(
     mcp_cwd: Path,
 ) -> dict[str, Any]:
     """Build the MCP server entry for config files."""
+    # Forward slashes: these land in JSON client configs. Native Windows
+    # backslashes are invalid JSON escapes and break posix path assertions;
+    # "/" is valid JSON and a legal path separator on Windows.
     return {
-        "command": str(python_path),
+        "command": Path(python_path).as_posix(),
         "args": mcp_args,
-        "cwd": str(mcp_cwd),
+        "cwd": Path(mcp_cwd).as_posix(),
         "env": {
-            "AUGUR_ROOT": str(repo_root),
+            "AUGUR_ROOT": repo_root.as_posix(),
             "PYTHONUNBUFFERED": "1",
             "PYTHONPATH": os.pathsep.join(
                 [
-                    str(repo_root / "project-brain" / "capabilities"),
-                    str(repo_root),
-                    str(repo_root / "src" / "mcp"),
+                    (repo_root / "project-brain" / "capabilities").as_posix(),
+                    repo_root.as_posix(),
+                    (repo_root / "src" / "mcp").as_posix(),
                 ]
             ),
         },

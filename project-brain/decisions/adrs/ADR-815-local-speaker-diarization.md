@@ -43,6 +43,21 @@ gated model weights, so the default install and the lean whisper path are
 unchanged. Real-data verification on Hebrew speech requires the user's Hugging
 Face token (the pyannote models are gated) and is reported separately.
 
+**2026-06-22 — pyannote 3→4 / torch 2.10 bump (clears Dependabot torch #107,
+#108).** Migrated the `diarization` extra to `pyannote.audio>=4,<5` +
+`torch/torchaudio>=2.10,<2.11`, removing the `torchaudio<2.9` ceiling that the
+torch advisories required. pyannote 4.x keeps the same offline SpeakerDiarization
+config schema (so `diarize._CONFIG_TEMPLATE` is unchanged) and no longer imports
+the removed `torchaudio.AudioMetaData` symbol or depends on speechbrain — the
+speechbrain `LazyModule` shim was dropped; only the `torch.load(weights_only=False)`
+patch for the (trusted, gated) pickled checkpoints remains. Verified at the
+compat boundary (`from pyannote.audio import Pipeline` under torch 2.10, patch
+applies, 17 diarize/whisper unit tests pass, ruff clean). End-to-end inference
+still NOT run (gated models absent locally; `is_available()=False`). New runtime
+dependency surfaced: pyannote 4.x decodes audio via `torchcodec`, which needs the
+system FFmpeg shared libs discoverable — to be validated when diarization is
+actually exercised with models present.
+
 ## Related
 
 - ADR-752 (audio-ingest skill; diarization seam + non-goal it now fills)
