@@ -114,7 +114,7 @@ async def brain_init_impl(project_root: str | None = None, run_sync: bool = Fals
             "project_root": str(result.project_root),
             "created": result.created,
             "sync_returncode": result.sync_returncode,
-            "inventory_path": str(result.inventory_path) if result.inventory_path else None,
+            "inventory_path": result.inventory_path.as_posix() if result.inventory_path else None,
             "inventory_count": result.inventory_count,
             "inventory_warning_count": result.inventory_warning_count,
             "launch_journey": build_project_init_launch_journey(result),
