@@ -53,7 +53,7 @@ async def vault_file_read_impl(skill: str, path: str) -> str:
             "body": body,
             "lines": content.count("\n") + 1,
             "modified": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
-            "path": str(target.relative_to(vault_dir)),
+            "path": target.relative_to(vault_dir).as_posix(),
         },
         default=str,
     )
@@ -99,7 +99,7 @@ async def vault_file_write_impl(
     return json.dumps(
         {
             "success": True,
-            "path": str(target.relative_to(vault_dir)),
+            "path": target.relative_to(vault_dir).as_posix(),
             "created": created,
         }
     )

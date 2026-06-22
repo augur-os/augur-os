@@ -168,7 +168,7 @@ def _collect_category_entries(rag_dir: Path, category: str) -> list[dict[str, An
                     "name": fm_data.get("name", entry_file.stem),
                     "category": category,
                     "hub": fm_data.get("hub", ""),
-                    "path": str(entry_file.relative_to(rag_dir)),
+                    "path": entry_file.relative_to(rag_dir).as_posix(),
                     "description": fm_data.get("description", ""),
                 }
             )

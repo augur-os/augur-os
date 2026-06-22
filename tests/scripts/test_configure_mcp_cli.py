@@ -153,8 +153,8 @@ def test_global_client_config_from_worktree_uses_main_checkout_root(tmp_path, mo
             "augur-core": {
                 "command": "python",
                 "args": ["-m", "augur_core"],
-                "cwd": str(repo_root),
-                "env": {"AUGUR_ROOT": str(repo_root)},
+                "cwd": repo_root.as_posix(),
+                "env": {"AUGUR_ROOT": repo_root.as_posix()},
             }
         }
 
@@ -179,8 +179,8 @@ def test_global_client_config_from_worktree_uses_main_checkout_root(tmp_path, mo
 
     assert configure_mcp.main() == 0
     written = cursor_config.read_text(encoding="utf-8")
-    assert str(main_root.resolve()) in written
-    assert str(worktree_root) not in written
+    assert main_root.resolve().as_posix() in written
+    assert worktree_root.as_posix() not in written
 
 
 def test_repo_local_client_config_from_worktree_keeps_requested_root(tmp_path, monkeypatch):
@@ -227,8 +227,8 @@ def test_repo_local_client_config_from_worktree_keeps_requested_root(tmp_path, m
             "augur-core": {
                 "command": "python",
                 "args": ["-m", "augur_core"],
-                "cwd": str(repo_root),
-                "env": {"AUGUR_ROOT": str(repo_root)},
+                "cwd": repo_root.as_posix(),
+                "env": {"AUGUR_ROOT": repo_root.as_posix()},
             }
         }
 
@@ -253,7 +253,7 @@ def test_repo_local_client_config_from_worktree_keeps_requested_root(tmp_path, m
 
     assert configure_mcp.main() == 0
     written = vscode_config.read_text(encoding="utf-8")
-    assert str(worktree_root) in written
+    assert worktree_root.as_posix() in written
     assert str(PROJECT_ROOT) not in written
 
 
