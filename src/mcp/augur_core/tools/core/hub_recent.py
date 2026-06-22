@@ -85,7 +85,7 @@ async def list_hub_recent_files_impl(
                     skill_files.append(
                         {
                             "name": p.name,
-                            "path": str(p.relative_to(vault_dir)),
+                            "path": p.relative_to(vault_dir).as_posix(),
                             "type": file_type,
                             "skill": skill_name,
                             "modified": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),

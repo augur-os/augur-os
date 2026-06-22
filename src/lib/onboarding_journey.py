@@ -40,7 +40,7 @@ def build_project_init_launch_journey(result: ProjectBrainInitResult) -> dict[st
         "inventory": {
             "count": result.inventory_count,
             "warnings": result.inventory_warning_count,
-            "path": str(result.inventory_path) if result.inventory_path else None,
+            "path": result.inventory_path.as_posix() if result.inventory_path else None,
         },
         "write_boundary": {
             "inventory_only": inventory_only,

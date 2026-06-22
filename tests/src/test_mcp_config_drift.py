@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import json
 from pathlib import Path
 
@@ -34,7 +35,9 @@ def test_global_mcp_config_flags_existing_linked_worktree_root(tmp_path):
             {
                 "mcpServers": {
                     "augur-core": {
-                        "command": str(worktree_root / ".venv" / "bin" / "python3"),
+                        "command": str(
+                            worktree_root / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python3")
+                        ),
                         "args": ["-m", "augur_core"],
                         "cwd": str(worktree_root),
                         "env": {
