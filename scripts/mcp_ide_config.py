@@ -37,7 +37,7 @@ def _expand_path(p: str, repo_root: Path | None = None) -> Path:
     """Expand path with ~ and environment variables."""
     expanded = p
     if repo_root and "{repo_root}" in expanded:
-        expanded = expanded.replace("{repo_root}", str(repo_root))
+        expanded = expanded.replace("{repo_root}", repo_root.as_posix())
     expanded = os.path.expanduser(expanded)
     expanded = _WINDOWS_ENV_VAR_RE.sub(
         lambda match: os.environ.get(match.group(1), match.group(0)),
@@ -395,11 +395,11 @@ def _build_dxt_manifest(
         "server": {
             "type": "python",
             "mcp_config": {
-                "command": str(python_path),
+                "command": Path(python_path).as_posix(),
                 "args": mcp_args,
-                "cwd": str(mcp_cwd),
+                "cwd": Path(mcp_cwd).as_posix(),
                 "env": {
-                    "AUGUR_ROOT": str(repo_root),
+                    "AUGUR_ROOT": repo_root.as_posix(),
                     "PYTHONUNBUFFERED": "1",
                     "PYTHONPATH": f"{repo_root}{os.pathsep}{repo_root / 'src' / 'mcp'}",
                 },

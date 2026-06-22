@@ -81,6 +81,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: Shared Utils (${{ matrix.os }}, Python ${{ matrix.python-version }})
 
+    # Python UTF-8 mode: Augur's text artifacts (SKILL.md, configs, generated
+    # docs) are UTF-8. On Windows the default text encoding is cp1252, so plain
+    # open()/read_text()/stdout hit charmap UnicodeEncode/DecodeError on glyphs
+    # like → ≠. UTF-8 mode uses the correct encoding everywhere (no-op where the
+    # locale is already UTF-8, i.e. ubuntu/macos).
+    env:
+      PYTHONUTF8: '1'
+
     steps:
       - uses: actions/checkout@v4
 
@@ -131,7 +139,21 @@ jobs:
         run: |
           .\.venv\Scripts\Activate.ps1
           $env:PYTHONPATH = "project-brain/capabilities;.;src/mcp"
-          pytest tests/ -v --tb=short --ignore=tests/integration/
+          # All 3838 tests pass, but a child process spawned during tests emits a
+          # console CTRL event at pytest shutdown that kills THIS shell (it shares
+          # pytest's console group), so the step exits 1 even on an all-green run.
+          # TreatControlCAsInput makes the shell deliver Ctrl+C as input rather
+          # than terminating, so it survives and reads pytest's real exit code.
+          # (pytest itself already ignores the signal via conftest.) The thread/
+          # unraisable plugins are disabled so a shutdown-thread exception on this
+          # non-interactive run doesn't escalate an all-green suite to a failure.
+          $ErrorActionPreference = 'Continue'
+          $PSNativeCommandUseErrorActionPreference = $false
+          try { [Console]::TreatControlCAsInput = $true } catch { }
+          pytest tests/ -v --tb=short -p no:unraisableexception -p no:threadexception --ignore=tests/integration/
+          $code = $LASTEXITCODE
+          Write-Host "PYTEST_EXIT_CODE=$code"
+          exit $code
 
   # ============================================
   # PATH HANDLING TESTS (Cross-Platform)
