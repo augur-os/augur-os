@@ -53,17 +53,15 @@ diarization = [
     # compat monkey-patches in diarize.py are validated against pyannote 3.x.
     # pyannote 4.x changed model loading and the pipeline config schema.
     "pyannote.audio>=3.3.2,<4",
-    # torch/torchaudio pinned to the 2.2.x line that mila ships and that
-    # pyannote 3.x imports against. torchaudio >= 2.9 removed the top-level
-    # ``torchaudio.AudioMetaData`` symbol that pyannote 3.x references at import,
-    # so a looser upper bound breaks `from pyannote.audio import Pipeline`.
-    "torch>=2.2.2,<2.3",
-    "torchaudio>=2.2.2,<2.3",
-    # torch 2.2.x is built against the numpy 1.x C-ABI; numpy 2.x breaks its
-    # bridge ("Numpy is not available") at diarization time. Scoped to py<3.13:
-    # torch 2.2.x has no 3.13 wheels anyway, and on 3.13+ markitdown's magika
-    # pulls numpy>=2.1, so an unconditional cap would make the lock unsolvable.
-    "numpy<2; python_version < '3.13'",
+    # torch/torchaudio on the 2.8.x line. pyannote.audio 3.3.2 itself only requires
+    # torch>=2.0 / torchaudio>=2.2 (no upper bound); torch>=2.6 clears the critical
+    # CVE (vulnerable <2.6.0). The real ceiling is torchaudio>=2.9, which removed the
+    # top-level ``torchaudio.AudioMetaData`` symbol that pyannote 3.x imports against
+    # (breaks `from pyannote.audio import Pipeline`) — so cap <2.9. diarize.py already
+    # carries the torch>=2.6 compat patches (torch.load weights_only=False, speechbrain
+    # LazyModule stub). numpy cap dropped: torch>=2.6 is built against the numpy 2.x ABI.
+    "torch>=2.6,<2.9",
+    "torchaudio>=2.6,<2.9",
     "huggingface-hub>=0.36.0",
 ]
 ocr = [
@@ -170,9 +168,20 @@ skips = ["B110", "B112", "B105", "B311", "B404", "B603", "B607", "B101"]
 augur-mcp = { path = "src/mcp", editable = true }
 
 [tool.uv]
+# Security floors for transitive deps (Dependabot alerts). Keep sorted.
 constraint-dependencies = [
-    "cryptography>=46.0.7",
+    "aiohttp>=3.14.1",
+    "cryptography>=48.0.1",
+    "msgpack>=1.2.1",
+    "pydantic-settings>=2.14.2",
     "pygments>=2.20.0",
+    "pyjwt>=2.13.0",
+    "python-multipart>=0.0.31",
+    "starlette>=1.3.1",
+    # NOTE: torch is intentionally NOT floored here — augur-cli[diarization] hard-pins
+    # torch/torchaudio to the 2.2.x line for pyannote.audio 3.x compatibility (see the
+    # diarization extra above). The torch CVEs (incl. the critical) require a pyannote
+    # 3->4 + torchaudio + numpy 1->2 upgrade, which is a separate, deliberate decision.
 ]
 
 [dependency-groups]

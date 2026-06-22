@@ -28,7 +28,7 @@ def _patch_document_extraction(monkeypatch) -> None:
             "document_sections": [],
             "document_extraction_method": "test",
             "document_visual_structure_used": False,
-            "document_understanding_version": "v2",
+            "document_understanding_version": "v3",
             "document_action_candidates": [],
             "document_extraction_confidence": "high",
             "document_low_signal_warnings": [],

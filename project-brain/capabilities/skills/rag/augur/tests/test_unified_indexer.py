@@ -1538,7 +1538,7 @@ def test_index_documents_scrubs_legacy_wiki_compile_metadata_on_cached_hit(tmp_p
         "document_extraction_confidence: medium\n"
         "document_low_signal_warnings: []\n"
         "document_llm_assisted: false\n"
-        "document_understanding_version: v2\n"
+        "document_understanding_version: v3\n"
         "---\n"
         "cached body\n",
         encoding="utf-8",
@@ -2741,3 +2741,41 @@ def test_index_documents_removes_empty_dirs_after_prune(tmp_path):
 
     assert not stale.exists()  # orphan entry pruned
     assert not (rag_dir / "documents" / "gone-folder").exists()  # empty shell removed too
+
+
+def test_needs_document_understanding_refresh_on_failed_or_empty_extraction():
+    """A failed/empty prior extraction must always be retried, never cached as
+    final — so a transient EDEADLK under concurrent indexing self-heals."""
+    from src.lib.index.unified_indexer import (
+        _DOCUMENT_UNDERSTANDING_FIELDS,
+        _needs_document_understanding_refresh,
+    )
+
+    base = {k: "x" for k in _DOCUMENT_UNDERSTANDING_FIELDS}
+
+    failed = {**base, "document_extraction_method": "failed", "document_understanding_version": "v3"}
+    assert _needs_document_understanding_refresh(failed) is True
+
+    empty = {
+        **base,
+        "document_extraction_method": "pymupdf",
+        "document_understanding_version": "v3",
+        "document_low_signal_warnings": ["empty_body", "unreadable_source"],
+    }
+    assert _needs_document_understanding_refresh(empty) is True
+
+    healthy = {
+        **base,
+        "document_extraction_method": "pymupdf",
+        "document_understanding_version": "v3",
+        "document_low_signal_warnings": [],
+    }
+    assert _needs_document_understanding_refresh(healthy) is False
+
+    stale_version = {
+        **base,
+        "document_extraction_method": "pymupdf",
+        "document_understanding_version": "v2",
+        "document_low_signal_warnings": [],
+    }
+    assert _needs_document_understanding_refresh(stale_version) is True

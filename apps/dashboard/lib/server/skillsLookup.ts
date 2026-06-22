@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
-import matter from "gray-matter";
+import { parseMatter } from "./frontmatter";
 
 import { getRepoRoot } from "@/lib/server/repo";
 import type { SkillCommand, SkillPrompt } from "@/lib/browse/types";
@@ -44,7 +44,7 @@ export function getSourcePrefix(resolved: SkillLookup): string {
 async function parseSkillFile(filePath: string): Promise<string | null> {
   try {
     const raw = await fs.readFile(filePath, "utf8");
-    const parsed = matter(raw);
+    const parsed = parseMatter(raw);
     const name =
       typeof parsed.data?.name === "string" ? parsed.data.name.trim() : "";
     return name || null;
@@ -63,7 +63,7 @@ async function readSkillMetaFile(
       readSkillPrompts(skillId),
       readSkillCommands(skillId),
     ]);
-    const parsed = matter(raw);
+    const parsed = parseMatter(raw);
     const d = parsed.data || {};
     return {
       title: d.name || skillId,

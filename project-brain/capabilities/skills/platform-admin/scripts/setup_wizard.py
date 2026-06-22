@@ -470,52 +470,18 @@ def step_dashboard() -> bool:
 
     print_success("Dashboard ready")
 
-    # Configure auto-start service (macOS only)
-    if sys.platform == "darwin":
-        print_step("Configuring dashboard auto-start service...")
-
-        data_dir = str(_get_project_root())
-        plist_path = get_launch_agents_dir() / "com.augur.dashboard.plist"
-
-        # Log files
-        log_dir = get_logs_dir()
-        log_dir.mkdir(parents=True, exist_ok=True)
-        stdout_log = log_dir / "dashboard.stdout.log"
-        stderr_log = log_dir / "dashboard.stderr.log"
-
-        # Find npm/node paths
-        npm_path = shutil.which("npm") or "/usr/local/bin/npm"
-
-        plist_content = _render_plist_template(
-            "com.augur.dashboard.plist.template",
-            {
-                "__LABEL__": "com.augur.dashboard",
-                "__PROGRAM__": npm_path,
-                "__ARG1__": "run",
-                "__ARG2__": "dev",
-                "__WORKING_DIRECTORY__": str(dashboard_path),
-                "__AUGUR_ROOT__": str(data_dir),
-                "__PATH__": "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin",
-                "__STDOUT__": str(stdout_log),
-                "__STDERR__": str(stderr_log),
-            },
-        )
-        try:
-            print_info(f"Writing dashboard service to {plist_path}...")
-            plist_path.write_text(plist_content)
-
-            # Unload first just in case
-            _run_command(["launchctl", "unload", str(plist_path)], capture_output=True)
-
-            # Load service
-            code, output = run_cmd(["launchctl", "load", "-w", str(plist_path)])
-            if code != 0:
-                print_warning(f"Failed to load dashboard service: {output}")
-            else:
-                print_success("Dashboard service configured (auto-starts on login)")
-                print_info("Dashboard will be available at http://localhost:3000")
-        except Exception as e:
-            print_warning(f"Failed to configure dashboard service: {e}")
+    # Dashboard supervision is owned by the unified Augur daemon (configured in
+    # step_services -> service_healer; ADR-787 Part B in-process supervisor). The
+    # dashboard is started through the gate-aware wrapper (`aug dev build` /
+    # apps/dashboard/scripts/start-dev.sh) and self-healed by dashboard_monitor.
+    #
+    # We intentionally do NOT install a standalone `npm run dev` KeepAlive
+    # LaunchAgent here: it bypassed the lifecycle gate and port-owner detection,
+    # and its KeepAlive could resurrect a stale dev server squatting :3000 with a
+    # broken in-memory state (CLAUDE.md rule 18/29).
+    print_info(
+        "Dashboard auto-start and recovery are handled by the unified Augur daemon"
+    )
 
     return True
 
