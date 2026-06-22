@@ -11,6 +11,12 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 import os
 
+try:
+    from src.config.paths import get_project_root
+    _WORKSPACE = str(get_project_root())
+except Exception:  # pragma: no cover - fallback when src is not importable
+    _WORKSPACE = str(Path(__file__).resolve().parents[5])
+
 
 def generate_epic(
     skill_name: str,
@@ -187,7 +193,7 @@ def generate_epic_content(
         'type': 'epic',
         'priority': 'high',
         'skill': skill_name,
-        'workspace': '~/Projects/augur',
+        'workspace': _WORKSPACE,
         'created': datetime.now().strftime('%Y-%m-%d'),
         'status': 'ready',
         'source': 'wizard-generated',
@@ -318,7 +324,7 @@ def generate_feature_content(
         'type': 'feature',
         'priority': feature.get('priority', 'medium'),
         'skill': skill_name,
-        'workspace': '~/Projects/augur',
+        'workspace': _WORKSPACE,
         'created': datetime.now().strftime('%Y-%m-%d'),
         'status': 'ready',
         'source': 'wizard-generated',
@@ -394,7 +400,7 @@ def generate_user_story_content(
         'type': 'user-story',
         'priority': story.get('priority', 'medium'),
         'skill': skill_name,
-        'workspace': '~/Projects/augur',
+        'workspace': _WORKSPACE,
         'created': datetime.now().strftime('%Y-%m-%d'),
         'status': 'ready',
         'source': 'wizard-generated',

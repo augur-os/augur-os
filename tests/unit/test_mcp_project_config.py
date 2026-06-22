@@ -37,7 +37,7 @@ def test_generate_project_mcp_json_writes_only_project_scoped_servers(
     entry = payload["mcpServers"]["augur-core"]
     from src.config.paths import get_project_root
 
-    root = str(get_project_root())
+    root = get_project_root().as_posix()  # configs emit forward slashes (cross-OS / valid JSON)
     # Fully resolved output: Copilot CLI performs no ${VAR} expansion, and
     # Claude only expands variables present in the session environment.
     assert "${AUGUR_ROOT}" not in target.read_text(encoding="utf-8")

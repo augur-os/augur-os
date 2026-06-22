@@ -25,6 +25,10 @@ def _list_augur_framework_tools(extra_env: dict[str, str] | None = None) -> list
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        # Isolate the child into its own process group on Windows so a console
+        # Ctrl+C/Break event it sees can never propagate up to pytest (which
+        # would abort the whole run with a spurious KeyboardInterrupt).
+        creationflags=(subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0),
     )
     try:
         init = {
