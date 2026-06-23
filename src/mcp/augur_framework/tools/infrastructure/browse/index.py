@@ -139,6 +139,35 @@ __all__ = [
 _FILENAME_ID_COLLISION_CATEGORIES = {"documents", "scripts", "tests"}
 
 
+def _disambiguate_colliding_titles(items: list[dict]) -> None:
+    """Append a folder context to document cards that share a display title.
+
+    The document title heuristic infers a heading/author name, so a stack of
+    resumes and cover letters all surface as "Gur Sannikov". The files are
+    genuinely distinct (unique source_path), so rather than re-running the
+    heuristic, disambiguate the *displayed* title in place with the parent
+    folder so the cards are tellable apart in the grid.
+    """
+    from collections import Counter
+    from pathlib import Path
+
+    counts = Counter(str(item.get("title") or "").strip().lower() for item in items)
+    for item in items:
+        title = str(item.get("title") or "").strip()
+        if not title or counts[title.lower()] < 2:
+            continue
+        source_path = str(item.get("source_path") or "")
+        if not source_path:
+            continue
+        path = Path(source_path)
+        # The filename (with its parent folder for context) is the on-disk
+        # discriminator for distinct files that infer the same title — including
+        # versioned files that share a folder, where the folder alone collides.
+        parent = path.parent.name
+        suffix = f"{parent}/{path.name}" if parent else path.name
+        item["title"] = f"{title} · {suffix}"
+
+
 def _unique_index_id(index_path: object, cat_dir: object) -> str:
     """Derive a collision-free browse id from an entry's index-file path."""
     if not index_path:
@@ -449,6 +478,9 @@ def browse_index_impl(
         if category == "integrations" and isinstance(entry.get("cli_tools"), list):
             item["cli_tools"] = entry["cli_tools"]
         items.append(item)
+
+    if category == "documents":
+        _disambiguate_colliding_titles(items)
 
     result: dict = {"items": items, "count": len(items)}
     if missing_category_status and not items:

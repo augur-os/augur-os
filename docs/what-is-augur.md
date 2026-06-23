@@ -143,3 +143,4 @@ The same project, opened in Codex tomorrow, gets the same behavior — because A
 - [docs/architecture-overview.md](./architecture-overview.md) — The Harness in detail (5 layers, runtime substrate, the Inversion)
 - [docs/architecture-mcp-gateway.md](./architecture-mcp-gateway.md) — The Connection Layer (how Augur reaches every client)
 - [docs/getting-started.md](./getting-started.md) — first install, first session
+- [docs/vibe-coding.md](./vibe-coding.md) — building by directing your AI client, and the safe loop

@@ -25,6 +25,13 @@ export const AUGUR_ROOT =
 // with the legacy flat vault/ai path kept readable during migration.
 const CLI_AGENTS_PATH_CANDIDATES = [
   path.join(AUGUR_VAULT_CONFIG_DIR, "ai", "cli_agents.yaml"),
+  // Explicit _augur/config candidate. AUGUR_VAULT_CONFIG_DIR is resolved ONCE at
+  // module load via existsSync, so if the server booted before the vault's
+  // _augur/config existed (e.g. mid vault-sync during `aug dev build`), it cached
+  // the legacy path and EVERY CLI chat failed with "Unknown CLI: <cli>" until the
+  // next restart. resolveCliAgentsPath() re-checks each candidate at call time, so
+  // this finds the real file regardless of that cached choice.
+  path.join(AUGUR_VAULT_DIR, "_augur", "config", "ai", "cli_agents.yaml"),
   path.join(AUGUR_VAULT_DIR, "config", "ai", "cli_agents.yaml"),
   path.join(AUGUR_VAULT_DIR, "ai", "cli_agents.yaml"),
 ];

@@ -172,6 +172,21 @@ describe("getCliAgentsConfig", () => {
     expect(module.isValidCli("codex")).toBe(true);
   });
 
+  it("finds _augur config even when AUGUR_VAULT_CONFIG_DIR cached the legacy path", async () => {
+    // Boot-race regression: AUGUR_VAULT_CONFIG_DIR is resolved ONCE at module
+    // load via existsSync. If the server booted before _augur/config existed
+    // (e.g. mid vault-sync during `aug dev build`), it cached the LEGACY path
+    // and every CLI chat failed with "Unknown CLI". The explicit _augur
+    // candidate must still resolve the file regardless of that cached choice.
+    const { fsCalls, module } = await loadCliConfig(MACHINE_AI_PATH, VAULT_CONFIG_DIR);
+
+    const agents = module.getCliAgentsConfig();
+
+    expect(fsCalls.readFileSync).toHaveBeenCalledWith(MACHINE_AI_PATH, "utf-8");
+    expect(agents.codex.cmd).toEqual(["codex", "exec"]);
+    expect(module.isValidCli("codex")).toBe(true);
+  });
+
   it("adds a direct Ollama CLI backed by the configured local model", async () => {
     const { module } = await loadCliConfigWithPrefs(
       [

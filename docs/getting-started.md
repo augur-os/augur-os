@@ -115,4 +115,5 @@ Day-to-day, you live in the **dashboard browse page** (`/browse`) and your **AI 
 - Discover tools: `aug discover`
 - Search your knowledge: `aug unified-search --query "your topic"`
 - Create a skill: See [creating-skills.md](creating-skills.md)
+- Build by directing your AI client: See [vibe-coding.md](vibe-coding.md)
 - Explore the architecture: See [architecture-overview.md](architecture-overview.md)

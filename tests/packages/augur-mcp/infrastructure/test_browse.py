@@ -32,6 +32,26 @@ from src.mcp.augur_framework.tools.infrastructure.browse import (
     reveal_in_finder_impl,
 )
 
+def test_disambiguate_colliding_document_titles():
+    """Distinct files inferring the same title get a folder/filename suffix."""
+    from src.mcp.augur_framework.tools.infrastructure.browse.index import (
+        _disambiguate_colliding_titles,
+    )
+
+    items = [
+        {"title": "Gur Sannikov", "source_path": "/v/Downloads/resume_a.pdf"},
+        {"title": "Gur Sannikov", "source_path": "/v/Downloads/resume_b.pdf"},
+        {"title": "Unique Doc", "source_path": "/v/career/unique.md"},
+    ]
+    _disambiguate_colliding_titles(items)
+
+    titles = [i["title"] for i in items]
+    assert titles[0] == "Gur Sannikov · Downloads/resume_a.pdf"
+    assert titles[1] == "Gur Sannikov · Downloads/resume_b.pdf"
+    assert titles[2] == "Unique Doc"  # no collision -> untouched
+    assert len(set(titles)) == 3
+
+
 # =============================================================================
 # Fixtures
 # =============================================================================
