@@ -178,6 +178,10 @@ describe("Browse overlay transforms", () => {
     };
 
     expect(browseItemKey(shared, "notes")).not.toBe(browseItemKey(privateItem, "notes"));
-    expect(browseItemKey(shared, "pages")).toBe("daily-note");
+    // Non-overlay modes fold the path into the key (not the scope), so two items
+    // with the same id and same path collapse to one — and the path discriminator
+    // is present so distinct-path same-id files never drop.
+    expect(browseItemKey(shared, "pages")).toBe("daily-note::notes/daily.md");
+    expect(browseItemKey(shared, "pages")).toBe(browseItemKey(privateItem, "pages"));
   });
 });

@@ -14,18 +14,132 @@ from unittest.mock import MagicMock
 
 import pytest
 
-# =============================================================================
-# WINDOWS ASYNCIO TEARDOWN
-# =============================================================================
-# pytest-asyncio's default ProactorEventLoop emits a spurious KeyboardInterrupt
-# during loop teardown on Windows CI, exit-coding the run as failed even when
-# every test passes. No test here drives asyncio subprocesses (the only feature
-# that requires Proactor), so force the Selector loop on Windows for a clean
-# teardown. No effect on macOS/Linux.
-if sys.platform == "win32":
-    import asyncio
 
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+def pytest_configure(config):
+    """Ignore stray console interrupts on Windows CI.
+
+    On Windows the test process shares a console process group with the child
+    servers/subprocesses tests spawn; a CTRL_C/CTRL_BREAK event one of them emits
+    (or that the runner injects on churn) is delivered to pytest's main thread as
+    a spurious KeyboardInterrupt and aborts an otherwise-green run at a
+    non-deterministic point. CI is non-interactive, so there is no legitimate
+    Ctrl+C to honor. This mirrors the production MCP bridge's
+    `_ignore_interactive_interrupts` (SIG_IGN on SIGINT/SIGBREAK) — the reason
+    the server itself is immune while the test harness was not.
+    """
+    if sys.platform != "win32":
+        return
+
+    # Use the Selector event loop on Windows. pytest-asyncio's default
+    # ProactorEventLoop closes via an IOCP/self-pipe whose teardown at session
+    # end emits a console event that kills the process (and shell) right at 100%,
+    # before the summary prints — the root of the all-passed-but-exit-1 failure.
+    # No test drives asyncio subprocesses (the only Proactor-only feature).
+    try:
+        import asyncio
+
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    except Exception:  # noqa: BLE001 - best effort
+        pass
+
+    import signal
+
+    for _name in ("SIGINT", "SIGBREAK"):
+        _sig = getattr(signal, _name, None)
+        if _sig is None:
+            continue
+        try:
+            signal.signal(_sig, signal.SIG_IGN)
+        except (ValueError, OSError):  # not main thread / unsupported — best effort
+            pass
+
+    # Python's SIG_IGN only covers the interpreter's signal layer. A console
+    # CTRL_C/CTRL_BREAK event (from a spawned child's process group, or runner
+    # churn) can still hit the process at shutdown and set a non-zero exit even
+    # when every test passed. SetConsoleCtrlHandler(NULL, TRUE) makes the whole
+    # process ignore Ctrl+C at the OS level for its entire lifetime — the
+    # definitive non-interactive-CI fix.
+    try:
+        import ctypes
+
+        ctypes.windll.kernel32.SetConsoleCtrlHandler(None, True)  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001 - best effort; never block the test run
+        pass
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtestloop(session):
+    """Record the real test-result count to a sentinel after the test loop.
+
+    On Windows the process is terminated during session-end teardown (before the
+    summary prints and before pytest_sessionfinish runs), so the step's exit code
+    is unreliable. Writing the failure count here — immediately after every test
+    has run, before the teardown phase that crashes — lets a follow-up CI step
+    decide pass/fail authoritatively from the actual results.
+    """
+    yield
+    if sys.platform != "win32":
+        return
+    try:
+        with open("pytest_win_result.txt", "w", encoding="utf-8") as fh:
+            fh.write(str(getattr(session, "testsfailed", 0)))
+    except Exception:  # noqa: BLE001 - best effort; never block the run
+        pass
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Force a clean exit on an all-green Windows run.
+
+    On Windows the process reliably runs every test to completion (the summary
+    prints "N passed, 0 failed") but then exit-codes 1: a console CTRL event from
+    a background thread / lingering child during interpreter shutdown (GC, thread
+    joins, asyncio loop close) corrupts the exit status, and no signal/shell-level
+    mitigation has stopped it. When the session itself had zero failures, flush
+    output and os._exit(0) — skipping the problematic shutdown phase entirely.
+    The reported summary is already written by the time this hook runs.
+    """
+    if sys.platform != "win32":
+        return
+    if getattr(session, "testsfailed", 0):
+        return  # real failures: let pytest exit non-zero normally
+    if int(exitstatus) not in (0,):
+        return  # interrupted/usage/internal error: do not mask
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except Exception:  # noqa: BLE001
+        pass
+    os._exit(0)
+
+
+# =============================================================================
+# NO REAL INLINE RAG SYNC IN UNIT TESTS
+# =============================================================================
+@pytest.fixture(autouse=True)
+def _no_real_inline_index_sync(request, monkeypatch):
+    """Keep unit tests off the real index-staleness gate.
+
+    `ensure_fresh_index` spawns a worker thread that runs a real `sync_categories`
+    (subprocess indexing). On Windows those child processes share pytest's console
+    process group, so a console Ctrl event one emits is delivered to pytest as a
+    spurious KeyboardInterrupt that aborts an otherwise-green run (production is
+    immune — the MCP bridge ignores SIGINT/SIGBREAK; pytest does not). It is also
+    slow and side-effectful. Stub it everywhere except the tests that exercise the
+    gate itself. (test_unified_search_fusion.py already stubs it locally.)
+    """
+    if "test_staleness" in request.node.nodeid:
+        return
+    try:
+        from src.lib.index import staleness
+    except Exception:
+        return
+    monkeypatch.setattr(
+        staleness,
+        "ensure_fresh_index",
+        lambda *a, **k: {"stale": False, "synced": False, "warning": None},
+        raising=False,
+    )
+
 
 # =============================================================================
 # PATH SETUP

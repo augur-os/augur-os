@@ -689,7 +689,7 @@ def index_api_routes(root: Path, rag_dir: Path) -> int:
         route_path = "/" + "/".join(parts) if parts else "/"
         safe_name = "__".join(parts) if parts else "root"
 
-        source_path = str(route_file.relative_to(root))
+        source_path = route_file.relative_to(root).as_posix()
         content_text = route_file.read_text(errors="replace")
         methods = sorted(set(_HTTP_METHOD_RE.findall(content_text)))
 
@@ -766,7 +766,7 @@ def index_tests(root: Path, rag_dir: Path) -> int:
 
         for test_file in sorted(tests_dir.glob("test_*.py")):
             try:
-                source_path = str(test_file.relative_to(root))
+                source_path = test_file.relative_to(root).as_posix()
             except ValueError:
                 source_path = str(test_file)
             safe_name = test_file.stem
@@ -811,7 +811,7 @@ def index_tests(root: Path, rag_dir: Path) -> int:
 
             safe_name = "__".join(rel.with_suffix("").parts)
             safe_name = safe_name.replace(".test", "")
-            source_path = str(test_file.relative_to(root))
+            source_path = test_file.relative_to(root).as_posix()
 
             description = ""
             try:
@@ -1003,7 +1003,7 @@ def index_pages(root: Path, rag_dir: Path, documents_dir: Path | None = None) ->
 
         skill_name = skill_dir.name
         try:
-            source_path = str(config_source.relative_to(root))
+            source_path = config_source.relative_to(root).as_posix()
         except ValueError:
             source_path = str(config_source)
 
@@ -1064,7 +1064,7 @@ def index_pages(root: Path, rag_dir: Path, documents_dir: Path | None = None) ->
         skill_name = skill_dir.name
         skill_md = skill_dir / "SKILL.md"
         try:
-            rel_source = str(skill_md.relative_to(root)) if skill_md.exists() else ""
+            rel_source = skill_md.relative_to(root).as_posix() if skill_md.exists() else ""
         except ValueError:
             rel_source = ""
 
@@ -1231,7 +1231,7 @@ def index_blocks(root: Path, rag_dir: Path) -> int:
 
         skill_name = skill_dir.name
         try:
-            source_path = str(skill_md.relative_to(root))
+            source_path = skill_md.relative_to(root).as_posix()
         except ValueError:
             source_path = str(skill_md)
         skill_ref = f"skills/{bundle_name}/{skill_name}"
@@ -1334,7 +1334,7 @@ def _scan_py_for_mcp_tools(
         return 0
 
     try:
-        source_path = str(py_file.relative_to(root))
+        source_path = py_file.relative_to(root).as_posix()
     except ValueError:
         source_path = str(py_file)
 

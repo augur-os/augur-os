@@ -448,9 +448,9 @@ def compute_impact_preview(
         if cap_type == "command":
             path = project_root / client_dir / "commands" / f"{cap_name}.md"
             if path.exists():
-                would_remove.append(str(path.relative_to(project_root)))
+                would_remove.append(path.relative_to(project_root).as_posix())
         elif cap_type == "skill":
             dir_path = project_root / client_dir / "skills" / cap_name
             if dir_path.is_dir():
-                would_remove.append(str(dir_path.relative_to(project_root)))
+                would_remove.append(dir_path.relative_to(project_root).as_posix())
     return {"would_remove": sorted(would_remove)}

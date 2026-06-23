@@ -46,6 +46,26 @@ def _record(
     )
 
 
+def test_collapse_agent_profiles_prefers_source_and_collects_clients() -> None:
+    """Per-client agent projections collapse to one card per logical agent."""
+    records = [
+        _record(id="a1", client="claude", classification="generated", relative_path=".claude/agents/advisor.md"),
+        _record(id="a2", client="codex", classification="generated", relative_path=".codex/agents/advisor.md"),
+        _record(id="a3", client="augur", classification="source", relative_path="plugins/agents/advisor.md"),
+        # Client-only agent with no augur source must survive as its own card.
+        _record(id="b1", client="codex", classification="source", relative_path=".codex/agents/codex-rescue.md"),
+    ]
+
+    collapsed = ai_inventory._collapse_agent_profile_records(records)
+    by_stem = {Path(winner.relative_path).stem: clients for winner, clients in collapsed}
+
+    assert len(collapsed) == 2  # advisor (3 projections) + codex-rescue (client-only)
+    advisor_winner = next(w for w, _ in collapsed if Path(w.relative_path).stem == "advisor")
+    assert advisor_winner.client == "augur"  # canonical source wins
+    assert by_stem["advisor"] == ["augur", "claude", "codex"]
+    assert by_stem["codex-rescue"] == ["codex"]
+
+
 def test_problem_metadata_flags_scanner_warnings_and_low_confidence() -> None:
     assert hasattr(ai_inventory, "derive_ai_artifact_problem_metadata")
     record = _record(

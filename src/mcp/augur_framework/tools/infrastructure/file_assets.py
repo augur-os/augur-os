@@ -65,8 +65,14 @@ def _validate_asset_magic_bytes(data: bytes, extension: str) -> tuple[bool, str]
 
 
 def _guess_mime_type(path: Path) -> str:
-    """Guess MIME type from file extension, falling back to application/octet-stream."""
+    """Guess MIME type from file extension, falling back to application/octet-stream.
+
+    Normalizes platform-specific aliases (Windows' registry reports .zip as
+    ``application/x-zip-compressed``) to the canonical IANA type for cross-OS parity.
+    """
     mime_type, _ = mimetypes.guess_type(str(path))
+    if mime_type == "application/x-zip-compressed":
+        mime_type = "application/zip"
     return mime_type or "application/octet-stream"
 
 
