@@ -32,13 +32,15 @@ Current support status:
 
 > Soft launch: macOS is supported today; Windows validation is in progress.
 
-**Recommended — install through your AI client:**
+**TL;DR:** paste the install prompt into your AI client, answer "Which folder should I initialize?", and let Augur build itself. The dashboard comes up at [localhost:3000](http://localhost:3000).
+
+### Fastest — through your AI client (recommended)
 
 1. Open [`project-brain/capabilities/skills/onboard/install.md`](project-brain/capabilities/skills/onboard/install.md) and paste its prompt into Claude Code, Codex CLI, Gemini CLI, Cursor, or another supported client.
 2. Answer the first question — **"Which folder should I initialize?"**
-3. The agent runs `uv run aug onboard run` (installs dependencies, builds the dashboard, wires MCP, seeds a local brain, verifies the system), then `uv run aug init --project <folder>`. The dashboard comes up at [localhost:3000](http://localhost:3000).
+3. The agent runs `uv run aug onboard run` (installs dependencies, builds the dashboard, wires MCP, seeds a local brain, verifies the system), then `uv run aug init --project <folder>`.
 
-**Shell install — for contributors who want the repo-first workspace:**
+### Manual — shell (repo-first workspace)
 
 ```bash
 git clone https://github.com/augur-os/augur-os.git
@@ -48,7 +50,18 @@ uv run aug onboard run
 
 **Requirements:** Python 3.11+, Node 22+, [uv](https://docs.astral.sh/uv/), and pnpm (enabled via corepack).
 
-The full first-run walkthrough and the first-brain workflow are in [Working Locally](#working-locally) below.
+### Verify it worked
+
+1. Open the dashboard at [localhost:3000](http://localhost:3000) — it should load to an interactive Browse surface.
+2. Run a first `/ask` (or `/discover`) in your AI client to confirm the brain answers.
+
+The full first-run walkthrough and the first-brain workflow are in [Getting Started](docs/getting-started.md) and [Working Locally](#working-locally) below.
+
+## Vibe coding with Augur
+
+Augur gives your AI client durable context — vault, wiki, memory — plus reusable skills and MCP tools, so you can build fast by directing the agent instead of wiring each project by hand. The same brain rides across Claude Code, Codex, Gemini, Cursor, and Copilot, so switching clients doesn't reset your setup.
+
+> ⚠️ **Keep a human in the loop.** Review and test AI-generated code and output before you rely on it. Augur is pre-1.0 soft launch — expect rough edges, pin versions, and mind secrets and private data. See [docs/vibe-coding.md](docs/vibe-coding.md) for the safe loop and the full caveats.
 
 ## What is Augur?
 

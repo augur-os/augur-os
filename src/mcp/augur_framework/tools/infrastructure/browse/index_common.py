@@ -1,6 +1,9 @@
 """Shared constants and small value helpers for the browse index modules."""
 
-_BROWSE_LIMIT = 1000  # Max items per browse request to prevent MCP timeout
+# Max items per browse request to prevent MCP timeout. Sized above the largest
+# real category (tests ~1038) so dev-tier tabs aren't silently truncated; the
+# result still carries total_count/truncated as a safety net past this bound.
+_BROWSE_LIMIT = 1500
 
 _FILESYSTEM_BACKED_CATEGORIES = {
     "actions",
