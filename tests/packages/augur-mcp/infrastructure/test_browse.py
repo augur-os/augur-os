@@ -32,6 +32,7 @@ from src.mcp.augur_framework.tools.infrastructure.browse import (
     reveal_in_finder_impl,
 )
 
+
 def test_disambiguate_colliding_document_titles():
     """Distinct files inferring the same title get a folder/filename suffix."""
     from src.mcp.augur_framework.tools.infrastructure.browse.index import (
