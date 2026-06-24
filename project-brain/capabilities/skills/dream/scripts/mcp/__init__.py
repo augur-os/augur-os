@@ -369,7 +369,7 @@ def _run_dream_cli(args, remaining) -> int:
 
 
 def _with_dream_alias_deprecation(payload):
-    message = "DEPRECATED alias: use /routines run dream. This alias retires after the ADR-758 transition release."
+    message = "DEPRECATED alias: use /a-loops run dream. This alias retires after the ADR-758 transition release."
     if isinstance(payload, dict):
         payload = dict(payload)
         payload.setdefault("deprecation", message)

@@ -85,6 +85,8 @@ def register_infrastructure_tools(
     from .artifacts import register_artifacts_tools
     from .auto_index_notes import register_auto_index_notes_tools
     from .browse import register_browse_tools
+    from .browse_delete_triage import register_browse_delete_triage_tools
+    from .browse_trash import register_browse_trash_tools
     from .config import register_config_tools
     from .documents import register_document_tools
     from .files import register_file_tools
@@ -157,6 +159,10 @@ def register_infrastructure_tools(
 
     # Register browse tools (file actions: reveal, open)
     register_browse_tools(mcp, mcp_tool_interceptor, metrics)
+
+    # Register browse multi-select delete tools
+    register_browse_trash_tools(mcp, mcp_tool_interceptor, metrics)
+    register_browse_delete_triage_tools(mcp, mcp_tool_interceptor, metrics)
 
     # Register Brain Harness control-plane tools (ADR-552)
     register_harness_tools(mcp, mcp_tool_interceptor, metrics)

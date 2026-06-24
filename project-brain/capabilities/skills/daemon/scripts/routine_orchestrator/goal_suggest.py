@@ -1,4 +1,4 @@
-"""Suggestion engine for /routines goal.
+"""Suggestion engine for /a-loops goal.
 
 assess(): run loop scanners in pure scan-only mode (no mutation) and aggregate
 findings per loop. suggest(): rank catalog goals by their live findings so the
@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import math
 import signal
 import threading
 from dataclasses import dataclass
@@ -22,6 +23,9 @@ except ImportError:  # pragma: no cover - direct-path import fallback
     from routine_orchestrator import goal_catalog, scan_phase  # type: ignore[no-redef]
 
 ScanFn = Callable[..., list[dict[str, Any]]]
+
+SENTINEL_TIMEOUT = "goal_suggest_timeout"
+SENTINEL_CRASHED = "goal_suggest_crashed"
 
 # Roughly how many findings one convergence iteration is expected to clear.
 _FINDINGS_PER_ITERATION = 5
@@ -52,11 +56,13 @@ def assess(
     project_root: Path | str,
     scan: ScanFn = scan_phase.scan_loop,
     per_loop_timeout_seconds: float | None = None,
+    mark_crashes: bool = False,
 ) -> dict[str, list[dict[str, Any]]]:
     """Scan each loop without mutating anything; return findings per loop.
 
     A scanner that crashes contributes an empty list (assessment never aborts on
-    one bad scanner).
+    one bad scanner). When mark_crashes=True, a crashed scanner instead records a
+    sentinel finding (goal_suggest_crashed: True) so callers can classify it.
     """
     out: dict[str, list[dict[str, Any]]] = {}
     for loop in loops:
@@ -68,13 +74,16 @@ def assess(
                 {
                     "detail": f"scan timed out after {per_loop_timeout_seconds:g}s",
                     "auto_command": "goal-suggest-timeout",
-                    "goal_suggest_timeout": True,
+                    SENTINEL_TIMEOUT: True,
                     "severity": "warning",
                 }
             ]
         except Exception:  # noqa: BLE001 - a bad scanner must not block the pick list
             logger.debug("assess: scanner for loop %s crashed", loop, exc_info=True)
-            out[loop] = []
+            out[loop] = (
+                [{SENTINEL_CRASHED: True, "detail": "scanner crashed", "severity": "error"}]
+                if mark_crashes else []
+            )
     return out
 
 
@@ -103,7 +112,7 @@ def suggest(
         spec_findings: list[dict[str, Any]] = []
         for loop in spec.loops:
             loop_data = loop_findings.get(loop, [])
-            if any(f.get("goal_suggest_timeout") for f in loop_data):
+            if any(f.get(SENTINEL_TIMEOUT) for f in loop_data):
                 timed_out.append(loop)
             else:
                 spec_findings.extend(loop_data)
@@ -145,7 +154,9 @@ def suggest(
 
 @contextlib.contextmanager
 def _scan_deadline(seconds: float | None):
-    if not seconds or seconds <= 0 or threading.current_thread() is not threading.main_thread():
+    if (not seconds or not math.isfinite(seconds) or seconds <= 0
+            or not hasattr(signal, "SIGALRM")
+            or threading.current_thread() is not threading.main_thread()):
         yield
         return
 

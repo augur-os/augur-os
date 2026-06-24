@@ -7,6 +7,8 @@ import glob as _glob
 import json
 import re
 import shutil
+import threading
+import time
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
@@ -28,6 +30,20 @@ from src.mcp.augur_shared.annotations import tool_annotations
 from src.mcp.augur_shared.logging import get_entity_logger
 
 _log = get_entity_logger("mcp.artifacts")
+
+# In-process cache for artifacts_list_impl. The file walk itself is fast (~0.01s),
+# but the MCP dispatch path can stall under contention; serving warm results from
+# memory keeps "open artifact" snappy regardless. Keyed by docs_dir, short TTL plus
+# explicit invalidation on every write (save_artifact / non-dry-run reindex).
+_ARTIFACTS_CACHE_TTL_SECONDS = 30.0
+_artifacts_cache_lock = threading.Lock()
+_artifacts_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+
+
+def _invalidate_artifacts_cache() -> None:
+    """Drop all cached artifact listings (call after any artifact write)."""
+    with _artifacts_cache_lock:
+        _artifacts_cache.clear()
 
 
 def _refresh_pages_index() -> None:
@@ -115,8 +131,8 @@ def derive_slug(*, title: str = "", filename: str = "") -> str:
     return slug or "artifact"
 
 
-def artifacts_list_impl(*, docs_dir: Path) -> dict[str, Any]:
-    """Return Browse-shape entries for every sidecar-backed HTML artifact."""
+def _compute_artifacts_list(docs_dir: Path) -> dict[str, Any]:
+    """Walk docs_dir and build Browse-shape entries for each sidecar-backed HTML."""
     entries: list[dict[str, Any]] = []
     for html_path, sidecar_path in _iter_artifact_files(docs_dir):
         try:
@@ -140,6 +156,23 @@ def artifacts_list_impl(*, docs_dir: Path) -> dict[str, Any]:
             }
         )
     return {"artifacts": entries}
+
+
+def artifacts_list_impl(*, docs_dir: Path) -> dict[str, Any]:
+    """Return Browse-shape entries for every sidecar-backed HTML artifact.
+
+    Served from an in-process cache (TTL + explicit invalidation) so warm calls
+    return instantly even when MCP dispatch is contended.
+    """
+    key = str(docs_dir)
+    now = time.monotonic()
+    with _artifacts_cache_lock:
+        cached = _artifacts_cache.get(key)
+        if cached is not None and cached[0] > now:
+            return cached[1]
+        result = _compute_artifacts_list(docs_dir)
+        _artifacts_cache[key] = (now + _ARTIFACTS_CACHE_TTL_SECONDS, result)
+        return result
 
 
 def _hub_from_path(path: Path, docs_dir: Path) -> str:
@@ -369,6 +402,7 @@ def register_artifacts_tools(
             title=title,
             tags=tags,
         )
+        _invalidate_artifacts_cache()
         await asyncio.to_thread(_refresh_pages_index)
         return json.dumps(result, indent=2)
 
@@ -398,6 +432,7 @@ def register_artifacts_tools(
             import_hub=import_hub,
         )
         if not dry_run:
+            _invalidate_artifacts_cache()
             await asyncio.to_thread(_refresh_pages_index)
         return json.dumps(result, indent=2)
 

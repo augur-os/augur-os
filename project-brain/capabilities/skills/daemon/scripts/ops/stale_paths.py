@@ -114,6 +114,10 @@ _SKIP_EXACT_PATHS = {
     "CODEX.md",
     ".antigravity/instructions.md",
     ".github/copilot-instructions.md",
+    # audit_logging.py is itself a path-drift detector — its regex patterns name
+    # runtime/ paths to FIND them elsewhere; skip it like the sibling scanners
+    # below so the stale-paths loop does not flag its own detection patterns.
+    ".github/scripts/audit_logging.py",
     ".github/scripts/scan_stale_paths.py",
     ".github/scripts/stale_config.py",
     ".github/scripts/stale_scanners.py",

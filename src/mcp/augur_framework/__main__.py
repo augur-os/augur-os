@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import signal
 import sys
 import threading
@@ -85,7 +86,18 @@ def run() -> int:
         metrics,
         capability_target=_client_id_from_argv(),
     )
-    threading.Thread(target=_prewarm_search, name="search-prewarm", daemon=True).start()
+    # Opt-in only (default off). Historically this fired a full cold
+    # unified-search on startup that monopolized the shared MCP process and
+    # stalled the dashboard's first artifact/browse open for ~40s. That root
+    # cause is now resolved on the search path itself — `_collect_rg_hits` does a
+    # fast PARALLEL ripgrep walk (no single-threaded `rg --sort path`), the BM25
+    # index is mtime-cached (`_load_bm25_cached`), and every tool is dispatched
+    # to a worker thread — so a runtime search no longer starves concurrent
+    # tools (verified: a concurrent tool returns in ~70ms while a 2.8s search is
+    # in flight). The prewarm stays opt-in because running an unnecessary heavy
+    # search on every startup isn't worth warming only the first user query.
+    if os.environ.get("AUGUR_SEARCH_PREWARM", "").strip().lower() in {"1", "true", "yes", "on"}:
+        threading.Thread(target=_prewarm_search, name="search-prewarm", daemon=True).start()
     mcp.run()
     return 0
 

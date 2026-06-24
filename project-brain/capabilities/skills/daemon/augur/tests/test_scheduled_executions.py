@@ -17,7 +17,7 @@ def test_browse_index_returns_dynamic_background_routine_rows(monkeypatch) -> No
                 "title": "Insight Scanner",
                 "description": "Scans dashboard pages with Claude",
                 "hub": "system",
-                "type": "background-routines",
+                "type": "loops",
                 "source_path": "project-brain/capabilities/skills/daemon/scripts/insight_scanner.py",
                 "metadata": {
                     "source_kind": "daemon-script",
@@ -28,17 +28,17 @@ def test_browse_index_returns_dynamic_background_routine_rows(monkeypatch) -> No
             }
         ],
     )
-    # browse_index merges scheduled executions into the background-routines
+    # browse_index merges scheduled executions into the loops
     # category; isolate that source so the count reflects only the routine rows.
     monkeypatch.setattr(
         "src.mcp.augur_framework.tools.infrastructure.browse.scheduled_executions.list_scheduled_execution_items",
         lambda search=None: [],
     )
 
-    payload = json.loads(browse_index_impl("background-routines"))
+    payload = json.loads(browse_index_impl("loops"))
     assert payload["count"] == 1
     assert payload["items"][0]["metadata"]["source_kind"] == "daemon-script"
-    assert payload["items"][0]["type"] == "background-routines"
+    assert payload["items"][0]["type"] == "loops"
 
 
 def test_scheduled_execution_detail_returns_not_found_for_unknown_id() -> None:

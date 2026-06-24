@@ -31,6 +31,16 @@ def setup_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
     paths.invalidate_project_cache()
 
+    # Keep the index-machine probe hermetic: it reports "done" when the skill
+    # inventory has been generated, evidenced by either the build-time
+    # docs/generated/skill-manifest.json (gitignored, may be absent in a clean
+    # checkout/CI) or the runtime ide-integration/registry.yaml. Provide the
+    # runtime registry in the tmp sandbox so the probe resolves deterministically
+    # off controlled state instead of the developer's real-repo build artifacts.
+    registry = runtime / "ide-integration" / "registry.yaml"
+    registry.parent.mkdir(parents=True, exist_ok=True)
+    registry.write_text("integrations: []\n", encoding="utf-8")
+
     # Keep the inbox-lane probe hermetic: it reads config/system/inbox.yaml from
     # the project root, which in tests must be the tmp sandbox, not this repo.
     # The aggregator imports probe modules lazily at probe time, so the module

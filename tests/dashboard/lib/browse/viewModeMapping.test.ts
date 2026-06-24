@@ -27,9 +27,10 @@ describe("viewModeMapping pages rename", () => {
     expect(indexCategoryForViewMode("agent-profiles")).toBe("agent-profiles");
   });
 
-  it("maps scheduled-executions legacy URL to background-routines for one release", () => {
-    expect(normalizeRequestedViewMode("scheduled-executions")).toBe("background-routines");
-    expect(indexCategoryForViewMode("background-routines")).toBe("background-routines");
+  it("maps scheduled-executions and background-routines legacy URLs to loops", () => {
+    expect(normalizeRequestedViewMode("scheduled-executions")).toBe("loops");
+    expect(normalizeRequestedViewMode("background-routines")).toBe("loops");
+    expect(indexCategoryForViewMode("loops")).toBe("loops");
   });
 
   it("maps retired inbox/source views into notes and keeps prompts as its own view", () => {

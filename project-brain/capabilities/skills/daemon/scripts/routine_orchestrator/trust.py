@@ -249,7 +249,7 @@ class TrustLedger:
             if cs.disable_count >= MAX_DISABLE_RETRIES:
                 notifications.append(
                     f"Loop '{loop}' demoted: '{category}' permanently disabled after "
-                    f"{cs.disable_count} disable cycles (manual /routines promote required)"
+                    f"{cs.disable_count} disable cycles (manual /a-loops promote required)"
                 )
             else:
                 cooldown = COOLDOWN_CYCLES * (2 ** (cs.disable_count - 1))

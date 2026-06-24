@@ -21,6 +21,7 @@ import { CapabilityPolicyPanel } from "./CapabilityPolicyPanel";
 import { NoteDropZone } from "@/features/browse/NoteDropZone";
 import { NoteFAB } from "@/features/browse/NoteFAB";
 import { NoteModal } from "@/features/browse/NoteModal";
+import ConfirmDialog from "@/components/blocks/ConfirmDialog";
 import {
   canAttachDocumentSourceToContext,
   type BrowsePageController,
@@ -37,7 +38,7 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   prompts: "Prompt templates and reusable AI inputs",
   integrations: "Connected systems, clients, and external tools",
   profile: "Voice-profile interview and personalization state",
-  "background-routines": "Autonomous triggers across schedules, daemon services, launchd agents, GitHub Actions, and MCP background tasks",
+  "loops": "Autonomous triggers across schedules, daemon services, launchd agents, GitHub Actions, and MCP background tasks",
   wiki: "Auto-generated AI summary pages and knowledge digests",
   agents: "AI agent configurations and profiles",
   "mcp-tools": "MCP tools and operator-facing integrations",
@@ -467,6 +468,12 @@ function BrowseContentPane({
             onClear={controller.handleClearSelection}
           />
         ) : null}
+        <ConfirmDialog
+          open={!!controller.deleteConfirm}
+          message={controller.deleteConfirm?.message ?? ""}
+          onConfirm={() => { controller.deleteConfirm?.resolve(true); controller.setDeleteConfirm(null); }}
+          onCancel={() => { controller.deleteConfirm?.resolve(false); controller.setDeleteConfirm(null); }}
+        />
       </div>
     </div>
   );

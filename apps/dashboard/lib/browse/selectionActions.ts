@@ -24,6 +24,7 @@ export interface SelectionAction {
 
 const CONTENT_VIEW_MODES = new Set<ViewMode>(["notes", "documents", "wiki", "pages"]);
 const SWEEP_VIEW_MODES = new Set<ViewMode>(["notes", "documents", "pages"]);
+const DELETE_VIEW_MODES = new Set<ViewMode>(["notes", "documents", "pages", "wiki", "archive"]);
 
 interface SweepSelectionResponse {
   success?: boolean;
@@ -101,6 +102,15 @@ export const SELECTION_ACTIONS: SelectionAction[] = [
         dropped,
       };
     },
+  },
+  {
+    id: "delete",
+    label: "Delete",
+    icon: "Trash2",
+    appliesTo: (viewMode) => DELETE_VIEW_MODES.has(viewMode),
+    // Intercepted by id in the controller (handleSelectionAction) which runs
+    // triage -> confirm -> trash/sweep. build() is never invoked for delete.
+    build: () => ({ initialPrompt: "" }),
   },
 ];
 

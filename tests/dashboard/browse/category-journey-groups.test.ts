@@ -8,10 +8,10 @@ import {
   JOURNEY_GROUP_LABELS,
 } from "@/lib/browse/types";
 
-const DEV_GROUPS = ["capabilities", "diagnostics", "reference"];
+const DEV_GROUPS = ["loop", "capabilities", "diagnostics", "reference"];
 
 describe("developer-tier category grouping", () => {
-  it("places every devOnly category in exactly one of the 3 dev groups", () => {
+  it("places every devOnly category in exactly one of the 4 journey groups", () => {
     for (const category of BROWSE_CATEGORIES.filter((c) => c.devOnly)) {
       expect(DEV_GROUPS).toContain(category.journey_group);
     }
@@ -22,13 +22,16 @@ describe("developer-tier category grouping", () => {
     for (const category of BROWSE_CATEGORIES.filter((c) => c.devOnly)) {
       (byGroup[category.journey_group] ??= []).push(category.id);
     }
-    // commands/agent-profiles/background-routines promoted out of the dev
-    // tier by the three-concept regroup (spec 2026-06-09 §3 amended 2026-06-11).
+    // mcp-tools/mcp-servers moved into the loop group as full loop anatomy
+    // (task-1 regroup 2026-06-23).
+    expect(new Set(byGroup.loop)).toEqual(
+      new Set(["mcp-tools", "mcp-servers"]),
+    );
     expect(new Set(byGroup.capabilities)).toEqual(
-      new Set(["mcp-tools", "scripts", "api-routes", "tests"]),
+      new Set(["scripts", "api-routes", "tests"]),
     );
     expect(new Set(byGroup.diagnostics)).toEqual(
-      new Set(["mcp-servers", "logs", "system-metadata"]),
+      new Set(["logs", "system-metadata"]),
     );
     expect(new Set(byGroup.reference)).toEqual(new Set(["adrs"]));
   });

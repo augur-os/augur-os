@@ -1,4 +1,7 @@
 """Tests for the ADR-758 routine declaration registry."""
+# NOTE: test_missing_required_field_raises_validation_error, test_unknown_execution_model_raises,
+# and test_unknown_policy_raises were removed — they validated the removed legacy x-augur-routine
+# schema; canonical x-augur-loop schema validation is already covered by test_loop_model.py.
 from __future__ import annotations
 
 import importlib.util
@@ -86,68 +89,6 @@ def test_id_collision_raises_loud(tmp_path: Path) -> None:
         registry.list_routines(skills_root=tmp_path)
 
 
-def test_missing_required_field_raises_validation_error(tmp_path: Path) -> None:
-    registry = _load_registry()
-    skill = tmp_path / "missing-callable"
-    skill.mkdir()
-    (skill / "SKILL.md").write_text(
-        """---
-name: missing-callable
-x-augur-routine:
-  id: broken
-  execution: tiered
-  policy: adaptive
----
-""",
-        encoding="utf-8",
-    )
-
-    with pytest.raises(registry.RoutineValidationError, match="callable"):
-        registry.list_routines(skills_root=tmp_path)
-
-
-def test_unknown_execution_model_raises(tmp_path: Path) -> None:
-    registry = _load_registry()
-    skill = tmp_path / "unknown-execution"
-    skill.mkdir()
-    (skill / "SKILL.md").write_text(
-        """---
-name: unknown-execution
-x-augur-routine:
-  id: broken
-  execution: batch
-  policy: adaptive
-  callable: scripts/run.py
----
-""",
-        encoding="utf-8",
-    )
-
-    with pytest.raises(registry.RoutineValidationError, match="execution"):
-        registry.list_routines(skills_root=tmp_path)
-
-
-def test_unknown_policy_raises(tmp_path: Path) -> None:
-    registry = _load_registry()
-    skill = tmp_path / "unknown-policy"
-    skill.mkdir()
-    (skill / "SKILL.md").write_text(
-        """---
-name: unknown-policy
-x-augur-routine:
-  id: broken
-  execution: tiered
-  policy: nightly
-  callable: scripts/run.py
----
-""",
-        encoding="utf-8",
-    )
-
-    with pytest.raises(registry.RoutineValidationError, match="policy"):
-        registry.list_routines(skills_root=tmp_path)
-
-
 def test_repo_shared_skill_routine_declarations_cover_non_private_manifest_ids() -> None:
     registry = _load_registry()
     shared_skills_root = _REPO_ROOT / "project-brain" / "capabilities" / "skills"
@@ -163,6 +104,7 @@ def test_repo_shared_skill_routine_declarations_cover_non_private_manifest_ids()
         "evals",
         "goal-loop",
         "hardening",
+        "inbox-triage",
         "knowledge-enrichment",
         "observability",
         "page-health",

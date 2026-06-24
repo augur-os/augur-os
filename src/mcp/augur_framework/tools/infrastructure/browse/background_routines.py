@@ -10,9 +10,9 @@ from typing import Any
 
 from src.config.paths import get_project_brain_dir, get_project_root
 
-# A schedule whose prompt is `/routines run <id>` is the autonomous trigger source
+# A schedule whose prompt is `/a-loops run <id>` is the autonomous trigger source
 # for that declared routine; the leading token after `run` is the declared id.
-_ROUTINES_RUN_PATTERN = re.compile(r"/routines\s+run\s+([a-z0-9][\w-]*)", re.IGNORECASE)
+_ROUTINES_RUN_PATTERN = re.compile(r"/a-loops\s+run\s+([a-z0-9][\w-]*)", re.IGNORECASE)
 
 _PROJECT_BRAIN_CAPABILITIES = get_project_brain_dir(get_project_root()) / "capabilities"
 if str(_PROJECT_BRAIN_CAPABILITIES) not in sys.path:
@@ -71,7 +71,7 @@ def _routine_to_item(routine: Routine) -> dict[str, Any]:
         "name": routine.display_name,
         "description": routine.description or "",
         "hub": "system",
-        "type": "background-routines",
+        "type": "loops",
         "source_path": routine.source_path,
         "tags": tags,
         "metadata": {
@@ -140,7 +140,7 @@ def dedupe_routine_items_against_schedules(
     The Routines tab merges two pipelines: routine_discovery (which emits ADR-758
     ``declared-routine`` rows from SKILL.md frontmatter) and scheduled_executions
     (codex/claude/augur-internal schedules). When a declared routine is actually
-    scheduled — the schedule prompt invokes ``/routines run <id>`` — both pipelines
+    scheduled — the schedule prompt invokes ``/a-loops run <id>`` — both pipelines
     surface the SAME routine, producing the duplicate cards a user sees in the tab.
 
     routine_discovery's own dedup only sees its sibling discoverers, never the

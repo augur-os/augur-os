@@ -82,7 +82,7 @@ def test_push_claude_remote_spawns_claude_print_with_update_prompt(tmp_path, mon
                         "name": "Augur Dream",
                         "cron_expression": "0 1 * * *",
                         "enabled": True,
-                        "prompt_summary": "/routines run dream",
+                        "prompt_summary": "/a-loops run dream",
                         "model": "claude-sonnet-4-6",
                         "repo": "https://github.com/gsannikov/augur",
                         "last_run_at": None,

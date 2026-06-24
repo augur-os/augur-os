@@ -975,3 +975,189 @@ def test_op_run_maintenance_uses_injected_ctx_builder():
     )
     assert out["success"] is True
     assert seen["ctx"] is sentinel_ctx
+
+
+def test_op_fanout_plan_triages_only_loops_with_findings():
+    from routine_orchestrator import goal_ops as go
+    scans = {"testing": [{"x": 1}, {"x": 2}], "code-quality": [], "hardening": [{"x": 1}]}
+    out = go.op_fanout_plan(
+        cap=6,
+        project_root=".",
+        _scan=lambda loop, **k: scans[loop],
+        _orchestrator_loops=lambda: ["testing", "code-quality", "hardening"],
+        _headroom=lambda: 8,
+    )
+    assert out["success"] is True
+    assert out["loops_with_work"] == ["hardening", "testing"]   # sorted, >0 only
+    assert out["skipped_clean"] == ["code-quality"]
+    assert out["per_loop_counts"] == {"testing": 2, "code-quality": 0, "hardening": 1}
+    assert out["safe_cap"] == 6
+    assert out["worktree_headroom"] == 8
+    assert out["partial"] is False
+    assert out["timed_out"] == []
+    assert out["crashed"] == []
+    # iteration budgets echo through to callers
+    assert out["max_iterations"] == 8
+    assert out["loop_cap"] == 6
+
+
+def test_op_fanout_plan_echoes_explicit_iteration_budgets():
+    from routine_orchestrator import goal_ops as go
+    out = go.op_fanout_plan(
+        cap=4, project_root=".",
+        max_iterations=12, loop_cap=3,
+        _scan=lambda loop, **k: [{"x": 1}],
+        _orchestrator_loops=lambda: ["testing"],
+        _headroom=lambda: 9,
+    )
+    assert out["max_iterations"] == 12
+    assert out["loop_cap"] == 3
+
+
+def test_op_fanout_plan_safe_cap_zero_when_registry_full():
+    from routine_orchestrator import goal_ops as go
+    out = go.op_fanout_plan(
+        cap=6, project_root=".",
+        _scan=lambda loop, **k: [{"x": 1}],
+        _orchestrator_loops=lambda: ["testing"],
+        _headroom=lambda: 0,
+    )
+    assert out["safe_cap"] == 0
+
+
+def test_op_fanout_plan_clamps_cap_to_headroom():
+    from routine_orchestrator import goal_ops as go
+    out = go.op_fanout_plan(
+        cap=6, project_root=".",
+        _scan=lambda loop, **k: [{"x": 1}],
+        _orchestrator_loops=lambda: ["a", "b"],
+        _headroom=lambda: 2,
+    )
+    assert out["safe_cap"] == 2          # min(6, 2)
+
+
+def test_op_fanout_plan_honors_include_and_exclude():
+    from routine_orchestrator import goal_ops as go
+    base = lambda: ["testing", "code-quality", "hardening"]
+    inc = go.op_fanout_plan(
+        cap=4, project_root=".", include=["testing"],
+        _scan=lambda loop, **k: [{"x": 1}], _orchestrator_loops=base, _headroom=lambda: 9,
+    )
+    assert set(inc["per_loop_counts"]) == {"testing"}
+    assert inc["loops_with_work"] == ["testing"]
+    exc = go.op_fanout_plan(
+        cap=4, project_root=".", exclude=["testing", "hardening"],
+        _scan=lambda loop, **k: [{"x": 1}], _orchestrator_loops=base, _headroom=lambda: 9,
+    )
+    assert set(exc["per_loop_counts"]) == {"code-quality"}
+    assert "testing" not in exc["loops_with_work"]
+    assert "hardening" not in exc["loops_with_work"]
+
+
+def test_default_orchestrator_loops_excludes_prompt_and_driver():
+    from routine_orchestrator import goal_ops as go
+    loops = go._default_orchestrator_loops()
+    assert "goal-loop" not in loops           # catalog driver excluded
+    assert "dream" not in loops               # inline-session prompt excluded
+    assert "inbox-triage" not in loops        # inline-session prompt excluded
+    assert "hardening" in loops and "testing" in loops
+
+
+def test_op_fanout_report_is_honest_about_unfinished(tmp_path):
+    from routine_orchestrator import goal_ops as go
+    results = [
+        {"loop": "testing", "verdict": "converged", "branch": "goal/testing-x", "residual": 0},
+        {"loop": "hardening", "verdict": "stalled", "branch": "goal/hardening-x", "residual": 3},
+    ]
+    out = go.op_fanout_report(results=results, runtime_dir=str(tmp_path), stamp="t1")
+    assert out["success"] is True
+    assert out["all_clean"] is False          # a loop stalled
+    assert out["converged"] == 1 and out["unfinished"] == 1
+    assert out["branches"] == ["goal/testing-x", "goal/hardening-x"]
+    md = (tmp_path / "a-loops-all" / "rollup-t1.md").read_text(encoding="utf-8")
+    assert "stalled" in md and "goal/hardening-x" in md
+
+
+def test_op_fanout_report_all_clean_only_when_all_converged(tmp_path):
+    from routine_orchestrator import goal_ops as go
+    results = [{"loop": "testing", "verdict": "converged", "branch": "goal/testing-x", "residual": 0}]
+    out = go.op_fanout_report(results=results, runtime_dir=str(tmp_path), stamp="t2")
+    assert out["all_clean"] is True
+
+
+def test_op_fanout_plan_classifies_timed_out_loops_as_partial():
+    from routine_orchestrator import goal_ops as go
+    def fake_scan(loop, **k):
+        if loop == "hardening":
+            return [{"goal_suggest_timeout": True, "detail": "scan timed out"}]
+        return [{"x": 1}] if loop == "testing" else []
+    out = go.op_fanout_plan(
+        cap=6, project_root=".",
+        _scan=fake_scan,
+        _orchestrator_loops=lambda: ["testing", "hardening", "ui-quality"],
+        _headroom=lambda: 8,
+    )
+    assert out["partial"] is True
+    assert out["timed_out"] == ["hardening"]
+    assert out["crashed"] == []
+    assert "hardening" in out["loops_with_work"]   # timed-out → conservatively fanned out
+    assert "testing" in out["loops_with_work"]
+    assert out["skipped_clean"] == ["ui-quality"]
+    assert out["per_loop_counts"]["hardening"] == 0   # marker excluded from real count
+    assert out["safe_cap"] == 6
+
+
+def test_op_fanout_plan_classifies_crashed_loops_as_partial():
+    from routine_orchestrator import goal_ops as go
+    def fake_scan(loop, **k):
+        if loop == "code-quality":
+            raise RuntimeError("scanner boom")
+        return [{"x": 1}] if loop == "testing" else []
+    out = go.op_fanout_plan(
+        cap=6, project_root=".", _scan=fake_scan,
+        _orchestrator_loops=lambda: ["testing", "code-quality", "ui-quality"],
+        _headroom=lambda: 8,
+    )
+    assert out["partial"] is True
+    assert out["crashed"] == ["code-quality"]
+    assert out["timed_out"] == []
+    assert "code-quality" in out["loops_with_work"]   # crashed → conservatively fanned out
+    assert "testing" in out["loops_with_work"]
+    assert out["skipped_clean"] == ["ui-quality"]
+    assert out["per_loop_counts"]["code-quality"] == 0   # crash marker excluded from real count
+
+
+def test_op_fanout_plan_normalizes_nonfinite_timeout():
+    from routine_orchestrator import goal_ops as go
+    out = go.op_fanout_plan(
+        cap=4, project_root=".", scan_timeout_seconds=float("nan"),
+        _scan=lambda loop, **k: [{"x": 1}],
+        _orchestrator_loops=lambda: ["testing"], _headroom=lambda: 9,
+    )
+    assert out["success"] is True
+    assert out["loops_with_work"] == ["testing"]
+    assert out["partial"] is False
+    assert out["crashed"] == []
+
+
+def test_assess_degrades_without_sigalrm(monkeypatch):
+    import signal as _sig
+    from routine_orchestrator import goal_suggest
+    monkeypatch.delattr(_sig, "SIGALRM", raising=False)
+    out = goal_suggest.assess(
+        ["x"], project_root=".",
+        scan=lambda loop, **k: [{"a": 1}],
+        per_loop_timeout_seconds=5.0,
+    )
+    assert out["x"] == [{"a": 1}]   # scan ran unbounded, no AttributeError
+
+
+def test_op_fanout_report_empty_results(tmp_path):
+    from routine_orchestrator import goal_ops as go
+    out = go.op_fanout_report(results=[], runtime_dir=str(tmp_path), stamp="e")
+    assert out["success"] is True
+    assert out["all_clean"] is False   # empty run is not clean
+    assert out["converged"] == 0
+    assert out["unfinished"] == 0
+    md = (tmp_path / "a-loops-all" / "rollup-e.md").read_text(encoding="utf-8")
+    assert "loops run: 0" in md

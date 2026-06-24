@@ -239,8 +239,25 @@ def _record_invocation(tool_name: str, kwargs: dict, result: Any, duration_ms: i
         path = Path(get_logs_dir()) / "mcp_invocations.jsonl"
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.exists() and path.stat().st_size > _INVOCATION_LOG_MAX_BYTES:
-            tail = path.read_text(encoding="utf-8", errors="ignore").splitlines()[-20000:]
-            path.write_text("\n".join(tail) + "\n", encoding="utf-8")
+            # Truncate by BYTE budget, not line count: invocation lines carry
+            # capped-but-large args+result payloads (~KBs each), so the old
+            # `splitlines()[-20000:]` never dropped anything on a file made of a
+            # few thousand big lines — the file stayed over the cap and this
+            # rewrite then re-read+re-wrote the whole 8MB file on EVERY tool
+            # call, blocking the event-loop thread each time. Keep the most
+            # recent lines up to half the cap so the file actually shrinks and
+            # this path fires only occasionally as it regrows.
+            lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+            budget = _INVOCATION_LOG_MAX_BYTES // 2
+            kept: list[str] = []
+            total = 0
+            for line in reversed(lines):
+                total += len(line.encode("utf-8", "ignore")) + 1
+                if total > budget and kept:
+                    break
+                kept.append(line)
+            kept.reverse()
+            path.write_text("\n".join(kept) + "\n", encoding="utf-8")
         rec = {
             "ts": _time.time(),
             "tool": tool_name,

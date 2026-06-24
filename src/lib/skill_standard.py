@@ -130,7 +130,9 @@ def normalize_skill_frontmatter(
         x_augur.get("commands") if "commands" in x_augur else _legacy_commands(frontmatter),
     )
     routines = _normalize_routines(
-        x_augur.get("routines") if "routines" in x_augur else _legacy_routines(frontmatter),
+        x_augur.get("routines")
+        if "routines" in x_augur
+        else (_loop_routines(frontmatter) or _legacy_routines(frontmatter)),
     )
     dashboard_pages = _normalize_dashboard_pages(
         x_augur.get("dashboard") if "dashboard" in x_augur else _legacy_dashboard_pages(frontmatter)
@@ -238,6 +240,37 @@ def _legacy_commands(frontmatter: dict[str, Any]) -> Any:
         if isinstance(contributions, dict):
             commands.extend(_as_list(contributions.get("commands")))
     return commands
+
+
+def _loop_routines(frontmatter: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map canonical ``x-augur-loop(s)`` blocks to NormalizedRoutine-shaped dicts.
+
+    ``execution`` is synthesized from loop kind (``.md`` discover -> inline-session,
+    else tiered) to match ``registry._routine_from_loop``; ``policy`` comes from
+    ``memory.trust``, ``callable`` from ``automation.discover``.
+    """
+    blocks: list[dict[str, Any]] = []
+    single = frontmatter.get("x-augur-loop")
+    if isinstance(single, dict):
+        blocks.append(single)
+    plural = frontmatter.get("x-augur-loops")
+    if isinstance(plural, list):
+        blocks.extend(block for block in plural if isinstance(block, dict))
+    routines: list[dict[str, Any]] = []
+    for block in blocks:
+        automation = block.get("automation") if isinstance(block.get("automation"), dict) else {}
+        memory = block.get("memory") if isinstance(block.get("memory"), dict) else {}
+        discover = str(automation.get("discover") or "")
+        routines.append(
+            {
+                "id": block.get("id"),
+                "execution": "inline-session" if discover.endswith(".md") else "tiered",
+                "policy": memory.get("trust") or "",
+                "callable": discover,
+                "hub": "",
+            }
+        )
+    return routines
 
 
 def _legacy_routines(frontmatter: dict[str, Any]) -> Any:

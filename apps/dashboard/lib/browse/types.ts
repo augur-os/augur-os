@@ -8,7 +8,7 @@ export type ViewMode =
   | "skills"
   | "adrs"
   | "integrations"
-  | "background-routines"
+  | "loops"
   | "archive"
   | "pages"
   | "agent-profiles"
@@ -311,19 +311,19 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
   // PROMPT ENGINEERING — how you instruct it
   { id: "prompts", label: "Prompts", singularLabel: "Prompt", icon: "MessageSquare", devOnly: false, group: "content", journey_group: "prompt", journey_order: 1, tier: "primary" },
   { id: "commands", label: "Commands", singularLabel: "Command", icon: "Terminal", devOnly: false, group: "content", journey_group: "prompt", journey_order: 2, tier: "primary" },
-  { id: "skills", label: "Skills", singularLabel: "Skill", icon: "Puzzle", devOnly: false, group: "content", journey_group: "prompt", journey_order: 3, tier: "primary" },
-  // LOOP ENGINEERING — how it runs without you
-  { id: "background-routines", label: "Routines", singularLabel: "Routine", icon: "Activity", devOnly: false, group: "content", journey_group: "loop", journey_order: 1, tier: "primary", defaultDisplayMode: "list" },
+  // LOOP ENGINEERING — how it runs without you (full loop anatomy)
+  { id: "loops", label: "Loops", singularLabel: "Loop", icon: "Activity", devOnly: false, group: "content", journey_group: "loop", journey_order: 1, tier: "primary", defaultDisplayMode: "list" },
   { id: "agent-profiles", label: "Agents", singularLabel: "Agent", icon: "Bot", devOnly: false, group: "content", journey_group: "loop", journey_order: 2, tier: "primary" },
-  { id: "integrations", label: "Integrations", singularLabel: "Integration", icon: "Plug", devOnly: false, group: "system", journey_group: "loop", journey_order: 3, tier: "primary" },
-  // Developer tier (dev-tier collapse groups unchanged)
-  { id: "mcp-tools", label: "MCP Tools", singularLabel: "Tool", icon: "Wrench", devOnly: true, group: "dev", journey_group: "capabilities", journey_order: 1, tier: "more" },
-  { id: "scripts", label: "Scripts", singularLabel: "Script", icon: "Terminal", devOnly: true, group: "dev", journey_group: "capabilities", journey_order: 2, tier: "more" },
-  { id: "api-routes", label: "API Routes", singularLabel: "Route", icon: "Route", devOnly: true, group: "dev", journey_group: "capabilities", journey_order: 3, tier: "more", defaultDisplayMode: "list" },
-  { id: "tests", label: "Tests", singularLabel: "Test", icon: "FlaskConical", devOnly: true, group: "dev", journey_group: "capabilities", journey_order: 4, tier: "more", defaultDisplayMode: "list" },
-  { id: "mcp-servers", label: "MCP Servers", singularLabel: "MCP Server", icon: "Server", devOnly: true, group: "dev", journey_group: "diagnostics", journey_order: 1, tier: "more", defaultDisplayMode: "list" },
-  { id: "logs", label: "Logs", singularLabel: "Log", icon: "ScrollText", devOnly: true, group: "dev", journey_group: "diagnostics", journey_order: 2, tier: "more", defaultDisplayMode: "list" },
-  { id: "system-metadata", label: "System Metadata", singularLabel: "Metadata Entry", icon: "Database", devOnly: true, group: "dev", journey_group: "diagnostics", journey_order: 3, tier: "more", defaultDisplayMode: "list" },
+  { id: "skills", label: "Skills", singularLabel: "Skill", icon: "Puzzle", devOnly: false, group: "content", journey_group: "loop", journey_order: 3, tier: "primary" },
+  { id: "integrations", label: "Integrations", singularLabel: "Integration", icon: "Plug", devOnly: false, group: "system", journey_group: "loop", journey_order: 4, tier: "primary" },
+  { id: "mcp-tools", label: "MCP Tools", singularLabel: "Tool", icon: "Wrench", devOnly: true, group: "dev", journey_group: "loop", journey_order: 5, tier: "more" },
+  { id: "mcp-servers", label: "MCP Servers", singularLabel: "MCP Server", icon: "Server", devOnly: true, group: "dev", journey_group: "loop", journey_order: 6, tier: "more", defaultDisplayMode: "list" },
+  // Developer tier
+  { id: "scripts", label: "Scripts", singularLabel: "Script", icon: "Terminal", devOnly: true, group: "dev", journey_group: "capabilities", journey_order: 1, tier: "more" },
+  { id: "api-routes", label: "API Routes", singularLabel: "Route", icon: "Route", devOnly: true, group: "dev", journey_group: "capabilities", journey_order: 2, tier: "more", defaultDisplayMode: "list" },
+  { id: "tests", label: "Tests", singularLabel: "Test", icon: "FlaskConical", devOnly: true, group: "dev", journey_group: "capabilities", journey_order: 3, tier: "more", defaultDisplayMode: "list" },
+  { id: "logs", label: "Logs", singularLabel: "Log", icon: "ScrollText", devOnly: true, group: "dev", journey_group: "diagnostics", journey_order: 1, tier: "more", defaultDisplayMode: "list" },
+  { id: "system-metadata", label: "System Metadata", singularLabel: "Metadata Entry", icon: "Database", devOnly: true, group: "dev", journey_group: "diagnostics", journey_order: 2, tier: "more", defaultDisplayMode: "list" },
   { id: "adrs", label: "ADRs", singularLabel: "ADR", icon: "FileText", devOnly: true, group: "dev", journey_group: "reference", journey_order: 1, tier: "more" },
 ];
 

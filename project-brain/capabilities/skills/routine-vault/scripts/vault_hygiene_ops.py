@@ -50,6 +50,12 @@ from src.lib.ops_protocol import OpsContext, ScanResult, FixResult, evolution_ga
 
 name = "auto-vault-hygiene"
 
+# Vault junk removal operates on the external vault repo, not the project repo.
+# The mechanical fix engine (apply_mechanical_fixes) must not attempt a
+# project-git commit for these findings — set external_commit=True so it
+# records the fix as applied without a project-side git commit.
+external_commit = True
+
 DIFFICULTY_SPEC = {
     0: "Surface — binary detection, orphan dirs, stale files, hardening-reports, git health",
     1: "Content — large file guard, cross-refs, plugin alignment, repo size, config.yaml",
@@ -241,6 +247,42 @@ def check_git_health(vault: Path) -> list[dict]:
     return issues
 
 
+def _scan_os_cache_junk(vault_root: Path) -> list[dict]:
+    """Scan vault_root for OS/cache junk files (.DS_Store, Thumbs.db, .pyc).
+
+    These are gitignored by vault policy and invisible to ``git status``, so
+    they must be discovered by a direct disk scan.  Each returned finding
+    carries ``finding_band: "mechanical"`` so the adaptive-loop engine
+    auto-applies the fix even in headless (no-LLM) mode.
+    """
+    findings: list[dict] = []
+    _JUNK_SKIP_DIRS = {".venv", "node_modules", ".git"}
+    for f in vault_root.rglob("*"):
+        if _is_git_metadata(f, vault_root):
+            continue
+        try:
+            rel = f.relative_to(vault_root)
+        except ValueError:
+            continue
+        if any(part in _JUNK_SKIP_DIRS for part in rel.parts[:-1]):
+            continue
+        if f.is_file() and (f.name in {".DS_Store", "Thumbs.db"} or f.suffix == ".pyc"):
+            findings.append({
+                "file": str(f.relative_to(vault_root)),
+                "path": str(f),
+                "message": f"OS/cache junk: {f.name}",
+                "severity": "info",
+                "kind": "cache_junk",
+                # Band as mechanical: deletion is atomic, safe at any difficulty,
+                # and requires no LLM reasoning — this is pure file removal.
+                "finding_band": "mechanical",
+                # auto_command is also injected by scan_phase, but set it here
+                # explicitly so _scan_os_cache_junk works in isolation (tests).
+                "auto_command": name,
+            })
+    return findings
+
+
 def scan(ctx: OpsContext) -> ScanResult:
     """Scan vault for structural violations and git health issues."""
     vault = _get_vault(ctx.project_root)
@@ -281,16 +323,7 @@ def scan(ctx: OpsContext) -> ScanResult:
     # OS/cache junk — gitignored, so invisible to git status; scan disk directly.
     # Applies vault-wide including drafts/staging: removing cache junk does not
     # consume staged payloads, it just keeps the store clean.
-    for f in vault.rglob("*"):
-        if _is_git_metadata(f, vault):
-            continue
-        if f.is_file() and (f.name in {".DS_Store", "Thumbs.db"} or f.suffix == ".pyc"):
-            issues.append({
-                "file": str(f.relative_to(vault)),
-                "message": f"OS/cache junk: {f.name}",
-                "severity": "info",
-                "kind": "cache_junk",
-            })
+    issues.extend(_scan_os_cache_junk(vault))
 
     # Binary files in vault (text-only policy; skill-owned assets are exempt)
     for f in vault.rglob("*"):
@@ -531,7 +564,7 @@ def fix(ctx: OpsContext, issues: list[dict]) -> FixResult:
     """Fix vault hygiene issues based on difficulty level.
 
     Difficulty escalation:
-    - d0: report only — no vault modifications
+    - d0: remove OS/cache junk (mechanical, always safe) — no other modifications
     - d1+: commit uncommitted changes, fix .gitignore, git gc, config migration,
             hardening migration, remove empty dirs, fix permissions, move misplaced
             root files into the best-matching skill subdirectory
@@ -543,18 +576,49 @@ def fix(ctx: OpsContext, issues: list[dict]) -> FixResult:
     if not issues:
         return FixResult(success=True, summary="No issues to fix")
 
-    if ctx.difficulty < 1:
-        return FixResult(
-            success=True,
-            actions=[{"action": "report", "description": "Difficulty 0 — report only"}],
-            summary=f"No actionable fixes at d0; report only: {len(issues)} vault hygiene issue(s) detected",
-            fix_type="report",
-        )
-
     vault = _get_vault(ctx.project_root)
     actions: list[dict] = []
     changes: list[str] = []
     errors: list[str] = []
+
+    # Remove OS/cache junk at d0+ — junk removal is always safe regardless of
+    # difficulty because .DS_Store/.pyc files are gitignored ephemera with no
+    # semantic value.  Banded as "mechanical" in _scan_os_cache_junk so the
+    # orchestrator's apply_mechanical_fixes path can auto-apply even headless.
+    junk_issues = [i for i in issues if i.get("kind") == "cache_junk"]
+    for issue in junk_issues:
+        junk_path = vault / issue["file"]
+        if junk_path.is_file():
+            try:
+                junk_path.unlink()
+                # Return the vault-relative path so apply_mechanical_fixes can
+                # record it (external_commit=True means no project git commit).
+                changes.append(issue["file"])
+                parent = junk_path.parent
+                if parent.name == "__pycache__" and not any(parent.iterdir()):
+                    parent.rmdir()
+            except OSError:
+                pass
+    if junk_issues:
+        actions.append({"action": "remove_cache_junk", "count": len(junk_issues)})
+
+    if ctx.difficulty < 1:
+        # Only junk removal runs at d0; all other fixes require d1+.
+        if not junk_issues:
+            return FixResult(
+                success=True,
+                actions=[{"action": "report", "description": "Difficulty 0 — report only"}],
+                summary=f"No actionable fixes at d0; report only: {len(issues)} vault hygiene issue(s) detected",
+                fix_type="report",
+            )
+        summary = f"Removed {len(changes)} junk file(s) at d0 (mechanical)"
+        return FixResult(
+            success=True,
+            actions=actions,
+            changes=changes,
+            summary=summary,
+            fix_type="code-fix",
+        )
 
     # Hardening migration
     actionable = [i for i in issues if i.get("kind") == "actionable"]
@@ -636,22 +700,6 @@ def fix(ctx: OpsContext, issues: list[dict]) -> FixResult:
         else:
             actions.append({"action": "vault_commit", "success": False})
             errors.append("vault git commit failed")
-
-    # Remove OS/cache junk (d1+)
-    junk_issues = [i for i in issues if i.get("kind") == "cache_junk"]
-    for issue in junk_issues:
-        junk_path = vault / issue["file"]
-        if junk_path.is_file():
-            try:
-                junk_path.unlink()
-                changes.append(f"Removed junk {issue['file']}")
-                parent = junk_path.parent
-                if parent.name == "__pycache__" and not any(parent.iterdir()):
-                    parent.rmdir()
-            except OSError:
-                pass
-    if junk_issues:
-        actions.append({"action": "remove_cache_junk", "count": len(junk_issues)})
 
     # Remove empty directories
     empty_dir_issues = [i for i in issues if i.get("message") == "empty directory"]

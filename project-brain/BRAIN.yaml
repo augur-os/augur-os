@@ -1,6 +1,6 @@
 schema_version: 1
 id: project-augur
 type: project
-root: .
-attached_project: ..
+root: /Users/gursannikov/Projects/Augur/project-brain
+attached_project: /Users/gursannikov/Projects/Augur
 description: Augur project brain

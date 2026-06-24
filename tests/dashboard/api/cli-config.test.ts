@@ -115,6 +115,29 @@ async function loadCliConfigWithPrefs(
   };
 }
 
+async function loadCliConfigMissing() {
+  jest.resetModules();
+  jest.doMock("@/lib/paths", () => ({
+    AUGUR_STATE_DIR: "/state",
+    AUGUR_VAULT_DIR: "/vault",
+    AUGUR_VAULT_CONFIG_DIR: VAULT_CONFIG_DIR,
+  }));
+  const existsSync = jest.fn(() => false); // no candidate path exists anywhere
+  const readFileSync = jest.fn((candidate: string) => {
+    throw new Error(`unexpected read: ${candidate}`);
+  });
+  const fsMock = {
+    existsSync,
+    readFileSync,
+    accessSync: jest.fn(),
+    constants: { X_OK: 1 },
+    mkdirSync: jest.fn(),
+    writeFileSync: jest.fn(),
+  };
+  jest.doMock("fs", () => ({ __esModule: true, default: fsMock, ...fsMock }));
+  return { fsCalls: { existsSync, readFileSync }, module: await import("@/app/api/cli/cli-config") };
+}
+
 function restoreProcessGlobals() {
   process.env = { ...ORIGINAL_ENV };
   if (ORIGINAL_PLATFORM) {
@@ -213,6 +236,21 @@ describe("getCliAgentsConfig", () => {
       group: "ollama",
     });
     expect(module.isValidCli("ollama")).toBe(true);
+  });
+
+  it("degrades to the default agent without throwing when cli_agents.yaml is absent (B1)", async () => {
+    // A fresh/un-onboarded vault (or one mid vault-sync) has no cli_agents.yaml.
+    // Throwing here 500s /api/cli/configs and /api/session/init and logged a console
+    // error on every page load. getCliAgentsConfig must degrade, not throw.
+    const { module, fsCalls } = await loadCliConfigMissing();
+
+    let agents: Record<string, any> = {};
+    expect(() => {
+      agents = module.getCliAgentsConfig();
+    }).not.toThrow();
+
+    expect(agents).toHaveProperty("ollama");
+    expect(fsCalls.readFileSync).not.toHaveBeenCalled();
   });
 });
 

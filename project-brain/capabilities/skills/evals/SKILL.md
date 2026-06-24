@@ -5,38 +5,30 @@ x-augur-group: augur_autoloops
 x-augur-release: mvp
 x-augur-license: MIT
 x-augur-tags: []
-description: Retrieval eval harness — captures real queries opt-in (with consent),
-  replays them against current retrieval, and scores P@k / R@k / MRR / nDCG@10. The
-  regression safety net for the retrieval stack. File-first — captured queries,
-  judgments, and reports are JSONL + markdown on disk, no database, no LLM calls.
-  Use this to measure whether a retrieval change improved or regressed quality.
+description: Retrieval eval harness — captures real queries opt-in (with consent), replays them against current retrieval, and scores P@k / R@k / MRR / nDCG@10. The regression safety net for the retrieval stack. File-first — captured queries, judgments, and reports are JSONL + markdown on disk, no database, no LLM calls. Use this to measure whether a retrieval change improved or regressed quality.
 x-augur-callable: project-brain/capabilities/skills/evals/scripts/eval_ops.py
 x-augur-mcp-tools:
-  - eval-replay
-  - eval-export
-  - eval-stats
-  - eval-capture-status
+- eval-replay
+- eval-export
+- eval-stats
+- eval-capture-status
 x-augur-loop:
-  name: evals
-  tier: 1
-  trigger: nightly
-x-augur-routine:
   id: evals
-  execution: tiered
-  policy: observability-only
-  callable: ../daemon/scripts/routine_orchestrator/orchestrator.py
-  loop: evals
-  hub: dev
-  description: Retrieval evaluation replay and metric-reporting routine.
+  skill: evals
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: ../daemon/scripts/routine_orchestrator/orchestrator.py
+  loop_name: evals
+  memory:
+    trust: observability-only
 x-augur-data-dir: evals
 x-augur-config:
   commands:
   - id: loop-evals
     type: workflow
     visibility: auto
-    description: Nightly retrieval-quality replay against the captured + external
-      corpora; emits a delta report vs. baseline and alerts on metric drops.
-      Report-only in v1.
+    description: Nightly retrieval-quality replay against the captured + external corpora; emits a delta report vs. baseline and alerts on metric drops. Report-only in v1.
     callable: scripts/eval_ops.py
     protocol: scan-fix
     loop:
@@ -46,9 +38,7 @@ x-augur-config:
   - id: command-kpi
     type: workflow
     visibility: auto
-    description: Automatic no-human-in-the-loop KPI gate for Augur's canonical
-      command surface; writes private run envelopes, auto scorecards, and
-      aggregate reports.
+    description: Automatic no-human-in-the-loop KPI gate for Augur's canonical command surface; writes private run envelopes, auto scorecards, and aggregate reports.
     callable: scripts/command_kpi_ops.py
     protocol: scan-fix
     loop:

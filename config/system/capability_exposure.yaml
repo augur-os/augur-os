@@ -1171,7 +1171,7 @@ capabilities:
   command:dream:
     classification_status: approved
     deprecation_release: adr-758-transition
-    replacement: command:routines
+    replacement: command:a-loops
     status: deprecated
     export_to:
     - cli
@@ -1293,7 +1293,7 @@ capabilities:
     preferred_client: shell
     primary_surface: subcommand
     scope: project
-    x-augur-parent: routines
+    x-augur-parent: a-loops
   command:ops-sync:
     classification_status: approved
     export_to:
@@ -1326,7 +1326,7 @@ capabilities:
     primary_surface: cli
     scope: project
     x-augur-deprecated: true
-    x-augur-replaced-by: routines
+    x-augur-replaced-by: a-loops
   command:orchestration:
     classification_status: approved
     export_to:
@@ -1337,7 +1337,7 @@ capabilities:
     primary_surface: cli
     scope: project
     x-augur-deprecated: true
-    x-augur-replaced-by: routines
+    x-augur-replaced-by: a-loops
   command:port-release:
     classification_status: approved
     export_to:
@@ -1473,7 +1473,7 @@ capabilities:
     preferred_client: shell
     primary_surface: cli
     scope: project
-  command:routines:
+  command:a-loops:
     classification_status: approved
     export_to:
     - cli
@@ -1740,6 +1740,26 @@ capabilities:
     preferred_client: dashboard
     primary_surface: mcp
     scope: project
+  mcp-tool:artifact-html:
+    classification_status: approved
+    description: Read raw HTML content for a named artifact slug served from the Documents directory.
+    export_to:
+    - mcp
+    management: generated
+    owner_kind: augur
+    preferred_client: dashboard
+    primary_surface: mcp
+    scope: project
+  mcp-tool:artifact-resolve:
+    classification_status: approved
+    description: Resolve a named artifact slug to its path and metadata from the Documents directory.
+    export_to:
+    - mcp
+    management: generated
+    owner_kind: augur
+    preferred_client: dashboard
+    primary_surface: mcp
+    scope: project
   mcp-tool:artifact-cleanup:
     classification_status: approved
     description: Execute an approved artifact cleanup plan — trash intermediates and optionally move the canonical file inside the Drive mirror. All-or-nothing, trash-only.
@@ -1808,6 +1828,24 @@ capabilities:
     - cli
     - agents-md
     - browse
+    management: generated
+    owner_kind: augur
+    preferred_client: dashboard
+    primary_surface: mcp
+    scope: project
+  mcp-tool:browse-delete-triage:
+    classification_status: approved
+    export_to:
+    - mcp
+    management: generated
+    owner_kind: augur
+    preferred_client: dashboard
+    primary_surface: mcp
+    scope: project
+  mcp-tool:browse-trash:
+    classification_status: approved
+    export_to:
+    - mcp
     management: generated
     owner_kind: augur
     preferred_client: dashboard

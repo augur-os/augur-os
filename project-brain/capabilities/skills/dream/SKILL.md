@@ -4,41 +4,42 @@ x-augur-type: skill
 x-augur-group: brain
 x-augur-release: mvp
 x-augur-license: MIT
-x-augur-tags: [routine, synthesis, compounding, cross-client, wiki]
-description: Overnight knowledge-compounding routine projected into every supported
-  AI client. The client's session drives all judgment phases — compiled-truth
-  refresh, pattern extraction, wiki concept merging — while deterministic phases
-  (orphan detection, dead-citation scanning, cache GC, entity-tier recompute)
-  delegate to skill-owned entry points. Client scheduling and inference stay
-  entirely outside Augur. Implements ADR-744.
+x-augur-tags:
+- routine
+- synthesis
+- compounding
+- cross-client
+- wiki
+description: Overnight knowledge-compounding routine projected into every supported AI client. The client's session drives all judgment phases — compiled-truth refresh, pattern extraction, wiki concept merging — while deterministic phases (orphan detection, dead-citation scanning, cache GC, entity-tier recompute) delegate to skill-owned entry points. Client scheduling and inference stay entirely outside Augur. Implements ADR-744.
 x-augur-callable: project-brain/capabilities/skills/dream/scripts/mcp/__init__.py
-x-augur-routine:
-  id: dream
-  execution: inline-session
-  policy: oneshot
-  callable: commands/dream.md
-  hub: command
-  description: Overnight knowledge-compounding routine.
 x-augur-mcp-tools:
-  - dream-orphans
-  - dream-stale-pages
-  - dream-merge-candidates
-  - dream-dead-citations
-  - dream-cache-gc
-  - dream-report-write
-  - dream-last-report
-  - dream-status
-  - dream-config
+- dream-orphans
+- dream-stale-pages
+- dream-merge-candidates
+- dream-dead-citations
+- dream-cache-gc
+- dream-report-write
+- dream-last-report
+- dream-status
+- dream-config
 x-augur-data-dir: dream
 x-augur-config:
   commands:
   - id: dream
     type: routine
     visibility: user
-    description: Overnight knowledge-compounding routine. Activated per-client via
-      its native routine surface (Codex automations, Claude Code `/schedule`, etc.).
+    description: Overnight knowledge-compounding routine. Activated per-client via its native routine surface (Codex automations, Claude Code `/schedule`, etc.).
     callable: commands/dream.md
     protocol: routine
+x-augur-loop:
+  id: dream
+  skill: dream
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: commands/dream.md
+  memory:
+    trust: oneshot
 ---
 
 # dream
@@ -114,7 +115,7 @@ See `docs/superpowers/specs/2026-05-14-dream-cycle-design.md` and
 
 ```bash
 # A client runs the dream routine in its own session (Augur owns no scheduling)
-/routines run dream
+/a-loops run dream
 ```
 
 The deterministic phases call MCP tools in `scripts/`; judgment phases run inline in the client session and emit proposals only.

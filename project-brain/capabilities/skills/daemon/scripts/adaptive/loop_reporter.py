@@ -142,7 +142,7 @@ def generate_executive_report(
     *,
     days: int = 1,
 ) -> str:
-    """Build the full `/routines report` executive report."""
+    """Build the full `/a-loops report` executive report."""
     now = datetime.now(timezone.utc)
     cutoff = now - timedelta(days=max(1, days))
     entries = engine.journal_reader.read_all()
@@ -214,9 +214,9 @@ def generate_executive_report(
                 continue
             action = entry.action or "unknown"
             recommendation = (
-                "/routines heal --fix"
+                "/a-loops heal --fix"
                 if entry.result == "failure"
-                else f"/routines run {entry.loop}"
+                else f"/a-loops run {entry.loop}"
             )
             failure_rows.append([
                 entry.loop,
@@ -319,7 +319,7 @@ def generate_executive_report(
                 continue
             if outcome in {"broken", "verification-failed-reverted"}:
                 follow_up_items.append(
-                    (0, f"{loop_name}/{category['name']}: broken scanner, run `/routines heal --fix`")
+                    (0, f"{loop_name}/{category['name']}: broken scanner, run `/a-loops heal --fix`")
                 )
             elif outcome == "blocked-needs-design":
                 follow_up_items.append(
@@ -605,7 +605,7 @@ def run_evolve_phase(
 
 
 def format_status(engine: AdaptiveLoopEngine, config: dict) -> str:
-    """Format status output for /routines status."""
+    """Format status output for /a-loops status."""
     lines = []
     engine_cfg = config.get("engine", {})
     lines.append(

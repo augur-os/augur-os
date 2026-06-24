@@ -105,7 +105,7 @@ export function resolveIndexPrimaryAction(
         target: entry.source_path || "",
       };
       break;
-    case "background-routines":
+    case "loops":
       primaryAction = {
         label: "Reveal",
         type: "open-file",
@@ -293,7 +293,7 @@ export function resolveIndexActions(
       actions = wikiActions.filter((action) => Boolean(action.target));
       break;
     }
-    case "background-routines": {
+    case "loops": {
       const localActions: BrowseCardAction[] = [];
       if (entry.source_path) {
         localActions.push({

@@ -291,14 +291,14 @@ def _cadence_for(loop_name: str, trigger: str, unit_id: str) -> str:
 
 def _prompt_for(loop_name: str, trigger: str, unit_id: str) -> str:
     if unit_id == "codex-dev-loop-self-heal-validate":
-        return "/routines run self-heal --validate"
+        return "/a-loops run self-heal --validate"
     if unit_id == "codex-command-evolution-drain":
-        return "/routines run command-evolution --drain"
+        return "/a-loops run command-evolution --drain"
     if unit_id == "codex-knowledge-enrichment-nightly":
-        return "/routines run knowledge-enrichment"
+        return "/a-loops run knowledge-enrichment"
     if unit_id == "codex-knowledge-enrichment-drain":
-        return "/routines run knowledge-enrichment --drain"
-    return f"/routines run {loop_name}"
+        return "/a-loops run knowledge-enrichment --drain"
+    return f"/a-loops run {loop_name}"
 
 
 def _build_unit(

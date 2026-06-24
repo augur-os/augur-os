@@ -30,9 +30,13 @@ function kindClass(kind: ArtifactEntry["kind"]) {
 export function ArtifactChrome({
   artifact,
   rawSrc,
+  onIframeLoad,
+  onIframeError,
 }: {
   artifact: ArtifactEntry;
   rawSrc: string;
+  onIframeLoad?: () => void;
+  onIframeError?: () => void;
 }) {
   const [pinned, setPinned] = useState(false);
   const [pinning, setPinning] = useState(false);
@@ -108,12 +112,10 @@ export function ArtifactChrome({
 
   const revealSource = async () => {
     try {
-      const result = await mcpCall<{ success?: boolean; error?: string }>(
-        "reveal-in-finder",
-        { path: artifact.path },
-      );
-      if (result.error || result.success === false) {
-        throw new Error(result.error || "Reveal failed");
+      const res = await fetch(`/api/artifact/${artifact.slug}/reveal`, { method: "POST" });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Reveal failed");
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Reveal failed");
@@ -144,7 +146,7 @@ export function ArtifactChrome({
               {artifact.title}
             </h1>
             <p className="mt-1 truncate text-xs text-[var(--text-secondary)]">
-              {artifact.path}
+              {artifact.hub} / {artifact.slug}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -184,6 +186,8 @@ export function ArtifactChrome({
         sandbox="allow-downloads allow-forms allow-modals allow-popups allow-scripts"
         referrerPolicy="no-referrer"
         className="min-h-0 flex-1 border-0 bg-white"
+        onLoad={onIframeLoad}
+        onError={onIframeError}
       />
     </main>
   );

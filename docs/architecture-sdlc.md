@@ -108,6 +108,6 @@ The escape hatch is trivial work: typo fixes, mechanical formatting, or one-line
 - `project-brain/capabilities/skills/augur-core/commands/adr.md` defines `/adr`.
 - `project-brain/capabilities/skills/platform-admin/commands/dev-merge.md` defines merge completion.
 - `project-brain/capabilities/skills/platform-admin/commands/dev-build.md` and `dev-debug.md` define dashboard lifecycle and debugging.
-- `project-brain/capabilities/skills/daemon/commands/routines.md` defines adaptive loop operations.
+- `project-brain/capabilities/skills/daemon/commands/a-loops.md` defines adaptive loop operations.
 - `docs/superpowers/specs/` and `docs/superpowers/plans/` store design and execution artifacts.
 - See [architecture-agents.md](./architecture-agents.md) for agent orchestration, [architecture-skills.md](./architecture-skills.md) for command ownership, [architecture-capability-exposure.md](./architecture-capability-exposure.md) for exposure policy, and [architecture-daemon.md](./architecture-daemon.md) for loop runtime.

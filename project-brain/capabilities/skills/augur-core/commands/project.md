@@ -15,7 +15,7 @@ x-augur-export-command: true
 5. If the verb is missing, `--help`, or `-h`, print the usage table and stop.
 6. If the verb is unrecognized, print the usage table and stop.
 
-`/project` is the only primary command that is allowed to mutate or inspect the current folder as a project. Top-level `/ask`, `/keep`, `/skillify`, and `/routines` stay personal/global. Top-level `/discover` stays read-only. Top-level `/adr`, `/dev`, and `/sweep` are retired and must be used through `/project`.
+`/project` is the only primary command that is allowed to mutate or inspect the current folder as a project. Top-level `/ask`, `/keep`, `/skillify`, and `/a-loops` stay personal/global. Top-level `/discover` stays read-only. Top-level `/adr`, `/dev`, and `/sweep` are retired and must be used through `/project`.
 
 ## Usage
 
@@ -58,7 +58,7 @@ If the JSON field `status` is `initialized_unregistered`, run `/project init` be
 | `ask` | After the status gate passes, execute `project-brain/capabilities/skills/augur-core/commands/ask.md` with project scope. Use the project brain and current folder artifacts before personal/global memory. |
 | `keep` | After the status gate passes, execute `project-brain/capabilities/skills/augur-core/commands/keep.md` with project scope. Writes go to the project brain or project artifact flow unless the user explicitly asks for personal/global capture. |
 | `skillify` | After the status gate passes, execute `project-brain/capabilities/skills/auto-skill-quality/commands/skillify.md` with project scope. The resulting skill is project-private unless the user explicitly asks to promote it. |
-| `routines` | After the status gate passes, execute `project-brain/capabilities/skills/daemon/commands/routines.md` with project scope. |
+| `routines` | After the status gate passes, execute `project-brain/capabilities/skills/daemon/commands/a-loops.md` with project scope. |
 | `adr` | After the status gate passes, execute `project-brain/capabilities/skills/augur-core/commands/adr.md`. |
 | `dev` | After the status gate passes, execute `project-brain/capabilities/skills/platform-admin/commands/dev.md`. |
 | `sweep` | After the status gate passes, execute `project-brain/capabilities/skills/routine-vault/commands/sweep.md`. |

@@ -18,10 +18,10 @@ jest.mock("next/navigation", () => ({
 }));
 
 const categories: Record<string, BrowseCategory> = {
-  "background-routines": {
-    id: "background-routines",
-    label: "Routines",
-    singularLabel: "Routine",
+  "loops": {
+    id: "loops",
+    label: "Loops",
+    singularLabel: "Loop",
     icon: "Activity",
     devOnly: false,
     group: "content",
@@ -121,7 +121,7 @@ function renderGrid(
 }
 
 describe("BrowseContentGrid unified renderer", () => {
-  it.each(["background-routines", "mcp-servers", "api-routes"] as ViewMode[])(
+  it.each(["loops", "mcp-servers", "api-routes"] as ViewMode[])(
     "renders %s as list row cards without tables",
     (viewMode) => {
       renderGrid(viewMode, "list");

@@ -11,4 +11,4 @@ Implementation:
 - `scripts/skill_migrate_ops.py`
 
 Usage:
-- `/routines run hardening`
+- `/a-loops run hardening`

@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-from src.config.paths import get_memory_dir, get_runtime_dir
+from src.config.paths import get_daily_logs_dir, get_memory_dir
 
 logger = get_entity_logger(__name__)
 
@@ -53,7 +53,7 @@ class MemoryCurator:
     def __init__(self):
         """Initialize curator."""
         self._memory_dir = get_memory_dir()
-        self._daily_dir = get_runtime_dir() / "memory" / "daily"
+        self._daily_dir = get_daily_logs_dir()
         self._memory_file = self._memory_dir / "MEMORY.md"
         self._archive_dir = self._memory_dir / "archive"
 

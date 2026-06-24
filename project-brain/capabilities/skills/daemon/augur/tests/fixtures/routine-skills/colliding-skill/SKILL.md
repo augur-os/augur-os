@@ -1,12 +1,16 @@
 ---
 name: colliding-skill
 description: Fixture skill with a colliding routine declaration.
-x-augur-routine:
+x-augur-loop:
   id: testing
-  execution: tiered
-  policy: adaptive
-  callable: scripts/other_testing.py
-  loop: testing
+  skill: colliding-skill
+  loop_name: testing
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: scripts/other_testing.py
+  memory:
+    trust: adaptive
 ---
 
 # colliding-skill

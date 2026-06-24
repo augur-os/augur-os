@@ -42,7 +42,7 @@ ALLOWED_TYPES = {
 EXCLUDED_TYPES = {
     "wiki",
     "logs",
-    "background-routines",
+    "loops",
     "source-summary",
     "concept",
     "query",

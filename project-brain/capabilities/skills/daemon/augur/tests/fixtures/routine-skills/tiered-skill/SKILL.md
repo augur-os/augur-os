@@ -1,20 +1,25 @@
 ---
 name: tiered-skill
 description: Fixture skill with multiple tiered routine declarations.
-x-augur-routines:
-  - id: testing
-    execution: tiered
-    policy: adaptive
-    callable: scripts/testing.py
-    loop: testing
-    hub: command
-    description: Run test/build checks.
-  - id: code-quality
-    execution: tiered
-    policy: adaptive
-    callable: scripts/code_quality.py
-    loop: code-quality
-    hub: dev
+x-augur-loops:
+- id: testing
+  skill: tiered-skill
+  loop_name: testing
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: scripts/testing.py
+  memory:
+    trust: adaptive
+- id: code-quality
+  skill: tiered-skill
+  loop_name: code-quality
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: scripts/code_quality.py
+  memory:
+    trust: adaptive
 ---
 
 # tiered-skill

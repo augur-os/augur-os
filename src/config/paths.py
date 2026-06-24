@@ -915,6 +915,22 @@ def get_memory_dir() -> Path:
     return brain_knowledge_dir(get_vault_dir()) / "memory"
 
 
+def get_daily_logs_dir() -> Path:
+    """Layer-1 daily session logs (raw capture before curation into MEMORY.md).
+
+    Defaults to runtime-scoped storage (machine-local session state, shared across
+    brains). The AUGUR_DAILY_LOGS override isolates them per-environment without
+    touching AUGUR_STATE — needed so a synthetic-vault QA run fully isolates the
+    memory surface (memory-search/curator read daily logs) instead of surfacing
+    real session data, and without colliding with dev-server instance management,
+    which keys off the runtime dir.
+    """
+    override = _env_path("AUGUR_DAILY_LOGS")
+    if override:
+        return override
+    return get_runtime_dir() / "memory" / "daily"
+
+
 def get_prompts_dir() -> Path:
     return get_config_dir() / "agents" / "prompts"
 

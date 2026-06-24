@@ -79,16 +79,16 @@ def test_aug_routine_unified_verbs_parse() -> None:
     module = _load_mcp_module()
     parser = _parser_for(module)
 
-    assert parser.parse_args(["routine", "list"]).routine_verb == "list"
-    status_args = parser.parse_args(["routine", "status", "testing", "--limit", "3"])
+    assert parser.parse_args(["a-loops", "list"]).routine_verb == "list"
+    status_args = parser.parse_args(["a-loops", "status", "testing", "--limit", "3"])
     assert status_args.routine_verb == "status"
     assert status_args.routine_id == "testing"
     assert status_args.limit == 3
-    run_args = parser.parse_args(["routine", "run", "dream"])
+    run_args = parser.parse_args(["a-loops", "run", "dream"])
     assert run_args.routine_verb == "run"
     assert run_args.routine_id == "dream"
-    assert parser.parse_args(["routine", "report", "dream"]).routine_verb == "report"
-    assert parser.parse_args(["routine", "schedule", "testing"]).routine_verb == "schedule"
+    assert parser.parse_args(["a-loops", "report", "dream"]).routine_verb == "report"
+    assert parser.parse_args(["a-loops", "schedule", "testing"]).routine_verb == "schedule"
 
 
 def test_aug_routine_list_returns_registered_routines(monkeypatch, capsys) -> None:
@@ -104,13 +104,43 @@ def test_aug_routine_list_returns_registered_routines(monkeypatch, capsys) -> No
     )
 
     parser = _parser_for(module)
-    args = parser.parse_args(["routine", "list"])
+    args = parser.parse_args(["a-loops", "list", "--json"])
     assert args.func(args, []) == 0
 
     payload = json.loads(capsys.readouterr().out)
     assert payload["success"] is True
     assert [routine["id"] for routine in payload["routines"]] == ["dream", "testing"]
     assert payload["routines"][0]["execution"] == "inline-session"
+    assert "runner" in payload["routines"][0]
+
+
+def test_aug_routine_list_default_renders_table(monkeypatch, capsys) -> None:
+    module = _load_mcp_module()
+    routines = [
+        _routine(id="dream", execution="inline-session", policy="oneshot", skill_name="dream", loop=None),
+        _routine(id="testing"),
+    ]
+    monkeypatch.setattr(
+        module,
+        "_load_routine_registry",
+        lambda: SimpleNamespace(list_routines=lambda: routines),
+    )
+
+    parser = _parser_for(module)
+    args = parser.parse_args(["a-loops", "list"])
+    assert args.func(args, []) == 0
+
+    out = capsys.readouterr().out
+    assert "Augur Loops — 2 standard loops" in out
+    assert "PROMPT loops" in out and "ORCHESTRATOR loops" in out
+    # footer leads with the bare-name form; verbs remain as escape hatches
+    assert "How to run — the loop name is the command:" in out
+    assert "a-loops <id>" in out and "a-loops run <id>" in out
+    # default output is the table, not JSON
+    import pytest
+
+    with pytest.raises(json.JSONDecodeError):
+        json.loads(out)
 
 
 def test_aug_routine_run_delegates_to_registry_dispatch(monkeypatch, capsys) -> None:
@@ -137,7 +167,7 @@ def test_aug_routine_run_delegates_to_registry_dispatch(monkeypatch, capsys) -> 
     )
 
     parser = _parser_for(module)
-    args = parser.parse_args(["routine", "run", "dream"])
+    args = parser.parse_args(["a-loops", "run", "dream"])
     assert args.func(args, []) == 0
 
     payload = json.loads(capsys.readouterr().out)
@@ -173,7 +203,7 @@ def test_aug_routine_run_wraps_tiered_results_as_json(monkeypatch, capsys) -> No
     monkeypatch.setattr(module, "_routine_session_surface", lambda session: "codex")
 
     parser = _parser_for(module)
-    args = parser.parse_args(["routine", "run", "duplication"])
+    args = parser.parse_args(["a-loops", "run", "duplication"])
     assert args.func(args, []) == 0
 
     payload = json.loads(capsys.readouterr().out)
@@ -211,7 +241,7 @@ def test_aug_routine_status_uses_unified_status_view(monkeypatch, capsys) -> Non
     )
 
     parser = _parser_for(module)
-    args = parser.parse_args(["routine", "status", "testing", "--limit", "1"])
+    args = parser.parse_args(["a-loops", "status", "testing", "--limit", "1"])
     assert args.func(args, []) == 0
 
     payload = json.loads(capsys.readouterr().out)
@@ -243,7 +273,7 @@ def test_aug_routine_report_includes_runtime_reports_when_documents_dir_is_empty
     )
 
     parser = _parser_for(module)
-    args = parser.parse_args(["routine", "report", "duplication"])
+    args = parser.parse_args(["a-loops", "report", "duplication"])
     assert args.func(args, []) == 0
 
     payload = json.loads(capsys.readouterr().out)
@@ -258,23 +288,27 @@ def test_registry_dispatch_tiered_delegates_to_orchestrator(monkeypatch, tmp_pat
     (skill / "SKILL.md").write_text(
         """---
 name: routine-codebase
-x-augur-routine:
+x-augur-loop:
   id: testing
-  execution: tiered
-  policy: adaptive
-  callable: scripts/routine_orchestrator/orchestrator.py
-  loop: testing
+  skill: routine-codebase
+  loop_name: testing
+  automation:
+    trigger: nightly
+    runner: daemon
+    discover: scripts/routine_orchestrator/orchestrator.py
+  memory:
+    trust: adaptive
 ---
 """,
         encoding="utf-8",
     )
     calls: list[tuple[str, dict]] = []
 
-    def orchestrate(routine, kwargs):
-        calls.append((routine.loop, kwargs))
-        return {"loop_name": routine.loop, "ok": True}
+    def fake_orchestrate_run(name, **kwargs):
+        calls.append((name, kwargs))
+        return {"loop_name": name, "ok": True}
 
-    monkeypatch.setattr(registry, "_orchestrate_tiered_routine", orchestrate)
+    monkeypatch.setattr(registry._load_orchestrator(), "orchestrate_run", fake_orchestrate_run, raising=False)
 
     result = registry.dispatch("testing", skills_root=tmp_path, session="codex-session")
 
@@ -291,11 +325,16 @@ def test_registry_dispatch_inline_session_renders_prompt(tmp_path: Path) -> None
     (skill / "SKILL.md").write_text(
         """---
 name: dream
-x-augur-routine:
+x-augur-loop:
   id: dream
-  execution: inline-session
-  policy: oneshot
-  callable: commands/dream.md
+  skill: dream
+  loop_name: dream
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: commands/dream.md
+  memory:
+    trust: oneshot
 ---
 """,
         encoding="utf-8",
@@ -303,8 +342,8 @@ x-augur-routine:
 
     result = registry.dispatch("dream", skills_root=tmp_path)
 
-    assert result["routine_id"] == "dream"
-    assert result["execution"] == "inline-session"
+    assert result["loop_id"] == "dream"
+    assert result["runner"] in {"claude", "codex"}
     assert result["render_prompt"].startswith("# Dream")
 
 
@@ -313,17 +352,17 @@ def test_capability_policy_exports_routines_and_deprecates_aliases() -> None:
     policy = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
     capabilities = policy["capabilities"]
 
-    routines = capabilities["command:routines"]
+    routines = capabilities["command:a-loops"]
     assert routines["classification_status"] == "approved"
     assert {"cli", "agents-md", "browse", "claude", "codex"}.issubset(
         set(routines["export_to"])
     )
 
     # /dev-loops was fully removed in the consolidation; /dream is retained as a
-    # deprecated alias that routes to /routines (design line 115).
+    # deprecated alias that routes to /a-loops (design line 115).
     for command_id in ("command:dream",):
         capability = capabilities[command_id]
         assert capability["classification_status"] == "approved"
         assert capability["status"] == "deprecated"
-        assert capability["replacement"] == "command:routines"
+        assert capability["replacement"] == "command:a-loops"
         assert capability["deprecation_release"] == "adr-758-transition"

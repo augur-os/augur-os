@@ -171,7 +171,7 @@ def record_convergence(
             notifications.append(
                 f"category '{category}' disabled: {cs.self_repair_count} repair attempts "
                 f"with {cs.self_repair_successes} successes ({success_rate:.0%}) — "
-                f"requires manual /routines promote"
+                f"requires manual /a-loops promote"
             )
             cs.last_actionable_fingerprints = current_actionable
             cs.last_scanner_defect_fingerprints = current_scanner

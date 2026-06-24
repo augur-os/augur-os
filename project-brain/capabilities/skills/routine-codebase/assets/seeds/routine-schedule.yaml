@@ -4,7 +4,7 @@ schedules:
     loop: testing
     source: codex
     rrule: "RRULE:FREQ=WEEKLY;BYDAY=SU;BYHOUR=3;BYMINUTE=0"
-    prompt: "/routines run testing"
+    prompt: "/a-loops run testing"
     workspace: "__PROJECT_ROOT__"
     model: "gpt-5.4"
     reasoning_effort: "high"
@@ -14,7 +14,7 @@ schedules:
     loop: code-quality
     source: codex
     rrule: "RRULE:FREQ=WEEKLY;BYDAY=MO;BYHOUR=3;BYMINUTE=0"
-    prompt: "/routines run code-quality"
+    prompt: "/a-loops run code-quality"
     workspace: "__PROJECT_ROOT__"
     model: "gpt-5.4"
     reasoning_effort: "high"
@@ -24,7 +24,7 @@ schedules:
     loop: ui-quality
     source: codex
     rrule: "RRULE:FREQ=WEEKLY;BYDAY=SA;BYHOUR=3;BYMINUTE=40"
-    prompt: "/routines run ui-quality"
+    prompt: "/a-loops run ui-quality"
     workspace: "__PROJECT_ROOT__"
     model: "gpt-5.4"
     reasoning_effort: "high"

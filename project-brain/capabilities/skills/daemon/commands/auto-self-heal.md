@@ -39,7 +39,7 @@ Registered in `SKILL.md` frontmatter with `protocol: scan-fix` under the `self-h
 
 - `project-brain/capabilities/skills/daemon/scripts/ai_self_healer.py` — the underlying healer module
 - `project-brain/capabilities/skills/daemon/scripts/ops/self_heal.py` — this command's implementation
-- `/routines` — monitor loop status and trust scores
+- `/a-loops` — monitor loop status and trust scores
 - `/daemon` — manage the daemon that schedules this command
 
 $ARGUMENTS

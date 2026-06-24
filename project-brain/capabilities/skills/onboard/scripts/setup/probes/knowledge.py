@@ -82,6 +82,16 @@ def _load_compounding_queries(wiki_dir) -> list[str]:
         queries = _extract_compounding_queries(data)
         if queries:
             return queries
+    # Fallback: query pages live as wiki/queries/*.md. A vault can have seeded,
+    # runnable queries (and produced query pages) without a queries.yaml/config.yaml
+    # seed file — count those pages as valid evidence instead of reporting "none".
+    queries_dir = wiki_dir / "queries"
+    if queries_dir.is_dir():
+        page_queries = sorted(
+            path.stem for path in queries_dir.glob("*.md") if path.is_file()
+        )
+        if page_queries:
+            return page_queries
     return []
 
 

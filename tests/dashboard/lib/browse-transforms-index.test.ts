@@ -459,7 +459,7 @@ describe("transformIndexEntry", () => {
       name: "Insight Scanner",
       hub: "system",
       description: "Scans dashboard pages and asks Claude for improvements",
-      type: "background-routines",
+      type: "loops",
       source_path: "project-brain/capabilities/skills/daemon/scripts/insight_scanner.py",
       metadata: {
         source_kind: "daemon-script",
@@ -471,7 +471,7 @@ describe("transformIndexEntry", () => {
       },
     };
 
-    const result = transformIndexEntry(entry, "background-routines");
+    const result = transformIndexEntry(entry, "loops");
     expect(result.id).toBe("insight_scanner");
     expect(result.typeBadge).toBe("daemon-script");
     expect(result.description).toContain("triggered by daemon-service or other");

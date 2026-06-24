@@ -47,7 +47,7 @@ def load_augur_internal_schedules() -> list[dict[str, Any]]:
                 "schedule_human": trigger,
                 "raw_schedule": {"type": "trigger", "value": trigger},
                 "prompt_summary": str(command.get("description", "")),
-                "prompt_body": f"/routines run {loop_name}",
+                "prompt_body": f"/a-loops run {loop_name}",
                 "native_id": command_id,
                 "source_path": str(config_path),
                 "model": "",

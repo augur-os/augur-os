@@ -23,18 +23,23 @@ export const AUGUR_ROOT =
 
 // Prefer the resolved vault config root (handles the _augur/ domains layout),
 // with the legacy flat vault/ai path kept readable during migration.
-const CLI_AGENTS_PATH_CANDIDATES = [
-  path.join(AUGUR_VAULT_CONFIG_DIR, "ai", "cli_agents.yaml"),
-  // Explicit _augur/config candidate. AUGUR_VAULT_CONFIG_DIR is resolved ONCE at
-  // module load via existsSync, so if the server booted before the vault's
-  // _augur/config existed (e.g. mid vault-sync during `aug dev build`), it cached
-  // the legacy path and EVERY CLI chat failed with "Unknown CLI: <cli>" until the
-  // next restart. resolveCliAgentsPath() re-checks each candidate at call time, so
-  // this finds the real file regardless of that cached choice.
-  path.join(AUGUR_VAULT_DIR, "_augur", "config", "ai", "cli_agents.yaml"),
-  path.join(AUGUR_VAULT_DIR, "config", "ai", "cli_agents.yaml"),
-  path.join(AUGUR_VAULT_DIR, "ai", "cli_agents.yaml"),
-];
+// Deduped: AUGUR_VAULT_CONFIG_DIR commonly resolves to <vault>/_augur/config, so
+// the first two candidates can be identical. Set-dedup keeps the error message and
+// the per-call scan clean without changing lookup order.
+const CLI_AGENTS_PATH_CANDIDATES = Array.from(
+  new Set([
+    path.join(AUGUR_VAULT_CONFIG_DIR, "ai", "cli_agents.yaml"),
+    // Explicit _augur/config candidate. AUGUR_VAULT_CONFIG_DIR is resolved ONCE at
+    // module load via existsSync, so if the server booted before the vault's
+    // _augur/config existed (e.g. mid vault-sync during `aug dev build`), it cached
+    // the legacy path and EVERY CLI chat failed with "Unknown CLI: <cli>" until the
+    // next restart. resolveCliAgentsPath() re-checks each candidate at call time, so
+    // this finds the real file regardless of that cached choice.
+    path.join(AUGUR_VAULT_DIR, "_augur", "config", "ai", "cli_agents.yaml"),
+    path.join(AUGUR_VAULT_DIR, "config", "ai", "cli_agents.yaml"),
+    path.join(AUGUR_VAULT_DIR, "ai", "cli_agents.yaml"),
+  ]),
+);
 
 const CHAT_SESSION_FILE = path.join(
   AUGUR_STATE_DIR,
@@ -132,19 +137,26 @@ export function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
-function resolveCliAgentsPath(): string {
+function resolveCliAgentsPath(): string | null {
   for (const candidate of CLI_AGENTS_PATH_CANDIDATES) {
     if (fs.existsSync(candidate)) {
       return candidate;
     }
   }
-  throw new Error(
-    `cli_agents.yaml not found at any candidate path: ${CLI_AGENTS_PATH_CANDIDATES.join(", ")}`,
-  );
+  return null;
 }
 
 export function getCliAgentsConfig(): Record<string, any> {
   const cliAgentsPath = resolveCliAgentsPath();
+  // A vault that has not been onboarded yet (or is mid vault-sync) legitimately has
+  // no cli_agents.yaml. Degrade to the built-in default agent instead of throwing —
+  // throwing here 500s /api/cli/configs and /api/session/init, which logged a console
+  // error on every page load and broke session init on a fresh brain. A genuinely
+  // missing *requested* CLI is still surfaced by callers (SessionManager) as a
+  // distinct "CLI '<id>' not found" error.
+  if (!cliAgentsPath) {
+    return withDirectOllamaAgent({});
+  }
   const content = fs.readFileSync(cliAgentsPath, "utf-8");
   const data = yaml.load(content) as Record<string, any>;
   const agents =

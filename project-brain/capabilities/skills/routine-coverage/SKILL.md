@@ -15,21 +15,6 @@ x-augur-tags:
 - usage
 x-augur-dashboard-pages: []
 x-augur-data-dir: routine-coverage
-x-augur-routines:
-- id: skill-standards
-  execution: tiered
-  policy: adaptive
-  callable: ../daemon/scripts/routine_orchestrator/orchestrator.py
-  loop: skill-standards
-  hub: adaptive
-  description: Skill standards and usage quality routine.
-- id: command-evolution
-  execution: tiered
-  policy: adaptive
-  callable: ../daemon/scripts/routine_orchestrator/orchestrator.py
-  loop: command-evolution
-  hub: adaptive
-  description: Command help and command evolution routine.
 x-augur-commands:
 - id: auto-adaptive-hub-coverage
   type: workflow
@@ -94,8 +79,7 @@ x-augur-commands:
 - id: auto-studio-hub-coverage
   type: workflow
   visibility: auto
-  description: Repair stale studio-hub skill path references inside markdown and workflow
-    docs.
+  description: Repair stale studio-hub skill path references inside markdown and workflow docs.
   callable: scripts/studio_hub_coverage_ops.py
   protocol: scan-fix
   loop:
@@ -120,15 +104,13 @@ x-augur-config:
     - id: auto-command-help-coverage
       type: workflow
       visibility: auto
-      description: Validate and repair missing command help sections for command-hub slash
-        commands.
+      description: Validate and repair missing command help sections for command-hub slash commands.
       callable: scripts/command_help_coverage_ops.py
       protocol: scan-fix
     - id: auto-command-hub-coverage
       type: workflow
       visibility: auto
-      description: Repair stale command-hub references to live skill, command, and daemon
-        paths.
+      description: Repair stale command-hub references to live skill, command, and daemon paths.
       callable: scripts/command_hub_coverage_ops.py
       protocol: scan-fix
     - id: auto-life-hub-coverage
@@ -146,10 +128,28 @@ x-augur-config:
     - id: auto-studio-hub-coverage
       type: workflow
       visibility: auto
-      description: Repair stale studio-hub skill path references inside markdown and workflow
-        docs.
+      description: Repair stale studio-hub skill path references inside markdown and workflow docs.
       callable: scripts/studio_hub_coverage_ops.py
       protocol: scan-fix
+x-augur-loops:
+- id: skill-standards
+  skill: routine-coverage
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: ../daemon/scripts/routine_orchestrator/orchestrator.py
+  loop_name: skill-standards
+  memory:
+    trust: adaptive
+- id: command-evolution
+  skill: routine-coverage
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: ../daemon/scripts/routine_orchestrator/orchestrator.py
+  loop_name: command-evolution
+  memory:
+    trust: adaptive
 ---
 
 # routine-coverage
@@ -189,5 +189,5 @@ Each coverage workflow in `scripts/` runs as a nightly scan-fix process that rep
 
 ```bash
 # Repair stale hub references on demand
-aug routine scan-only --loop code-quality
+aug a-loops scan-only --loop code-quality
 ```

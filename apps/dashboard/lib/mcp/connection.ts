@@ -111,6 +111,8 @@ export function resolveMcpPythonPath(
  */
 export class MCPBridge extends EventEmitter {
   private static instance: MCPBridge | null = null;
+  private static instances: Map<string, MCPBridge> = new Map();
+  private serverModule: string;
   private process: ChildProcess | null = null;
   private buffer: string = "";
   private requestId: number = 0;
@@ -153,30 +155,65 @@ export class MCPBridge extends EventEmitter {
   private preloadQueue: Set<string> = new Set();
   private handlersRegistered: boolean = false;
 
-  private constructor() {
+  private constructor(serverModule: string = DASHBOARD_MCP_SERVER_MODULE) {
     super();
+    this.serverModule = serverModule;
   }
 
   /**
-   * Get singleton instance of MCPBridge
+   * Get singleton instance of MCPBridge, keyed by server module.
+   *
+   * Calling with no argument (or with the framework module name) returns the
+   * same battle-tested framework singleton as before — behaviour is unchanged.
+   * Calling with a different module name (e.g. "augur_core") returns a distinct
+   * lazy instance that only spawns on first connect().
    */
-  public static getInstance(): MCPBridge {
-    if (process.env.NODE_ENV === "development") {
-      const g = globalThis as any;
-      if (g.__mcp_bridge__ && !(g.__mcp_bridge__ instanceof MCPBridge)) {
-        void g.__mcp_bridge__.disconnect?.();
-        g.__mcp_bridge__ = null;
+  public static getInstance(serverModule: string = DASHBOARD_MCP_SERVER_MODULE): MCPBridge {
+    if (serverModule === DASHBOARD_MCP_SERVER_MODULE) {
+      // Framework path: preserve the exact original singleton logic so all
+      // existing callers and test cleanup (instance = null / __mcp_bridge__)
+      // continue to work without any change.
+      if (process.env.NODE_ENV === "development") {
+        const g = globalThis as any;
+        if (g.__mcp_bridge__ && !(g.__mcp_bridge__ instanceof MCPBridge)) {
+          void g.__mcp_bridge__.disconnect?.();
+          g.__mcp_bridge__ = null;
+        }
+        if (!g.__mcp_bridge__) {
+          g.__mcp_bridge__ = new MCPBridge(serverModule);
+        }
+        return g.__mcp_bridge__;
       }
-      if (!g.__mcp_bridge__) {
-        g.__mcp_bridge__ = new MCPBridge();
+
+      if (!MCPBridge.instance) {
+        MCPBridge.instance = new MCPBridge(serverModule);
       }
-      return g.__mcp_bridge__;
+      return MCPBridge.instance;
     }
 
-    if (!MCPBridge.instance) {
-      MCPBridge.instance = new MCPBridge();
+    // Non-framework modules: per-module keyed singletons, lazy and additive.
+    if (process.env.NODE_ENV === "development") {
+      const g = globalThis as any;
+      g.__mcp_bridges__ = g.__mcp_bridges__ || {};
+      // Mirror the framework path's HMR-staleness guard: if hot-reload replaced
+      // the MCPBridge class, drop the stale instance before reusing it.
+      const existing = g.__mcp_bridges__[serverModule];
+      if (existing && !(existing instanceof MCPBridge)) {
+        void existing.disconnect?.();
+        g.__mcp_bridges__[serverModule] = null;
+      }
+      if (!g.__mcp_bridges__[serverModule]) {
+        g.__mcp_bridges__[serverModule] = new MCPBridge(serverModule);
+      }
+      return g.__mcp_bridges__[serverModule];
     }
-    return MCPBridge.instance;
+
+    let inst = MCPBridge.instances.get(serverModule);
+    if (!inst) {
+      inst = new MCPBridge(serverModule);
+      MCPBridge.instances.set(serverModule, inst);
+    }
+    return inst;
   }
 
   /**
@@ -240,7 +277,7 @@ export class MCPBridge extends EventEmitter {
           pythonCmd,
           [
             "-m",
-            DASHBOARD_MCP_SERVER_MODULE,
+            this.serverModule,
             "--client-id",
             clientId,
             ...(forceFlag ? ["--force"] : []),

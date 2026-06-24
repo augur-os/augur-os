@@ -322,13 +322,20 @@ def apply_mechanical_fixes(
             )
             continue
 
-        commit = run_commit(
-            project_root=root,
-            changed_files=changed_files,
-            message=_commit_message(command_entry, finding),
-            finding=finding,
-            command_entry=command_entry,
-        )
+        # If the command operates on files outside the project git repo (e.g. the
+        # external vault), skip the project-side git commit.  The module declares
+        # this by setting ``external_commit = True`` at module level.  The fix is
+        # still recorded as applied and the trust ledger updated normally.
+        if getattr(command_entry.module, "external_commit", False):
+            commit = ""
+        else:
+            commit = run_commit(
+                project_root=root,
+                changed_files=changed_files,
+                message=_commit_message(command_entry, finding),
+                finding=finding,
+                command_entry=command_entry,
+            )
         loop_name = str(finding.get("loop") or command_entry.loop_name)
         notifications = _record_verified_commit_success(
             ledger,

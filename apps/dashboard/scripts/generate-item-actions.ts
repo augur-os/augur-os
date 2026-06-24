@@ -513,14 +513,14 @@ export const DEFAULT_CARD_ACTIONS: Record<string, ItemActionDef[]> = {
       template: "Edit the skill-owned config/source for the {title} page ({path}); do not edit generated app route copies.",
     },
   ],
-  "background-routines": [
+  "loops": [
     {
       id: "routine-run-now",
       label: "Run now",
       icon: "Play",
       kind: "ai",
       template:
-        "Run the {title} background routine ({path}) through /routines or the routine MCP surface, then report the job ledger entry.",
+        "Run the {title} background routine ({path}) through /a-loops or the routine MCP surface, then report the job ledger entry.",
     },
     {
       id: "routine-pause-resume",

@@ -4,7 +4,7 @@ schedules:
     loop: skill-quality
     source: codex
     rrule: "RRULE:FREQ=WEEKLY;BYDAY=FR;BYHOUR=3;BYMINUTE=0"
-    prompt: "/routines run skill-quality"
+    prompt: "/a-loops run skill-quality"
     workspace: "__PROJECT_ROOT__"
     model: "gpt-5.4"
     reasoning_effort: "high"

@@ -4,28 +4,18 @@ x-augur-type: domain
 x-augur-group: augur_admin
 x-augur-release: mvp
 x-augur-tags: []
-description: 'Environment setup, repo health, skill discovery, adaptive growth, CI/CD,
-  and release management. Covers: platform admin capabilities'
+description: 'Environment setup, repo health, skill discovery, adaptive growth, CI/CD, and release management. Covers: platform admin capabilities'
 x-augur-tab: workbench
 x-augur-dependencies:
   required:
   - knowledge
   optional:
   - daemon
-x-augur-routine:
-  id: duplication
-  execution: tiered
-  policy: adaptive
-  callable: ../daemon/scripts/routine_orchestrator/orchestrator.py
-  loop: duplication
-  hub: dev
-  description: Duplicate implementation detection and consolidation routine.
 x-augur-commands:
 - id: remote-access
   type: workflow
   visibility: ops
-  description: Configure and operate remote dashboard and MCP access for trusted network
-    users.
+  description: Configure and operate remote dashboard and MCP access for trusted network users.
 - id: auto-tidy
   type: workflow
   visibility: auto
@@ -79,8 +69,7 @@ x-augur-commands:
 - id: auto-fix
   type: skill
   visibility: auto
-  description: Auto-fix safe TODO_ markers (CLEANUP, OUTDATED) using the auto-fix-markers
-    chain.
+  description: Auto-fix safe TODO_ markers (CLEANUP, OUTDATED) using the auto-fix-markers chain.
   callable: scripts/ops/auto_fix.py
   protocol: scan-fix
   loop:
@@ -100,8 +89,7 @@ x-augur-commands:
 - id: auto-duplication
   type: workflow
   visibility: auto
-  description: Detect duplicate internal auto-command implementations and collapse
-    safe mirrors into wrappers
+  description: Detect duplicate internal auto-command implementations and collapse safe mirrors into wrappers
   callable: scripts/ops/duplication_ops.py
   protocol: scan-fix
   loop:
@@ -211,6 +199,16 @@ x-augur-config-file: config.yaml
 x-augur-evolution:
   last_updated: 2026-03-22 13:50:28.310677+00:00
   improvements_applied: 1
+x-augur-loop:
+  id: duplication
+  skill: platform-admin
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: ../daemon/scripts/routine_orchestrator/orchestrator.py
+  loop_name: duplication
+  memory:
+    trust: adaptive
 ---
 
 
