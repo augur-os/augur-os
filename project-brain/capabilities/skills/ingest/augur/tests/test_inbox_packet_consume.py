@@ -103,6 +103,80 @@ def test_consume_packet_moves_payload_writes_sidecar_and_archives(monkeypatch, t
     assert result.index_refreshed is True
 
 
+def test_consume_html_packet_stamps_artifact_sidecar_fields(monkeypatch, tmp_path: Path) -> None:
+    """Landing an .html packet writes a sidecar the artifacts catalog can read.
+
+    The artifacts scanner reads <stem>.meta.yaml next to <stem>.html. Without the
+    artifact fields (slug/title/kind/hub) read_sidecar raises and the file is
+    invisible in Browse. /keep reconcile must stamp them for HTML (Option A).
+    """
+    from skills.ingest.scripts.inbox_packet_consume import consume_packet
+    from skills.ingest.scripts.inbox_unified_models import (
+        InboxPacket,
+        InboxRouteProposal,
+        InboxVaultTarget,
+    )
+    from src.lib.artifacts_sidecar import read_sidecar
+
+    docs = tmp_path / "docs"
+    packet_dir = docs / "inbox" / "claude" / "packet"
+    packet_dir.mkdir(parents=True)
+    (packet_dir / "nvidia-prep-project-monterey.html").write_text(
+        "<html><head><title>NVIDIA Prep — Project Monterey DSE</title></head><body>x</body></html>",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "skills.ingest.scripts.inbox_packet_consume.refresh_notes_browse_index",
+        lambda vault_dir=None: type("Refresh", (), {"success": True})(),
+    )
+
+    packet = InboxPacket(
+        packet_id="packet",
+        source_id="claude-chat",
+        source_type="chat_mcp",
+        capture_mode="filesystem_mcp",
+        packet_dir=str(packet_dir),
+        title="NVIDIA Prep",
+        status="staged",
+        target_vault="personal",
+        original_filename="nvidia-prep-project-monterey.html",
+        payload_paths=["nvidia-prep-project-monterey.html"],
+        user_instruction="Keep this interview-prep HTML as a durable artifact",
+        content_hash="sha256:staged",
+        created_at="2026-06-23T15:15:28Z",
+    )
+    target = InboxVaultTarget("personal", "private", "Personal", str(tmp_path / "vault"), str(docs), True, True)
+    proposal = InboxRouteProposal(
+        packet_id="packet",
+        target_vault="personal",
+        target_domain="docs",
+        target_folder="career",
+        final_filename="nvidia-prep-project-monterey.html",
+        route_reason="agent session judgment (/keep reconcile)",
+        version_group="nvidia-prep-project-monterey",
+        status="ready",
+    )
+
+    result = consume_packet(packet=packet, target=target, proposal=proposal)
+
+    assert result.status == "success"
+    sidecar_path = docs / "career" / "nvidia-prep-project-monterey.meta.yaml"
+    sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+    # Ingest provenance is still present...
+    assert sidecar["source_id"] == "claude-chat"
+    assert sidecar["user_instruction"].startswith("Keep this")
+    # ...and the artifact fields are now stamped alongside it.
+    assert sidecar["slug"] == "nvidia-prep-project-monterey"
+    assert sidecar["title"] == "NVIDIA Prep — Project Monterey DSE"
+    assert sidecar["kind"] == "saved"
+    assert sidecar["hub"] == "career"
+    # The artifacts scanner can now read it without raising.
+    sc = read_sidecar(sidecar_path)
+    assert sc.slug == "nvidia-prep-project-monterey"
+    assert sc.title == "NVIDIA Prep — Project Monterey DSE"
+
+
 def test_consume_packet_fails_closed_when_proposal_not_ready(tmp_path: Path) -> None:
     from skills.ingest.scripts.inbox_packet_consume import consume_packet
     from skills.ingest.scripts.inbox_unified_models import InboxPacket, InboxRouteProposal, InboxVaultTarget

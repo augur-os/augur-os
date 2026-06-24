@@ -116,10 +116,34 @@ def _write_sidecar(
         "created_at": packet.created_at,
         "consumed_at": _now_iso(),
     }
+    # The artifacts catalog scans <stem>.meta.yaml next to every <stem>.html.
+    # When we land an HTML payload, stamp the artifact-sidecar fields alongside
+    # the ingest provenance so read_sidecar can parse it; otherwise it raises
+    # (missing slug/title/kind/hub) and the file is invisible in Browse. The two
+    # schemas coexist in one doc — each reader takes only its known keys.
+    if final_path.suffix.lower() == ".html":
+        payload.update(_artifact_sidecar_fields(final_path, proposal))
     sidecar_path.write_text(
         yaml.safe_dump(payload, sort_keys=False, default_flow_style=False),
         encoding="utf-8",
     )
+
+
+def _artifact_sidecar_fields(final_path: Path, proposal: InboxRouteProposal) -> dict[str, str]:
+    """Artifact-sidecar fields for a landed HTML payload (slug/title/kind/hub)."""
+    from src.mcp.augur_framework.tools.infrastructure.artifacts import derive_slug, derive_title
+
+    try:
+        title = derive_title(final_path.read_text(encoding="utf-8", errors="replace"), fallback=final_path.name)
+    except OSError:
+        title = final_path.stem
+    hub = (proposal.target_folder or "").split("/", 1)[0] or "uncategorized"
+    return {
+        "slug": derive_slug(filename=final_path.name),
+        "title": title,
+        "kind": "saved",
+        "hub": hub,
+    }
 
 
 def _mark_packet_consumed(packet: InboxPacket) -> None:
