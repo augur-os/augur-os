@@ -56,9 +56,7 @@ def read_sidecar(path: Path) -> Sidecar:
         if f.default is MISSING and f.default_factory is MISSING and name not in kwargs
     ]
     if missing:
-        raise ValueError(
-            f"artifact sidecar {path} is missing required field(s): {', '.join(missing)}"
-        )
+        raise ValueError(f"artifact sidecar {path} is missing required field(s): {', '.join(missing)}")
     return Sidecar(**kwargs)
 
 
