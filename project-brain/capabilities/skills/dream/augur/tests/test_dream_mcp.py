@@ -200,7 +200,7 @@ def test_aug_dream_run_invokes_ledger_backed_runner(monkeypatch, tmp_path: Path,
     assert calls[0]["cache_gc_dry_run"] is True
     out = capsys.readouterr().out
     assert '"count": 2' in out
-    assert "/routines run dream" in out
+    assert "/a-loops run dream" in out
 
 
 def test_aug_dream_status_invokes_unified_payload_helper(monkeypatch, capsys):

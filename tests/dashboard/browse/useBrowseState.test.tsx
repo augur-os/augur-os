@@ -1956,7 +1956,7 @@ describe("useBrowseState", () => {
   });
 
   it("hydrates background routine detail from the schedule query param", async () => {
-    localStorage.setItem("augur:browse:view", "background-routines");
+    localStorage.setItem("augur:browse:view", "loops");
     mockUseSearchParams.mockReturnValue(
       new URLSearchParams("schedule=codex:update-agents-md"),
     );
@@ -1968,7 +1968,7 @@ describe("useBrowseState", () => {
             title: "Update AGENTS.md",
             description: "Update AGENTS.md with newly discovered workflows/commands",
             hub: "system",
-            type: "background-routines",
+            type: "loops",
             metadata: {
               source_kind: "daemon-script",
               status: "enabled",
@@ -1986,7 +1986,7 @@ describe("useBrowseState", () => {
     const { result } = renderHook(() => useBrowseState(), { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(result.current.effectiveViewMode).toBe("background-routines");
+      expect(result.current.effectiveViewMode).toBe("loops");
       expect(result.current.selectedSchedule).toBe("codex:update-agents-md");
       expect(result.current.scheduledExecutionDetail?.title).toBe("Update AGENTS.md");
     });
@@ -2380,6 +2380,7 @@ describe("useBrowseState", () => {
     await waitFor(() => {
       // Three-concept regroup (spec 2026-06-09 §3 amended 2026-06-11):
       // context, prompt, loop groups; actions removed by ADR-806.
+      // skills/mcp-tools moved into LOOP ENGINEERING (task-1 regroup 2026-06-23).
       expect(result.current.visibleCategories.map((category) => category.id)).toEqual([
         "notes",
         "documents",
@@ -2388,9 +2389,9 @@ describe("useBrowseState", () => {
         "archive",
         "prompts",
         "commands",
-        "skills",
-        "background-routines",
+        "loops",
         "agent-profiles",
+        "skills",
         "integrations",
       ]);
     });
@@ -2628,7 +2629,7 @@ describe("useBrowseState", () => {
   });
 
   it("removes the schedule query param when closing background routine detail", async () => {
-    localStorage.setItem("augur:browse:view", "background-routines");
+    localStorage.setItem("augur:browse:view", "loops");
     mockUseSearchParams.mockReturnValue(
       new URLSearchParams("schedule=codex:update-agents-md"),
     );

@@ -1146,7 +1146,7 @@ def test_public_diagnose_prints_summary_without_mutating(tmp_path, capsys):
                 "loop": "alpha",
                 "category": "cat-one",
                 "issue": "Budget exhausted",
-                "fix": "/routines configure alpha --budget 3",
+                "fix": "/a-loops configure alpha --budget 3",
             }
         ],
     }
@@ -1242,7 +1242,7 @@ def test_public_diagnose_with_fix_exits_with_heal_only_error(tmp_path):
 
 def test_public_loop_executor_does_not_advertise_stubbed_commands():
     # The /dev-loops command doc was removed in the routines consolidation
-    # (folded into /routines); this now guards only the still-living executor
+    # (folded into /a-loops); this now guards only the still-living executor
     # source against advertising stubbed/unimplemented commands.
     executor = (DAEMON_ROOT / "scripts" / "adaptive_loop_executor.py").read_text(
         encoding="utf-8"
@@ -1273,7 +1273,7 @@ def test_trust_diagnostics_budget_exhaustion_fix_hint_includes_loop_name():
         if item["issue"].startswith("Budget exhausted")
     )
     assert issue["fix"] == (
-        "/routines configure alpha --budget N or wait for next cycle"
+        "/a-loops configure alpha --budget N or wait for next cycle"
     )
 
 

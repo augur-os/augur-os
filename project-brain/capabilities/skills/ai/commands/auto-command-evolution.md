@@ -20,7 +20,7 @@ safe ADR-102 improvements to command `SKILL.md` files.
 ## Usage
 
 Runs automatically in the `command-evolution` loop at `tier: 0`
-(`trigger: post-execution`). Can also be invoked manually via `/routines`.
+(`trigger: post-execution`). Can also be invoked manually via `/a-loops`.
 
 ## Protocol
 

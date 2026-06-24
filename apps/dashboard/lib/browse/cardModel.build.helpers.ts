@@ -585,7 +585,7 @@ function routineSlots(item: BrowseItem): Pick<BrowseCardModel, "badges" | "metad
   return {
     badges: mergeBadges(badges, common.badges),
     metadataRows: mergedRows,
-    detailSections: section("background-routines", "Routine signals", mergedRows),
+    detailSections: section("loops", "Routine signals", mergedRows),
   };
 }
 
@@ -786,7 +786,7 @@ export function slotsFor(item: BrowseItem, viewMode: ViewMode): Pick<BrowseCardM
       return wikiSlots(item);
     case "agent-profiles":
       return agentProfileSlots(item);
-    case "background-routines":
+    case "loops":
       return routineSlots(item);
     case "mcp-servers":
       return mcpServerSlots(item);

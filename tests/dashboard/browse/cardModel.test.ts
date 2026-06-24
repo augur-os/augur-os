@@ -838,7 +838,7 @@ describe("buildBrowseCardModel", () => {
           token_cost: "1200",
         },
       },
-      "background-routines",
+      "loops",
     );
 
     expect(model.icon).toBe("FileText");

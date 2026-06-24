@@ -7,7 +7,7 @@ Augur's primary AI-client command surface is intentionally small:
 - `/discover`
 - `/adr`
 - `/dev`
-- `/routines`
+- `/a-loops`
 - `/sweep`
 
 These are the only command docs exported to the primary Codex, Claude, and Gemini surfaces. Internal, deprecated, daemon, and specialist commands may still exist, but they are not primary slash commands.

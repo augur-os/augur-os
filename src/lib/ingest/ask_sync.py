@@ -11,7 +11,7 @@ try:
     from src.mcp.augur_shared.config import get_skill_data_dir
 except ImportError:
     from src.config.paths import get_skill_data_dir
-from src.config.paths import get_project_brain_dir, get_runtime_dir
+from src.config.paths import get_daily_logs_dir, get_project_brain_dir, get_runtime_dir
 from src.lib.frontmatter_utils import parse_frontmatter
 
 _SECTION_RE = re.compile(r"^## (?P<time>\d{2}:\d{2}) - (?P<kind>.+)$", re.MULTILINE)
@@ -109,11 +109,10 @@ def _load_recent_ask_syntheses(
 
 def _load_recent_ask_memory_events(
     *,
-    runtime_dir: Path,
     since: datetime,
     limit: int,
 ) -> list[dict[str, Any]]:
-    daily_dir = runtime_dir / "memory" / "daily"
+    daily_dir = get_daily_logs_dir()
     if not daily_dir.exists():
         return []
 
@@ -205,7 +204,6 @@ def load_recent_ask_outcomes(*, days_back: int = 7, limit: int = 20) -> list[dic
     if remaining:
         outcomes.extend(
             _load_recent_ask_memory_events(
-                runtime_dir=runtime_dir,
                 since=since,
                 limit=remaining,
             )

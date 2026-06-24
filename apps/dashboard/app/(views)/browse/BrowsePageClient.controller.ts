@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import { getStalenessLevel, getStalenessColors } from "@/lib/timestamps";
 import { buildSweepCandidates } from "@/lib/browse/sweepCandidates";
 import { buildSweepPrompt } from "@/lib/browse/sweepPrompt";
 import { runCliExecPrompt } from "@/lib/browse/cliExecClient";
+import { textNoteFile } from "@/lib/browse/textNote";
 import { mcpCall } from "@/lib/mcp/client";
 import { buildBrowseDeepSearchAction } from "@/lib/browse/deepSearchAction";
 import {
@@ -32,6 +33,8 @@ import { type BrowseItem } from "@/lib/browse/types";
 import { runDirectItemAction } from "@/lib/browse/directItemActionRunner";
 import type { AiItemActionItem, DirectItemAction } from "@/lib/browse/itemActions";
 import { indexCategoryForViewMode } from "@/lib/browse/viewModeMapping";
+import { runDeleteSelection } from "@/lib/browse/deleteSelection";
+import { selectionActionsForViewMode } from "@/lib/browse/selectionActions";
 import { useSkillCoverage } from "@/lib/browse/useSkillCoverage";
 import type {
   BrowsePageLocalAction,
@@ -98,6 +101,7 @@ export function useBrowsePageController() {
     },
     [],
   );
+  const [deleteConfirm, setDeleteConfirm] = useState<{ message: string; resolve: (ok: boolean) => void } | null>(null);
   const selectionMode = useBrowseSelection((s) => s.selectionMode);
   const selectedCount = useBrowseSelection((s) => s.selected.size);
   const toggleSelectionMode = useBrowseSelection((s) => s.toggleSelectionMode);
@@ -116,19 +120,47 @@ export function useBrowsePageController() {
     [browse.semanticResultsActive, browse.semanticDisplayResults, browse.sorted, browse.visibleCount],
   );
   const handleSelectionAction = useCallback(
-    (action: SelectionAction) =>
-      dispatchSelectionAction(
-        action,
-        useBrowseSelection.getState().selectedItemList(),
-        browse.effectiveViewMode,
-        {
-          onPrompt: browse.handleTriggerPrompt,
-          onInfo: (message) => toast.message(message),
-          onError: (message) => toast.error(message),
-          onAfterDispatch: () => useBrowseSelection.getState().reset(),
-        },
-      ),
-    [browse.effectiveViewMode, browse.handleTriggerPrompt],
+    (action: SelectionAction) => {
+      const items = useBrowseSelection.getState().selectedItemList();
+      if (action.id === "delete") {
+        void runDeleteSelection(items, browse.effectiveViewMode, {
+          callTool: mcpCall,
+          confirm: (message) => new Promise<boolean>((resolve) => setDeleteConfirm({ message, resolve })),
+          reindexCategory: (vm) => mcpCall("reindex-browse-category", { category: indexCategoryForViewMode(vm) }).then(() => {
+            // Mirror the canonical reindex path: notes/archive index under
+            // category "vault" (indexCategoryForViewMode), and the grid refreshes
+            // via the query's own refetch — the ["browse", ...] invalidate key
+            // never matched the ["browse-index", ...] query.
+            browse.refetch();
+          }),
+          dispatchSweep: (() => {
+            const sweepAction = selectionActionsForViewMode(browse.effectiveViewMode).find((a) => a.id === "sweep");
+            if (!sweepAction) return null;
+            return (sweepItems: BrowseItem[]) => Promise.resolve(
+              dispatchSelectionAction(sweepAction, sweepItems, browse.effectiveViewMode, {
+                onPrompt: browse.handleTriggerPrompt,
+                onInfo: (m) => toast.message(m),
+                onError: (m) => toast.error(m),
+                onAfterDispatch: () => {},
+              }),
+            );
+          })(),
+          onInfo: (m) => toast.message(m),
+          onError: (m) => toast.error(m),
+        }).then((r) => {
+          if (r.trashed) toast.success(`Trashed ${r.trashed} item(s).`);
+          useBrowseSelection.getState().reset();
+        });
+        return;
+      }
+      dispatchSelectionAction(action, items, browse.effectiveViewMode, {
+        onPrompt: browse.handleTriggerPrompt,
+        onInfo: (message) => toast.message(message),
+        onError: (message) => toast.error(message),
+        onAfterDispatch: () => useBrowseSelection.getState().reset(),
+      });
+    },
+    [browse.effectiveViewMode, browse.handleTriggerPrompt, browse.refetch],
   );
   const activeSemanticResults = browse.semanticResultsActive ? browse.semanticDisplayResults : [];
   const setSelectedBrowseItemForCurrentView = useCallback(
@@ -246,11 +278,12 @@ export function useBrowsePageController() {
     }
   }, [setLocalField]);
   const handleSubmitText = useCallback((text: string) => {
-    setLocalField("noteQueue", (queue) => [
-      { jobId: crypto.randomUUID().slice(0, 8), name: `${text.slice(0, 40)}…`, status: "pending" as const, stage: "queued" },
-      ...queue,
-    ]);
-  }, [setLocalField]);
+    // Persist the pasted text through the same proven ingest path as file uploads.
+    // Previously this only pushed a "pending" item to the local queue and never
+    // called any backend tool, so "Add Note → Text → Save as Note" was a silent
+    // no-op (queue item stuck "pending", nothing written to the vault).
+    void uploadFiles([textNoteFile(text)]);
+  }, [uploadFiles]);
   const handleReindex = useCallback(() => {
     setLocalField("reindexing", true);
     const label = `Reindex ${browse.activeCategory.label}`;
@@ -378,6 +411,8 @@ export function useBrowsePageController() {
     closeAnyDetail,
     coverageIndex,
     currentFreshness,
+    deleteConfirm,
+    setDeleteConfirm,
     handleDeepSearch,
     handleDrop,
     handleItemDirect,

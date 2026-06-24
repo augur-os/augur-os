@@ -7,6 +7,8 @@ client calls between spawning its own fix subagents. No LLM calls here.
 """
 from __future__ import annotations
 
+import json
+import math
 import subprocess
 from pathlib import Path
 from typing import Any, Callable
@@ -155,10 +157,43 @@ def _default_runtime_dir() -> Path:
     return Path(get_runtime_dir())
 
 
+def _default_orchestrator_loops() -> list[str]:
+    """Tiered loops eligible for parallel fan-out: every declared loop except the
+    inline-session prompt loops (dream, inbox-triage) and the catalog driver
+    (goal-loop)."""
+    try:
+        from . import registry
+    except ImportError:  # pragma: no cover
+        from routine_orchestrator import registry  # type: ignore[no-redef]
+    out: list[str] = []
+    for r in registry.list_routines():
+        if r.id == "goal-loop":
+            continue
+        if getattr(r, "execution", "") == "inline-session":
+            continue
+        out.append(r.id)
+    return sorted(out)
+
+
+def _worktree_available(default: int = 9) -> int:
+    """Worktree-registry headroom (MAX_WORKTREES - in-use). Falls back to a safe
+    default if the registry script can't be loaded."""
+    try:
+        import importlib.util
+        from src.config.paths import get_project_root
+        wt = Path(get_project_root()) / "scripts" / "worktree_registry.py"
+        spec = importlib.util.spec_from_file_location("worktree_registry_fanout", wt)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)  # type: ignore[union-attr]
+        return int(mod.cmd_list().get("available", default))
+    except Exception:
+        return default
+
+
 def op_worktree(*, goal_id: str, stamp: str, project_root: str | Path) -> dict[str, Any]:
     """Resolve the goal and create its isolated worktree off the current branch."""
     try:
-        spec = goal_catalog.resolve(goal_id)
+        spec = goal_catalog.resolve_goal_or_loop(goal_id)
     except goal_catalog.UnknownGoalError as exc:
         return {"success": False, "error": str(exc)}
     handle = goal_loop.create_goal_worktree(
@@ -170,6 +205,151 @@ def op_worktree(*, goal_id: str, stamp: str, project_root: str | Path) -> dict[s
         "loops": list(spec.loops),
         "worktree_path": handle.path,
         "branch": handle.branch,
+    }
+
+
+def op_fanout_plan(
+    *,
+    scope: str = "orchestrator",
+    include: list[str] | None = None,
+    exclude: list[str] | None = None,
+    cap: int = 6,
+    project_root: str | Path | None = None,
+    scan_timeout_seconds: float = 8.0,
+    max_iterations: int = 8,
+    loop_cap: int = 6,
+    _scan: Callable[..., Any] = _real_scan,
+    _orchestrator_loops: Callable[[], list[str]] | None = None,
+    _headroom: Callable[[], int] | None = None,
+) -> dict[str, Any]:
+    """Deterministic scan-triage for `/a-loops all`. Runs each in-scope orchestrator
+    loop's NON-MUTATING scanner against the current repo, counts findings, and
+    returns the work set plus a worktree-clamped concurrency cap. No worktrees,
+    no commits — safe to call from a bare CLI (`--dry-run`).
+
+    Each loop scan is bounded by `scan_timeout_seconds` (via goal_suggest.assess /
+    SIGALRM) so a single slow scanner (e.g. hardening's npm-audit) cannot stall the
+    full triage. A timed-out loop is conservatively included in `loops_with_work`
+    (it is NOT proven clean) and reported in `timed_out`; a crashed loop is likewise
+    included and reported in `crashed`; `partial` is True when any loop timed out or
+    crashed. The per-loop scan bound relies on SIGALRM and is only enforced on the
+    POSIX main thread; off the main thread or on Windows the scan runs unbounded and
+    `partial` may be False even if a scan overran.
+    """
+    root = Path(project_root) if project_root is not None else Path(".")
+    if not math.isfinite(scan_timeout_seconds):
+        scan_timeout_seconds = 8.0
+    scan_timeout_seconds = max(0.5, scan_timeout_seconds)
+    loops = (_orchestrator_loops or _default_orchestrator_loops)()
+    inc = {s for s in (include or []) if s}
+    exc = {s for s in (exclude or []) if s}
+    if inc:
+        loops = [lp for lp in loops if lp in inc]
+    if exc:
+        loops = [lp for lp in loops if lp not in exc]
+
+    try:
+        from . import goal_suggest
+    except ImportError:  # pragma: no cover
+        from routine_orchestrator import goal_suggest  # type: ignore[no-redef]
+    findings_by_loop = goal_suggest.assess(
+        loops, project_root=root, scan=_scan,
+        per_loop_timeout_seconds=scan_timeout_seconds, mark_crashes=True,
+    )
+
+    def _marker(f: Any, key: str) -> bool:
+        return isinstance(f, dict) and bool(f.get(key))
+
+    per_loop_counts: dict[str, int] = {}
+    timed_out: list[str] = []
+    crashed: list[str] = []
+    for lp in loops:
+        data = findings_by_loop.get(lp, [])
+        if any(_marker(f, goal_suggest.SENTINEL_TIMEOUT) for f in data):
+            timed_out.append(lp)
+        if any(_marker(f, goal_suggest.SENTINEL_CRASHED) for f in data):
+            crashed.append(lp)
+        per_loop_counts[lp] = sum(
+            1 for f in data
+            if not _marker(f, goal_suggest.SENTINEL_TIMEOUT) and not _marker(f, goal_suggest.SENTINEL_CRASHED)
+        )
+    timed_out = sorted(timed_out)
+    crashed = sorted(crashed)
+    incomplete = set(timed_out) | set(crashed)
+    loops_with_work = sorted({lp for lp, n in per_loop_counts.items() if n > 0} | incomplete)
+    skipped_clean = sorted(lp for lp in per_loop_counts if per_loop_counts[lp] == 0 and lp not in incomplete)
+    partial = bool(timed_out or crashed)
+    headroom = (_headroom or _worktree_available)()
+    safe_cap = max(0, min(cap, headroom))
+    return {
+        "success": True,
+        "scope": scope,
+        "loops_with_work": loops_with_work,
+        "per_loop_counts": per_loop_counts,
+        "skipped_clean": skipped_clean,
+        "timed_out": timed_out,
+        "crashed": crashed,
+        "partial": partial,
+        "safe_cap": safe_cap,
+        "worktree_headroom": headroom,
+        "max_iterations": max_iterations,
+        "loop_cap": loop_cap,
+    }
+
+
+def op_fanout_report(
+    *,
+    results: list[dict[str, Any]],
+    runtime_dir: str | Path | None = None,
+    stamp: str = "",
+) -> dict[str, Any]:
+    """Write an honest rollup of a parallel `/a-loops all` run. Never reports
+    'all clean' unless every loop converged."""
+    runtime = Path(runtime_dir) if runtime_dir is not None else _default_runtime_dir()
+    out_dir = runtime / "a-loops-all"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    unfinished = [r for r in results if r.get("verdict") in {"stalled", "exhausted", "failed"}]
+    converged = [r for r in results if r.get("verdict") == "converged"]
+    branches = [r["branch"] for r in results if r.get("branch")]
+    all_clean = bool(results) and not unfinished and len(converged) == len(results)
+
+    lines = ["# /a-loops all — rollup", ""]
+    lines.append(f"- loops run: {len(results)}")
+    lines.append(f"- converged: {len(converged)}")
+    lines.append(f"- unfinished (stalled/exhausted/failed): {len(unfinished)}")
+    lines.append(f"- all_clean: {all_clean}")
+    lines.append("")
+    lines.append("| loop | verdict | branch | residual |")
+    lines.append("|---|---|---|---|")
+    for r in results:
+        lines.append(
+            f"| {r.get('loop','?')} | {r.get('verdict','?')} | "
+            f"{r.get('branch') or '—'} | {r.get('residual', 0)} |"
+        )
+    if unfinished:
+        lines += ["", "> Residual findings were escalated; review branches before merge."]
+
+    tag = stamp or "latest"
+    md_path = out_dir / f"rollup-{tag}.md"
+    json_path = out_dir / f"rollup-{tag}.json"
+    md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    json_path.write_text(
+        json.dumps(
+            {"all_clean": all_clean, "converged": len(converged),
+             "unfinished": len(unfinished), "results": results},
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    return {
+        "success": True,
+        "report_md": str(md_path),
+        "report_json": str(json_path),
+        "converged": len(converged),
+        "unfinished": len(unfinished),
+        "all_clean": all_clean,
+        "branches": branches,
     }
 
 

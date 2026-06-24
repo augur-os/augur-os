@@ -200,7 +200,7 @@ def test_security_scan_npm_audit_does_not_generate_package_lock(tmp_path):
             stderr="",
         ),
     ) as run:
-        result = mod._scan_npm_audit(tmp_path)
+        result = mod._scan_npm_audit(tmp_path, cache_dir=tmp_path / ".audit-cache")
 
     assert result == []
     assert "--package-lock=false" in run.call_args.args[0]
@@ -227,7 +227,7 @@ def test_security_scan_resolves_npm_executable_for_subprocess(tmp_path):
             ),
         ) as run,
     ):
-        result = mod._scan_npm_audit(tmp_path)
+        result = mod._scan_npm_audit(tmp_path, cache_dir=tmp_path / ".audit-cache")
 
     assert result == []
     assert run.call_args.args[0][0] == "C:/Program Files/nodejs/npm.cmd"

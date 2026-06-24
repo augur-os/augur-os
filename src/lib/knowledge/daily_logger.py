@@ -14,7 +14,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
 
-from src.config.paths import get_memory_dir, get_runtime_dir
+from src.config.paths import get_daily_logs_dir, get_memory_dir
 
 logger = get_entity_logger(__name__)
 
@@ -141,7 +141,7 @@ class DailyLogger:
         """
         self.retention_days = retention_days
         self._memory_dir = memory_dir or get_memory_dir()
-        self._daily_dir = daily_dir or get_runtime_dir() / "memory" / "daily"
+        self._daily_dir = daily_dir or get_daily_logs_dir()
         self._ensure_directories()
 
     def _ensure_directories(self) -> None:

@@ -20,5 +20,5 @@ Compile violation signals into layered digest sections that get prepended to
 ## Usage
 
 ```bash
-/routines run auto-agent-digest
+/a-loops run auto-agent-digest
 ```

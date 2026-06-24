@@ -37,7 +37,7 @@ export function resolveIndexTypeBadge(
       typeBadge = pt === "yaml" ? "YAML" : pt === "auto" ? "Auto" : "Custom";
       break;
     }
-    case "background-routines":
+    case "loops":
       typeBadge = entry.metadata?.source_kind || entry.metadata?.source || type;
       break;
     case "mcp-servers":
@@ -179,7 +179,7 @@ export function resolveIndexDescription(
         ].filter(Boolean).join(" · ");
       }
       break;
-    case "background-routines": {
+    case "loops": {
       const cadence = entry.metadata?.cadence || entry.metadata?.schedule || "";
       const lastRun = entry.metadata?.lastRun || entry.metadata?.last_run_at || "";
       const sourceKind = entry.metadata?.source_kind || entry.metadata?.source || "";
@@ -522,7 +522,7 @@ export function buildIndexEnrichedMeta(
       if (entry.metadata?.latest_file_path) enrichedMeta.latest_file_path = entry.metadata.latest_file_path;
       if (entry.metadata?.logs_root_path) enrichedMeta.logs_root_path = entry.metadata.logs_root_path;
       break;
-    case "background-routines":
+    case "loops":
       copyMeta(enrichedMeta, "source_kind", firstString(entry.source_kind, entry.metadata?.source_kind, enrichedMeta.source_kind));
       copyMeta(enrichedMeta, "spawn_kind", firstString(entry.spawn_kind, entry.metadata?.spawn_kind, enrichedMeta.spawn_kind));
       copyMeta(enrichedMeta, "status", firstString(entry.status, entry.metadata?.status, enrichedMeta.status));

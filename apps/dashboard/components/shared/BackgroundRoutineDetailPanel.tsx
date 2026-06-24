@@ -48,8 +48,8 @@ export function BackgroundRoutineDetailPanel({
       spawnKind: routine.spawn_kind,
     },
   };
-  const aiActions = onItemPrompt ? aiItemActionsFor('background-routines', itemActionTarget) : [];
-  const directActions = onItemDirect ? directItemActionsFor('background-routines', itemActionTarget) : [];
+  const aiActions = onItemPrompt ? aiItemActionsFor('loops', itemActionTarget) : [];
+  const directActions = onItemDirect ? directItemActionsFor('loops', itemActionTarget) : [];
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {

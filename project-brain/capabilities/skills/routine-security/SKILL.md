@@ -66,5 +66,5 @@ The `auto-security-audit` workflow in `scripts/security_audit.py` runs as a nigh
 
 ```bash
 # Run the deterministic security scan on demand
-aug routine scan-only --loop hardening
+aug a-loops scan-only --loop hardening
 ```

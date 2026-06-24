@@ -576,7 +576,7 @@ def generate_next_actions(
         if not cs.enabled and cs.disable_count > 0:
             actions.append(
                 f"Re-enable {name} (disabled {cs.disable_count}x, "
-                f"run /routines promote)"
+                f"run /a-loops promote)"
             )
 
     # Budget exhausted

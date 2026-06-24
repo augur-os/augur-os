@@ -4,10 +4,7 @@ x-augur-type: autoloop
 x-augur-group: augur_autoloops
 x-augur-release: mvp
 x-augur-license: MIT
-description: Scheduled platform-health routines for maintaining Augur's git,
-  dependency, page-health, MCP, observability, plugin-lint, filesystem, and
-  runtime-parity surfaces after releases, refactors, scheduled drift checks, or
-  suspected infrastructure regressions.
+description: Scheduled platform-health routines for maintaining Augur's git, dependency, page-health, MCP, observability, plugin-lint, filesystem, and runtime-parity surfaces after releases, refactors, scheduled drift checks, or suspected infrastructure regressions.
 x-augur-tab: platform
 x-augur-tags:
 - routine
@@ -18,34 +15,11 @@ x-augur-tags:
 - ops
 x-augur-dashboard-pages: []
 x-augur-data-dir: routine-platform
-x-augur-routines:
-- id: hardening
-  execution: tiered
-  policy: adaptive
-  callable: ../daemon/scripts/routine_orchestrator/orchestrator.py
-  loop: hardening
-  hub: adaptive
-  description: Platform, dependency, filesystem, and plugin hardening routine.
-- id: observability
-  execution: tiered
-  policy: adaptive
-  callable: ../daemon/scripts/routine_orchestrator/orchestrator.py
-  loop: observability
-  hub: adaptive
-  description: Runtime observability and performance inspection routine.
-- id: page-health
-  execution: tiered
-  policy: adaptive
-  callable: ../daemon/scripts/routine_orchestrator/orchestrator.py
-  loop: page-health
-  hub: adaptive
-  description: Dashboard page health routine.
 x-augur-commands:
 - id: auto-agent-config-parity
   type: workflow
   visibility: auto
-  description: Detect Claude-only enforcement gates that lack a cross-agent peer in `.githooks/`
-    or `.pre-commit-config.yaml`, so behavior gates do not silently bypass non-Claude clients.
+  description: Detect Claude-only enforcement gates that lack a cross-agent peer in `.githooks/` or `.pre-commit-config.yaml`, so behavior gates do not silently bypass non-Claude clients.
   callable: scripts/agent_config_parity.py
   protocol: scan-fix
   loop:
@@ -55,8 +29,7 @@ x-augur-commands:
 - id: auto-dependency-audit
   type: workflow
   visibility: auto
-  description: Scan dependency vulnerabilities and apply conservative audit fixes at higher
-    hardening difficulty.
+  description: Scan dependency vulnerabilities and apply conservative audit fixes at higher hardening difficulty.
   callable: scripts/dependency_audit.py
   protocol: scan-fix
   loop:
@@ -66,8 +39,7 @@ x-augur-commands:
 - id: auto-dir-alignment
   type: workflow
   visibility: auto
-  description: Validate first-level dirs in managed locations against skill names and reserved
-    entries.
+  description: Validate first-level dirs in managed locations against skill names and reserved entries.
   callable: scripts/dir_alignment_ops.py
   protocol: scan-fix
   loop:
@@ -87,8 +59,7 @@ x-augur-commands:
 - id: auto-repo-pollution
   type: workflow
   visibility: auto
-  description: Detect working-tree junk invisible to git (gitignored binaries, OS junk, orphan
-    pycache, empty dirs) and remove expired session artifacts.
+  description: Detect working-tree junk invisible to git (gitignored binaries, OS junk, orphan pycache, empty dirs) and remove expired session artifacts.
   callable: scripts/repo_pollution_ops.py
   protocol: scan-fix
   loop:
@@ -98,8 +69,7 @@ x-augur-commands:
 - id: auto-flow-optimizer
   type: workflow
   visibility: auto
-  description: Detect dispatch mode mismatches across actions and write a flow optimization
-    report.
+  description: Detect dispatch mode mismatches across actions and write a flow optimization report.
   callable: scripts/flow_optimizer.py
   protocol: scan-fix
   loop:
@@ -109,11 +79,7 @@ x-augur-commands:
 - id: auto-friction-audit
   type: workflow
   visibility: auto
-  description: Mine recent AI-client session transcripts for recurring agent friction
-    (unreachable tools, tool-discovery misses, hook false-fires, ad-hoc repo-root script
-    workarounds, repeated command failures) and write a ranked report with remedy
-    proposals. Self-improving — propose by default, auto-apply only allowlisted low-risk
-    fixes on a branch.
+  description: Mine recent AI-client session transcripts for recurring agent friction (unreachable tools, tool-discovery misses, hook false-fires, ad-hoc repo-root script workarounds, repeated command failures) and write a ranked report with remedy proposals. Self-improving — propose by default, auto-apply only allowlisted low-risk fixes on a branch.
   callable: scripts/friction_audit.py
   protocol: scan-fix
   loop:
@@ -183,8 +149,7 @@ x-augur-commands:
 - id: auto-perf-profile
   type: workflow
   visibility: auto
-  description: Check response times, disk bloat, stale files, cache size, and performance
-    regressions.
+  description: Check response times, disk bloat, stale files, cache size, and performance regressions.
   callable: scripts/perf_profile.py
   protocol: scan-fix
   loop:
@@ -227,44 +192,37 @@ x-augur-config:
     - id: auto-agent-config-parity
       type: workflow
       visibility: auto
-      description: Detect Claude-only enforcement gates that lack a cross-agent peer in `.githooks/`
-        or `.pre-commit-config.yaml`, so behavior gates do not silently bypass non-Claude
-        clients.
+      description: Detect Claude-only enforcement gates that lack a cross-agent peer in `.githooks/` or `.pre-commit-config.yaml`, so behavior gates do not silently bypass non-Claude clients.
       callable: scripts/agent_config_parity.py
       protocol: scan-fix
     - id: auto-dependency-audit
       type: workflow
       visibility: auto
-      description: Scan dependency vulnerabilities and apply conservative audit fixes at higher
-        hardening difficulty.
+      description: Scan dependency vulnerabilities and apply conservative audit fixes at higher hardening difficulty.
       callable: scripts/dependency_audit.py
       protocol: scan-fix
     - id: auto-dir-alignment
       type: workflow
       visibility: auto
-      description: Validate first-level dirs in managed locations against skill names and
-        reserved entries.
+      description: Validate first-level dirs in managed locations against skill names and reserved entries.
       callable: scripts/dir_alignment_ops.py
       protocol: scan-fix
     - id: auto-file-growth
       type: workflow
       visibility: auto
-      description: Detect runaway file generation, duplicate content, and abnormal directory
-        growth.
+      description: Detect runaway file generation, duplicate content, and abnormal directory growth.
       callable: scripts/file_growth_ops.py
       protocol: scan-fix
     - id: auto-repo-pollution
       type: workflow
       visibility: auto
-      description: Detect working-tree junk invisible to git (gitignored binaries, OS junk,
-        orphan pycache, empty dirs) and remove expired session artifacts.
+      description: Detect working-tree junk invisible to git (gitignored binaries, OS junk, orphan pycache, empty dirs) and remove expired session artifacts.
       callable: scripts/repo_pollution_ops.py
       protocol: scan-fix
     - id: auto-flow-optimizer
       type: workflow
       visibility: auto
-      description: Detect dispatch mode mismatches across actions and write a flow optimization
-        report.
+      description: Detect dispatch mode mismatches across actions and write a flow optimization report.
       callable: scripts/flow_optimizer.py
       protocol: scan-fix
     - id: auto-fs-bypass
@@ -306,8 +264,7 @@ x-augur-config:
     - id: auto-perf-profile
       type: workflow
       visibility: auto
-      description: Check response times, disk bloat, stale files, cache size, and performance
-        regressions.
+      description: Check response times, disk bloat, stale files, cache size, and performance regressions.
       callable: scripts/perf_profile.py
       protocol: scan-fix
     - id: auto-plugin-lint
@@ -328,6 +285,34 @@ x-augur-config:
       description: Enforce the shared/private vault skill-root migration contract.
       callable: scripts/skill_root_migration_ops.py
       protocol: scan-fix
+x-augur-loops:
+- id: hardening
+  skill: routine-platform
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: ../daemon/scripts/routine_orchestrator/orchestrator.py
+  loop_name: hardening
+  memory:
+    trust: adaptive
+- id: observability
+  skill: routine-platform
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: ../daemon/scripts/routine_orchestrator/orchestrator.py
+  loop_name: observability
+  memory:
+    trust: adaptive
+- id: page-health
+  skill: routine-platform
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: ../daemon/scripts/routine_orchestrator/orchestrator.py
+  loop_name: page-health
+  memory:
+    trust: adaptive
 ---
 
 # routine-platform
@@ -401,10 +386,10 @@ safe mechanical fixes and leaves risky findings as manual issues.
 
 ```bash
 # Inspect runtime observability, performance, and cache drift on demand.
-aug routine scan-only --loop observability
+aug a-loops scan-only --loop observability
 
 # Check dashboard page MCP tool references without changing page sources.
-aug routine scan-only --loop page-health
+aug a-loops scan-only --loop page-health
 ```
 
 ## References

@@ -259,7 +259,7 @@ def run_goal_loops(
                 escalated += 1
             # For errored loops, residual is typically empty (the error occurred before findings
             # were produced). Escalate a structured marker so the failure is not silently lost —
-            # it lands in the same queue the user inspects via `aug routine pending-escalations`.
+            # it lands in the same queue the user inspects via `aug a-loops pending-escalations`.
             if outcome.stop_reason == STOP_ERRORED:
                 marker: dict[str, Any] = {
                     "goal_loop_error": True,
@@ -369,7 +369,7 @@ def run_goal(
 
 
 def list_goal_payloads() -> dict[str, Any]:
-    """Return concrete goals for `aug routine goal` without an id."""
+    """Return concrete goals for `aug a-loops goal` without an id."""
 
     goals = [goal_catalog.goal_payload(goal) for goal in goal_catalog.list_goals()]
     return {"success": True, "goals": goals, "count": len(goals)}
@@ -429,7 +429,7 @@ def _command_for_step(
 
 def _next_actions(goal_id: str, iteration: GoalIteration) -> list[str]:
     actions: list[str] = []
-    rerun = f"aug routine goal {goal_id} --max-iterations 1"
+    rerun = f"aug a-loops goal {goal_id} --max-iterations 1"
     for check in iteration.failed_checks():
         text = f"{check.stdout}\n{check.stderr}".lower()
         if check.step_id == "compound-review" and "proposal" in text:

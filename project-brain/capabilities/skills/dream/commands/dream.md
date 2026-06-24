@@ -1,5 +1,5 @@
 ---
-description: "[DEPRECATED - use /routines run dream] Alias for the cross-client overnight synthesis routine during the ADR-758 transition."
+description: "[DEPRECATED - use /a-loops run dream] Alias for the cross-client overnight synthesis routine during the ADR-758 transition."
 visibility: user
 x-augur-export-command: false
 x-augur-deprecated: true
@@ -9,9 +9,9 @@ x-augur-deprecated-in-favor-of: routines
 # /dream
 
 > **Retired primary surface:** `/dream` is no longer exported to primary AI
-> clients. Use `/routines run dream` instead.
+> clients. Use `/a-loops run dream` instead.
 
-**DEPRECATED legacy alias** - use `/routines run dream` for new workflows.
+**DEPRECATED legacy alias** - use `/a-loops run dream` for new workflows.
 This source doc remains for history and non-primary routing during the ADR-758
 transition.
 

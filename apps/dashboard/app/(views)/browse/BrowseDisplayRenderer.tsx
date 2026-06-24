@@ -37,7 +37,7 @@ interface BrowseDisplayRendererProps {
 
 function selectedForItem(item: BrowseItem, viewMode: ViewMode, selectedSkill: string | null, selectedSchedule: string | null) {
   if (viewMode === "skills") return selectedSkill === item.id;
-  if (viewMode === "background-routines") return selectedSchedule === item.id;
+  if (viewMode === "loops") return selectedSchedule === item.id;
   return false;
 }
 
@@ -104,7 +104,7 @@ export function BrowseDisplayRenderer({
             onSelectSkill(item.id);
             return;
           }
-          if (viewMode === "background-routines") {
+          if (viewMode === "loops") {
             onSelectScheduledExecution(item.id);
             return;
           }

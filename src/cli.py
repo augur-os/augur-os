@@ -447,7 +447,20 @@ For tool-specific help:
         top_level_args, _ = parser.parse_known_args(argv[:first_command_index])
         _direct_subcommand = argv[first_command_index]
         sub_parser = subparsers.choices[_direct_subcommand]
-        args, remaining = sub_parser.parse_known_args(argv[first_command_index + 1 :])
+        _sub_rest = list(argv[first_command_index + 1 :])
+        if _direct_subcommand == "a-loops":
+            # skill_cli_daemon is the module name assigned by cli_plugins when it loads
+            # the daemon skill's mcp/__init__.py; look it up from sys.modules to avoid
+            # colliding with the MCP SDK's own 'mcp' package.
+            import sys as _sys
+            _daemon_mcp = _sys.modules.get("skill_cli_daemon")
+            _rewrite_loop_argv = getattr(_daemon_mcp, "_rewrite_loop_argv", None) if _daemon_mcp else None
+            if _rewrite_loop_argv is not None:
+                _sub_rest, _loop_err = _rewrite_loop_argv(_sub_rest)
+                if _loop_err is not None:
+                    print(_loop_err)
+                    return 2
+        args, remaining = sub_parser.parse_known_args(_sub_rest)
         # Reconstruct top-level fields the rest of main() expects.
         args.tool = None
         args.subcommand = _direct_subcommand

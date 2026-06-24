@@ -16,14 +16,6 @@ x-augur-tags:
 - sweep
 x-augur-dashboard-pages: []
 x-augur-data-dir: routine-vault
-x-augur-routine:
-  id: knowledge-enrichment
-  execution: tiered
-  policy: adaptive
-  callable: ../daemon/scripts/routine_orchestrator/orchestrator.py
-  loop: knowledge-enrichment
-  hub: adaptive
-  description: Vault, wiki, memory, and knowledge enrichment routine.
 x-augur-commands:
 - id: auto-claude-md-audit
   type: workflow
@@ -68,8 +60,7 @@ x-augur-commands:
 - id: auto-memory-leak
   type: workflow
   visibility: auto
-  description: Detect dashboard memory leaks from polling, unbounded caches, and interval
-    accumulation.
+  description: Detect dashboard memory leaks from polling, unbounded caches, and interval accumulation.
   callable: scripts/memory_leak.py
   protocol: scan-fix
   loop:
@@ -99,8 +90,7 @@ x-augur-commands:
 - id: auto-vault-structure-guard
   type: workflow
   visibility: auto
-  description: Domains-layout structure guard — flags legacy top-level folders, unexpected
-    root files, and test-artifact patterns in content areas (report-only).
+  description: Domains-layout structure guard — flags legacy top-level folders, unexpected root files, and test-artifact patterns in content areas (report-only).
   callable: scripts/structure_guard.py
   protocol: scan-fix
   loop:
@@ -137,8 +127,7 @@ x-augur-config:
     - id: auto-memory-leak
       type: workflow
       visibility: auto
-      description: Detect dashboard memory leaks from polling, unbounded caches, and interval
-        accumulation.
+      description: Detect dashboard memory leaks from polling, unbounded caches, and interval accumulation.
       callable: scripts/memory_leak.py
       protocol: scan-fix
     - id: auto-stale-refs
@@ -156,10 +145,19 @@ x-augur-config:
     - id: auto-vault-structure-guard
       type: workflow
       visibility: auto
-      description: Domains-layout structure guard — flags legacy top-level folders, unexpected
-        root files, and test-artifact patterns in content areas (report-only).
+      description: Domains-layout structure guard — flags legacy top-level folders, unexpected root files, and test-artifact patterns in content areas (report-only).
       callable: scripts/structure_guard.py
       protocol: scan-fix
+x-augur-loop:
+  id: knowledge-enrichment
+  skill: routine-vault
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: ../daemon/scripts/routine_orchestrator/orchestrator.py
+  loop_name: knowledge-enrichment
+  memory:
+    trust: adaptive
 ---
 
 # routine-vault

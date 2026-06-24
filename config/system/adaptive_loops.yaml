@@ -25,7 +25,7 @@ engine:
 services:
   insight_scanner:
     # 2026-05-11: DISABLED ahead of the unified Background Routines refactor
-    # (spec: docs/superpowers/specs/2026-05-11-background-routines-unified-design.md).
+    # (spec: project-brain/decisions/adrs/archive/2026-05-11-background-routines-unified-design.md).
     # This scanner spawns ~39 Claude Code background sessions per fire — burning ~30% of
     # a 5h Claude budget per 12h cycle, with most output (~2,200 insights/2,219 backlogged
     # in state/daemon/insights/insights.yaml) never surfacing past max_notifications_per_day: 1.

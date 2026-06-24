@@ -130,7 +130,7 @@ Dashboard files in `apps/dashboard/app/{hub}/` are **auto-generated copies** —
 | Commit and merge | `/dev merge` |
 | Debug issues | `/dev debug` |
 
-Run `/routines` for the unified routine catalog. Per rules 19 and 29: never invoke `pnpm test`, `pytest`, `pnpm dev`, etc. directly — always go through the loop or slash command.
+Run `/a-loops` for the unified routine catalog. Per rules 19 and 29: never invoke `pnpm test`, `pytest`, `pnpm dev`, etc. directly — always go through the loop or slash command.
 
 **Requirements**: Python >=3.11, Node.js >=22, pnpm (via corepack), uv, ripgrep (`rg`) — recommended for fast full-text search; `unified-search` and wiki search fall back to a slower Python scan without it. Install: `winget install BurntSushi.ripgrep.MSVC` (Windows) / `brew install ripgrep` (macOS) / `apt install ripgrep` (Linux).
 

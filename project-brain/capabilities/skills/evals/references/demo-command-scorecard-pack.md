@@ -49,9 +49,9 @@ vault locations.
   to current repo rules.
 - Pass only if the command reports real blockers or verified results honestly.
 
-### `/routines`
+### `/a-loops`
 
-- Run `/routines status` or a bounded routine status/report command.
+- Run `/a-loops status` or a bounded routine status/report command.
 - Pass only if routine state comes from the canonical orchestrator or ledger.
 
 ### `/sweep`

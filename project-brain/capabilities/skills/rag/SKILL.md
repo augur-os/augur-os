@@ -77,7 +77,7 @@ former `/search` command into it). `/ask` routes structured index queries —
 `search`, `status`, `reindex`, `cleanup`, `purge` — to the RAG surface and
 conversational queries to the reflective second-brain flow. RAG reindexing also
 runs automatically through the daemon's `knowledge-enrichment` loop and can be
-triggered manually with `/routines scan index`.
+triggered manually with `/a-loops scan index`.
 
 ### `/wiki`
 

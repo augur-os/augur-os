@@ -1108,6 +1108,13 @@ def register_core_tools(
     if mcp_tool_interceptor:
         hygiene_apply_selection = mcp_tool_interceptor(hygiene_apply_selection)
 
+    # ==========================================================================
+    # Artifact Serve Tools (Fast Artifact Serve)
+    # ==========================================================================
+
+    from .artifacts_serve import register_artifacts_serve_tools
+    register_artifacts_serve_tools(mcp, mcp_tool_interceptor, metrics)
+
 
 __all__ = [
     "register_core_tools",

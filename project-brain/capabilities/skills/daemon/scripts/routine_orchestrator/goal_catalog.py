@@ -184,3 +184,31 @@ def steps_for_goal(goal: GoalDefinition, *, skip_smoke: bool = False) -> Iterabl
         if skip_smoke and step.id == "demo-smoke":
             continue
         yield step
+
+
+def _known_loop_ids() -> set[str]:
+    """Loop ids from the registry, imported lazily to avoid an import cycle."""
+    try:
+        from . import registry  # type: ignore
+    except ImportError:  # pragma: no cover - script-path import
+        import registry  # type: ignore
+    try:
+        return {r.id for r in registry.list_routines()}
+    except Exception:
+        return set()
+
+
+def resolve_goal_or_loop(goal_id: str) -> GoalSpec:
+    """Resolve a catalog goal id, or synthesize a single-loop goal from a loop id."""
+    try:
+        return resolve(goal_id)
+    except UnknownGoalError:
+        if goal_id in _known_loop_ids():
+            return GoalSpec(
+                id=goal_id,
+                title=f"Run the {goal_id} loop",
+                loops=(goal_id,),
+                rubric=f"Drive the {goal_id} loop to convergence.",
+                tags=(goal_id,),
+            )
+        raise

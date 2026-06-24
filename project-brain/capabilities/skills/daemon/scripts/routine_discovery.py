@@ -1,7 +1,7 @@
 """Background routine discovery across autonomous trigger sources.
 
 ADR-727 replaces the narrow scheduled-executions view with a unified
-background-routines inventory. This module owns the machine-local discovery
+loops inventory. This module owns the machine-local discovery
 contract and intentionally fails soft per source kind: one bad plist or YAML
 file must not hide every other routine from the user.
 """
@@ -581,11 +581,13 @@ def _call_list_declared_routines() -> list[Any]:
 
 
 class DeclaredRoutineDiscoverer:
-    """ADR-758 declared routines from SKILL.md ``x-augur-routine(s)`` frontmatter.
+    """ADR-758 declared routines from SKILL.md ``x-augur-loop(s)`` frontmatter.
 
-    Surfaces user-invocable declared routines (e.g. inline-session command wrappers
-    like ``desktop-ingest``) that have no other autonomous trigger source, so the
-    Routines tab fully answers "what runs without me" (ADR-813).
+    Sourced via ``registry.list_routines()``, which now reads the canonical
+    ``x-augur-loop(s)`` schema (legacy ``x-augur-routine(s)`` was removed). Surfaces
+    user-invocable declared routines (e.g. ``runner: auto`` command wrappers like
+    ``desktop-ingest``) that have no other autonomous trigger source, so the Routines
+    tab fully answers "what runs without me" (ADR-813).
     """
 
     source_kind = "declared-routine"

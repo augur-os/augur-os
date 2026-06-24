@@ -118,7 +118,7 @@
     ],
     "overrides": {
       "flatted": ">=3.4.2",
-      "dompurify": ">=3.4.10",
+      "dompurify": ">=3.4.11",
       "picomatch": ">=4.0.4",
       "minimatch@3.1.5>brace-expansion": "1.1.13",
       "minimatch@10.2.5>brace-expansion": "5.0.6",

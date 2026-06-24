@@ -14,7 +14,7 @@ describe("Browse display modes", () => {
 
   it("uses category defaults when no override is stored", () => {
     const technicalCategoryIds = [
-      "background-routines",
+      "loops",
       "mcp-servers",
       "api-routes",
       "tests",

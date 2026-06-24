@@ -128,3 +128,17 @@ def test_wiki_queries_pending_when_no_query_config(setup_env) -> None:
 
     assert result.status == "pending"
     assert result.details == "no compounding wiki queries"
+
+
+def test_wiki_queries_done_when_query_pages_exist(setup_env) -> None:
+    # B5: query pages live as wiki/queries/*.md. A vault with seeded query pages but
+    # no queries.yaml/config.yaml must still be recognized as having queries.
+    queries_dir = knowledge.get_wiki_dir() / "queries"
+    queries_dir.mkdir(parents=True, exist_ok=True)
+    for slug in ("how-should-x-be-used", "how-should-y-be-used"):
+        (queries_dir / f"{slug}.md").write_text("# Query\n", encoding="utf-8")
+
+    result = knowledge.wiki_queries()
+
+    assert result.status == "done"
+    assert "2" in (result.details or "")
