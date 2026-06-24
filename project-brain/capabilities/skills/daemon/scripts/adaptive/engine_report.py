@@ -10,7 +10,7 @@ class ReportMixin:
     """Mixin providing generate_report()."""
 
     def generate_report(self, *, days: int = 1) -> str:
-        """Generate the `/routines report` executive report."""
+        """Generate the `/a-loops report` executive report."""
         try:
             from .loop_reporter import generate_executive_report
             return generate_executive_report(

@@ -4,45 +4,35 @@ x-augur-type: autoloop
 x-augur-group: augur_autoloops
 x-augur-release: mvp
 x-augur-license: MIT
-description: Adaptive loop that improves skill quality scores toward tier A across
-  all 4 dimensions (instruction, product, UI, wiring) with user-journey awareness.
-  Generates seed data, rewrites descriptions, scaffolds product files, and fixes wiring
-  — with git revert on build failure or score regression. Also runs the ADR-741
-  check-resolvable catalog audit that detects unrouted intents, routing collisions,
-  orphaned skills, and stale capability entries. Use this when skills are scoring
-  below tier A and need automated quality improvement.
+description: Adaptive loop that improves skill quality scores toward tier A across all 4 dimensions (instruction, product, UI, wiring) with user-journey awareness. Generates seed data, rewrites descriptions, scaffolds product files, and fixes wiring — with git revert on build failure or score regression. Also runs the ADR-741 check-resolvable catalog audit that detects unrouted intents, routing collisions, orphaned skills, and stale capability entries. Use this when skills are scoring below tier A and need automated quality improvement.
 x-augur-tags: []
 x-augur-callable: project-brain/capabilities/skills/auto-skill-quality/scripts/skill_quality_ops.py
 x-augur-mcp-tools:
-  - scan-skill-structure
-  - skill-resolvable-report
+- scan-skill-structure
+- skill-resolvable-report
 x-augur-loop:
-  name: skill-quality
-  tier: 1
-  trigger: nightly
-x-augur-routine:
   id: skill-quality
-  execution: tiered
-  policy: adaptive
-  callable: ../daemon/scripts/routine_orchestrator/orchestrator.py
-  loop: skill-quality
-  hub: dev
-  description: Skill quality scoring and repair routine.
+  skill: auto-skill-quality
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: ../daemon/scripts/routine_orchestrator/orchestrator.py
+  loop_name: skill-quality
+  memory:
+    trust: adaptive
 x-augur-commands:
-  - id: skillify
-    type: workflow
-    visibility: dev
-    description: Convert an incident, recurring bug, or persistent gap into a durable
-      Augur skill via a 10-step canonical workflow (ADR-745).
-    callable: commands/skillify.md
-    protocol: guide
+- id: skillify
+  type: workflow
+  visibility: dev
+  description: Convert an incident, recurring bug, or persistent gap into a durable Augur skill via a 10-step canonical workflow (ADR-745).
+  callable: commands/skillify.md
+  protocol: guide
 x-augur-config:
   commands:
   - id: auto-seed-data
     type: workflow
     visibility: auto
-    description: Seed empty skill data directories from packaged templates and seed
-      manifests.
+    description: Seed empty skill data directories from packaged templates and seed manifests.
     callable: scripts/seed_data_ops.py
     protocol: scan-fix
   - id: auto-skill-migrate
@@ -54,8 +44,7 @@ x-augur-config:
   - id: auto-skill-structure
     type: workflow
     visibility: auto
-    description: Scan skill directories for structure violations and expose the structure
-      MCP diagnostic.
+    description: Scan skill directories for structure violations and expose the structure MCP diagnostic.
     callable: scripts/scan_structure.py
     protocol: scan-fix
 x-augur-evolution:
@@ -244,8 +233,8 @@ Each skill stores eval artifacts in `evals/`:
 Invoked automatically by the adaptive loop engine, or manually:
 
 ```
-/routines run skill-quality              # Run one cycle at current difficulty
-/routines run skill-quality --upgrade 5  # Force-improve the 5 worst skills
+/a-loops run skill-quality              # Run one cycle at current difficulty
+/a-loops run skill-quality --upgrade 5  # Force-improve the 5 worst skills
 ```
 
 Via Python CLI:
@@ -256,9 +245,9 @@ python project-brain/capabilities/skills/auto-skill-quality/scripts/skill_qualit
 
 ## Examples
 
-- `/routines run skill-quality` — run one scoring + fix cycle
-- `/routines run skill-quality --upgrade 5` — force d3+ on 5 worst skills
-- `/routines pending` — check for pending skill-quality findings
+- `/a-loops run skill-quality` — run one scoring + fix cycle
+- `/a-loops run skill-quality --upgrade 5` — force d3+ on 5 worst skills
+- `/a-loops pending` — check for pending skill-quality findings
 - Behavioral eval runners must resolve through the owning shared/private skill root; there is no repo-root `skills/` fallback.
 
 ## Integration

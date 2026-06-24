@@ -28,6 +28,7 @@ _augur_bootstrap_module = _augur_importlib_util.module_from_spec(_augur_bootstra
 _augur_sys.modules[_augur_bootstrap_spec.name] = _augur_bootstrap_module
 _augur_bootstrap_spec.loader.exec_module(_augur_bootstrap_module)
 _augur_bootstrap_module.ensure_project_paths(__file__)
+import hashlib
 import json
 import math
 import re
@@ -200,59 +201,93 @@ def _scan_secrets(project_root: Path, difficulty: int) -> list[dict]:
     return issues
 
 
-def _scan_npm_audit(project_root: Path) -> list[dict]:
-    """Run npm audit and collect vulnerability info."""
+def _npm_lockfile(dashboard_dir: Path) -> Path | None:
+    for name in ("package-lock.json", "pnpm-lock.yaml", "yarn.lock"):
+        p = dashboard_dir / name
+        if p.exists():
+            return p
+    return None
+
+
+def _scan_npm_audit(project_root: Path, *, timeout: int = 30, cache_dir: Path | None = None) -> list[dict]:
+    """Run npm audit (timeout-bounded) and collect vulnerability info.
+
+    Skips the audit entirely when the dependency lockfile hash is unchanged
+    since the last run (cached under the runtime dir), so the hardening loop is
+    not re-paying registry latency every cycle.
+    """
     dashboard_dir = project_root / "apps" / "dashboard"
     if not (dashboard_dir / "package.json").exists():
         return []
+
+    if cache_dir is None:
+        try:
+            from src.mcp.augur_shared.config import get_runtime_dir
+            cache_dir = Path(get_runtime_dir()) / "security_scan"
+        except Exception:
+            cache_dir = dashboard_dir / ".augur-audit-cache"
+    cache_dir = Path(cache_dir)
+    lockfile = _npm_lockfile(dashboard_dir)
+    lock_hash = (
+        hashlib.sha256(lockfile.read_bytes()).hexdigest() if lockfile and lockfile.is_file() else "no-lock"
+    )
+    proj_fp = hashlib.sha256(str(Path(project_root).resolve()).encode()).hexdigest()[:12]
+    cache_file = cache_dir / f"npm_audit-{proj_fp}.json"
+    if cache_file.is_file():
+        try:
+            cached = json.loads(cache_file.read_text(encoding="utf-8"))
+            if cached.get("lock_hash") == lock_hash:
+                return list(cached.get("issues", []))
+        except (ValueError, OSError):
+            pass
+
     npm = _npm_command()
     if npm is None:
-        return [
-            {
-                "action": "npm-audit-error",
-                "stderr": "npm executable not found on PATH",
-                "kind": "environment",
-                "fixability": "manual",
-                "root_cause_type": "env_runtime",
-            }
-        ]
+        return [{
+            "action": "npm-audit-error",
+            "stderr": "npm executable not found on PATH",
+            "kind": "environment", "fixability": "manual", "root_cause_type": "env_runtime",
+        }]
 
-    result = subprocess.run(
-        [npm, "audit", "--json", "--package-lock=false"],
-        capture_output=True,
-        text=True,
-        cwd=str(dashboard_dir),
-    )
+    try:
+        result = subprocess.run(
+            [npm, "audit", "--json", "--package-lock=false"],
+            capture_output=True, text=True, cwd=str(dashboard_dir), timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return [{
+            "action": "npm-audit-skipped",
+            "stderr": f"npm audit exceeded {timeout}s timeout; skipped this run",
+            "kind": "maintenance", "fixability": "manual", "root_cause_type": "env_runtime",
+        }]
 
     if result.returncode == 0:
-        return []
+        issues: list[dict] = []
+    else:
+        try:
+            audit_data = json.loads(result.stdout)
+            vulns = audit_data.get("vulnerabilities", {})
+            issues = []
+            for pkg_name, info in vulns.items():
+                severity = info.get("severity", "unknown")
+                fix_available = info.get("fixAvailable", False)
+                is_breaking = isinstance(fix_available, dict) and bool(fix_available.get("isSemVerMajor"))
+                issues.append({
+                    "action": "npm-vulnerability", "package": pkg_name, "severity": severity,
+                    "fixAvailable": fix_available,
+                    "kind": "external" if is_breaking else "actionable",
+                    "fixability": "manual" if is_breaking else "auto",
+                    "root_cause_type": "external_dependency" if is_breaking else "unknown",
+                })
+        except (ValueError, KeyError):
+            issues = [{"action": "npm-audit-error", "stderr": result.stderr[:200]}]
 
-    # npm audit returns non-zero when vulnerabilities found
     try:
-        audit_data = json.loads(result.stdout)
-        vulns = audit_data.get("vulnerabilities", {})
-        issues = []
-        for pkg_name, info in vulns.items():
-            severity = info.get("severity", "unknown")
-            fix_available = info.get("fixAvailable", False)
-            is_breaking = (
-                isinstance(fix_available, dict)
-                and bool(fix_available.get("isSemVerMajor"))
-            )
-            issues.append({
-                "action": "npm-vulnerability",
-                "package": pkg_name,
-                "severity": severity,
-                "fixAvailable": fix_available,
-                "kind": "external" if is_breaking else "actionable",
-                "fixability": "manual" if is_breaking else "auto",
-                "root_cause_type": (
-                    "external_dependency" if is_breaking else "unknown"
-                ),
-            })
-        return issues
-    except (ValueError, KeyError):
-        return [{"action": "npm-audit-error", "stderr": result.stderr[:200]}]
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_file.write_text(json.dumps({"lock_hash": lock_hash, "issues": issues}), encoding="utf-8")
+    except OSError:
+        pass
+    return issues
 
 
 def scan(ctx: OpsContext) -> ScanResult:

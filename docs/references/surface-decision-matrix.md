@@ -209,5 +209,5 @@ This matrix is enforced primarily through:
 
 - ADR-734 drift guardrails (eight-dimension scanner)
 - `auto-agent-config-parity` loop (per project_enforcement_layers memory)
-- Pre-commit and pre-merge auto-loops in `/routines`
+- Pre-commit and pre-merge auto-loops in `/a-loops`
 - Manual review when adding new skills (skill-creator template should default to CLI-only — pending [task #17])

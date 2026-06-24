@@ -1,4 +1,4 @@
-"""Tests for the `aug routine goal` CLI verb (ADR-758)."""
+"""Tests for the `aug a-loops goal` CLI verb (ADR-758)."""
 from __future__ import annotations
 
 import importlib.util

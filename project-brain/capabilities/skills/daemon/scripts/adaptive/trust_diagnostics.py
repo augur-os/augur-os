@@ -36,7 +36,7 @@ def diagnose_loops(
                         f"Zombie enabled: enabled=True but "
                         f"disable_count={cs.disable_count} >= {MAX_DISABLE_RETRIES}"
                     ),
-                    "fix": "Run /routines heal --fix or check_consistency()",
+                    "fix": "Run /a-loops heal --fix or check_consistency()",
                     "auto_fixable": True,
                 })
 
@@ -50,7 +50,7 @@ def diagnose_loops(
                         f"Uncaught disable: enabled=True but "
                         f"consecutive_failures={cs.consecutive_failures}"
                     ),
-                    "fix": "Run /routines heal --fix or check_consistency()",
+                    "fix": "Run /a-loops heal --fix or check_consistency()",
                     "auto_fixable": True,
                 })
 
@@ -64,7 +64,7 @@ def diagnose_loops(
                         f"Permanently disabled after "
                         f"{cs.disable_count} disable cycles"
                     ),
-                    "fix": "/routines reset or /routines promote",
+                    "fix": "/a-loops reset or /a-loops promote",
                     "auto_fixable": False,
                 })
 
@@ -86,7 +86,7 @@ def diagnose_loops(
                             f"Stale cooldown: {remaining} cycles remaining "
                             f"(cooldown={cooldown})"
                         ),
-                        "fix": "/routines promote to re-enable manually",
+                        "fix": "/a-loops promote to re-enable manually",
                         "auto_fixable": False,
                     })
 
@@ -112,7 +112,7 @@ def diagnose_loops(
                 "category": None,
                 "issue": "Budget exhausted (budget_remaining=0)",
                 "fix": (
-                    f"/routines configure {loop_name} --budget N "
+                    f"/a-loops configure {loop_name} --budget N "
                     "or wait for next cycle"
                 ),
                 "auto_fixable": False,
@@ -154,7 +154,7 @@ def _diagnose_journal(issues: list[dict], journal_entries: list[dict]) -> None:
                     f"Death spiral: action '{action}' failed "
                     f"{count} times in last 50 entries"
                 ),
-                "fix": "Investigate root cause, consider /routines disable",
+                "fix": "Investigate root cause, consider /a-loops disable",
                 "auto_fixable": False,
             })
 

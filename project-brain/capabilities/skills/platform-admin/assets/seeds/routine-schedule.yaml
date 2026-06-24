@@ -4,7 +4,7 @@ schedules:
     loop: duplication
     source: codex
     rrule: "RRULE:FREQ=WEEKLY;BYDAY=SA;BYHOUR=3;BYMINUTE=20"
-    prompt: "/routines run duplication"
+    prompt: "/a-loops run duplication"
     workspace: "__PROJECT_ROOT__"
     model: "gpt-5.4"
     reasoning_effort: "high"

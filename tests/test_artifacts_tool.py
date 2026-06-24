@@ -338,6 +338,148 @@ def test_refresh_pages_index_swallows_errors(monkeypatch):
     artifacts_mod._refresh_pages_index()  # must not raise
 
 
+def _make_artifact(docs_dir: Path, slug: str, hub: str = "career") -> None:
+    """Write one sidecar-backed HTML artifact under docs_dir."""
+    hub_dir = docs_dir / hub / "artifacts"
+    hub_dir.mkdir(parents=True, exist_ok=True)
+    (hub_dir / f"{slug}.html").write_text(
+        f"<html><title>{slug}</title></html>", encoding="utf-8"
+    )
+    write_sidecar(
+        hub_dir / f"{slug}.meta.yaml",
+        Sidecar(slug=slug, title=slug, kind="saved", hub=hub),
+    )
+
+
+def test_artifacts_list_caches_second_call(tmp_path: Path, monkeypatch) -> None:
+    """A warm call returns the cached result without re-walking the filesystem."""
+    import src.mcp.augur_framework.tools.infrastructure.artifacts as artifacts_mod
+
+    artifacts_mod._invalidate_artifacts_cache()
+    _make_artifact(tmp_path, "spec-x")
+
+    calls: list[Path] = []
+    real_iter = artifacts_mod._iter_artifact_files
+
+    def counting_iter(docs_dir: Path):
+        calls.append(docs_dir)
+        return real_iter(docs_dir)
+
+    monkeypatch.setattr(artifacts_mod, "_iter_artifact_files", counting_iter)
+
+    first = artifacts_list_impl(docs_dir=tmp_path)
+    second = artifacts_list_impl(docs_dir=tmp_path)
+
+    assert len(calls) == 1  # second call served from cache
+    assert first == second
+    assert len(first["artifacts"]) == 1
+
+
+def test_invalidate_artifacts_cache_forces_recompute(tmp_path: Path, monkeypatch) -> None:
+    """After explicit invalidation the next call re-walks and sees new artifacts."""
+    import src.mcp.augur_framework.tools.infrastructure.artifacts as artifacts_mod
+
+    artifacts_mod._invalidate_artifacts_cache()
+    _make_artifact(tmp_path, "first")
+
+    calls: list[Path] = []
+    real_iter = artifacts_mod._iter_artifact_files
+
+    def counting_iter(docs_dir: Path):
+        calls.append(docs_dir)
+        return real_iter(docs_dir)
+
+    monkeypatch.setattr(artifacts_mod, "_iter_artifact_files", counting_iter)
+
+    assert len(artifacts_list_impl(docs_dir=tmp_path)["artifacts"]) == 1
+    assert len(calls) == 1
+
+    # A new artifact is invisible until the cache is invalidated.
+    _make_artifact(tmp_path, "second")
+    assert len(artifacts_list_impl(docs_dir=tmp_path)["artifacts"]) == 1
+    assert len(calls) == 1  # still served from cache
+
+    artifacts_mod._invalidate_artifacts_cache()
+    assert len(artifacts_list_impl(docs_dir=tmp_path)["artifacts"]) == 2
+    assert len(calls) == 2  # recomputed after invalidation
+
+
+class _FakeMCP:
+    def __init__(self) -> None:
+        self.tools: dict = {}
+
+    def tool(self, name: str, annotations=None):
+        def deco(fn):
+            self.tools[name] = fn
+            return fn
+
+        return deco
+
+
+class _FakeMetrics:
+    def track_tool(self, *args, **kwargs) -> None:
+        return None
+
+
+def _register(monkeypatch, docs_dir: Path) -> _FakeMCP:
+    """Register the artifact tools against a fake MCP, pinned to docs_dir."""
+    import src.mcp.augur_framework.tools.infrastructure.artifacts as artifacts_mod
+
+    monkeypatch.setattr(artifacts_mod, "get_documents_dir", lambda: docs_dir)
+    # Avoid touching the real RAG index in unit tests.
+    monkeypatch.setattr(artifacts_mod, "_refresh_pages_index", lambda: None)
+
+    mcp = _FakeMCP()
+    artifacts_mod.register_artifacts_tools(mcp, lambda fn: fn, _FakeMetrics())
+    return mcp
+
+
+def test_save_artifact_tool_invalidates_cache(tmp_path: Path, monkeypatch) -> None:
+    """The save-artifact wrapper invalidates the cache so the new file is visible."""
+    import asyncio
+
+    import src.mcp.augur_framework.tools.infrastructure.artifacts as artifacts_mod
+
+    artifacts_mod._invalidate_artifacts_cache()
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    mcp = _register(monkeypatch, docs)
+
+    # Prime the cache while empty.
+    assert artifacts_list_impl(docs_dir=docs)["artifacts"] == []
+
+    src = tmp_path / "draft.html"
+    src.write_text("<html><title>Draft</title></html>", encoding="utf-8")
+    asyncio.run(mcp.tools["save-artifact"](source_path=str(src), hub="career"))
+
+    # Without invalidation this would still report the stale empty listing.
+    result = artifacts_list_impl(docs_dir=docs)
+    assert [e["slug"] for e in result["artifacts"]] == ["draft"]
+
+
+def test_artifacts_reindex_tool_invalidates_cache(tmp_path: Path, monkeypatch) -> None:
+    """A non-dry-run reindex wrapper invalidates the cache."""
+    import asyncio
+
+    import src.mcp.augur_framework.tools.infrastructure.artifacts as artifacts_mod
+
+    artifacts_mod._invalidate_artifacts_cache()
+    docs = tmp_path / "docs"
+    (docs / "career" / "resumes").mkdir(parents=True)
+    (docs / "career" / "resumes" / "resume.html").write_text(
+        "<html><title>My Resume</title></html>", encoding="utf-8"
+    )
+    mcp = _register(monkeypatch, docs)
+
+    # HTML has no sidecar yet -> empty listing primes the cache.
+    assert artifacts_list_impl(docs_dir=docs)["artifacts"] == []
+
+    asyncio.run(mcp.tools["artifacts-reindex"](dry_run=False))
+
+    result = artifacts_list_impl(docs_dir=docs)
+    assert [e["slug"] for e in result["artifacts"]] == ["my-resume"]
+
+
 def test_save_artifact_appends_suffix_on_cross_hub_slug_collision(tmp_path: Path) -> None:
     docs = tmp_path / "docs"
     existing_dir = docs / "brain" / "artifacts"

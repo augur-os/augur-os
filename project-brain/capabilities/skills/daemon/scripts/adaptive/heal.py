@@ -480,7 +480,7 @@ def format_heal_report(findings: list[HealFinding]) -> str:
             lines.append(f"  - {f.loop}/{f.category}: {f.message}")
         lines.append("")
 
-    lines.append("Run `/routines heal --fix` to attempt repairs.")
+    lines.append("Run `/a-loops heal --fix` to attempt repairs.")
     return "\n".join(lines)
 
 

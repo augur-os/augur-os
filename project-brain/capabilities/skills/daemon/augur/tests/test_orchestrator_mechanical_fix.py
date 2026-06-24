@@ -408,3 +408,79 @@ def test_default_verify_runner_string_command_uses_shlex_not_shell(tmp_path: Pat
     assert call["cmd"] == ["python", "-c", "print(1)"]
     # Must NOT pass shell=True
     assert not call["kwargs"].get("shell"), "shell=True must NOT be passed for string verify_command"
+
+
+def _external_command(repo: Path, *, name: str = "auto-mech"):
+    """Build a command whose module declares ``external_commit = True``.
+
+    The fix mutates a file but the project-side git commit must be skipped.
+    """
+    calls: list[list[dict]] = []
+
+    def fix(ctx, issues: list[dict]) -> FixResult:
+        calls.append(issues)
+        (repo / "toy.txt").write_text("external change\n", encoding="utf-8")
+        return FixResult(
+            success=True,
+            changes=["toy.txt"],
+            summary="external vault fix",
+            fix_type="code-fix",
+        )
+
+    module = SimpleNamespace(name=name, fix=fix, external_commit=True)
+    return SimpleNamespace(name=name, module=module, loop_name="toy-loop", config={}), calls
+
+
+def test_external_commit_skips_project_commit_and_trust_counts(tmp_path: Path) -> None:
+    """external_commit=True: sentinel commit="", commit runner never called,
+    total_fixes incremented, total_commits and commit_trust NOT incremented,
+    verify gate still runs.
+    """
+    fix_phase = _load_fix_phase()
+    repo = _init_git_repo(tmp_path)
+    command, _calls = _external_command(repo)
+
+    commit_calls: list[object] = []
+
+    def spy_commit_runner(**kwargs) -> str:
+        commit_calls.append(kwargs)
+        return "abc123"
+
+    verify_calls: list[object] = []
+
+    def spy_verify_runner(*, verify_command, ctx, changed_files, finding, command_entry) -> bool:
+        verify_calls.append(changed_files)
+        return True
+
+    result = fix_phase.apply_mechanical_fixes(
+        [_finding()],
+        commands=[command],
+        project_root=repo,
+        state_dir=tmp_path / "state",
+        trust_config=_trust_config(),
+        commit_runner=spy_commit_runner,
+        verify_runner=spy_verify_runner,
+    )
+
+    # Fix must land in applied, not failed/deferred
+    assert len(result.applied) == 1
+    assert result.failed == []
+    assert result.deferred == []
+
+    # Sentinel: commit field is empty string (the external_commit contract)
+    applied = result.applied[0]
+    assert applied.commit == "", f"expected empty sentinel, got {applied.commit!r}"
+
+    # Project-side commit runner must NOT have been called
+    assert commit_calls == [], f"commit_runner was called {len(commit_calls)} time(s); must be 0 for external_commit"
+
+    # Verify gate MUST still have run
+    assert len(verify_calls) == 1, "verify_runner must be called even for external_commit commands"
+    assert verify_calls[0] == ["toy.txt"]
+
+    # Trust ledger: total_fixes incremented, total_commits and commit_trust NOT
+    state_json = (tmp_path / "state" / "trust_state.json").read_text(encoding="utf-8")
+    category = json.loads(state_json)["loops"]["toy-loop"]["categories"]["auto-mech"]
+    assert category["total_fixes"] == 1, "total_fixes must be incremented"
+    assert category.get("total_commits", 0) == 0, "total_commits must NOT be incremented for external_commit"
+    assert category.get("commit_trust", 0.0) == 0.0, "commit_trust must remain 0 for external_commit"

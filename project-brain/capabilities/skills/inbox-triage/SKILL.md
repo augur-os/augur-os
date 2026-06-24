@@ -4,34 +4,36 @@ x-augur-type: skill
 x-augur-group: brain
 x-augur-release: mvp
 x-augur-license: MIT
-x-augur-tags: [routine, inbox, capture, filing, cross-client]
-description: Daily routine that files vault-inbox capture cards into vault domains.
-  The client's scheduled session classifies each card; three deterministic tools
-  (inbox-triage-list, inbox-triage-file, inbox-triage-report) handle enumeration,
-  atomic moves, and daily reporting. Move-only with a general/ drain so the inbox
-  always empties. Cross-client, per ADR-744.
+x-augur-tags:
+- routine
+- inbox
+- capture
+- filing
+- cross-client
+description: Daily routine that files vault-inbox capture cards into vault domains. The client's scheduled session classifies each card; three deterministic tools (inbox-triage-list, inbox-triage-file, inbox-triage-report) handle enumeration, atomic moves, and daily reporting. Move-only with a general/ drain so the inbox always empties. Cross-client, per ADR-744.
 x-augur-callable: project-brain/capabilities/skills/inbox-triage/scripts/mcp/__init__.py
 x-augur-mcp-tools:
-  - inbox-triage-list
-  - inbox-triage-file
-  - inbox-triage-report
+- inbox-triage-list
+- inbox-triage-file
+- inbox-triage-report
 x-augur-data-dir: inbox-triage
-x-augur-routine:
-  id: inbox-triage
-  execution: inline-session
-  policy: oneshot
-  callable: commands/inbox-triage.md
-  hub: command
-  description: Daily vault-inbox auto-triage into domains.
 x-augur-config:
   commands:
   - id: inbox-triage
     type: routine
     visibility: user
-    description: Daily vault-inbox auto-triage. Activated per-client via its
-      native routine surface (Claude Code /schedule, Codex automations, etc.).
+    description: Daily vault-inbox auto-triage. Activated per-client via its native routine surface (Claude Code /schedule, Codex automations, etc.).
     callable: commands/inbox-triage.md
     protocol: routine
+x-augur-loop:
+  id: inbox-triage
+  skill: inbox-triage
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: commands/inbox-triage.md
+  memory:
+    trust: oneshot
 ---
 
 # inbox-triage
@@ -85,7 +87,7 @@ If a card is ambiguous, prefer the `general/` drain over leaving it in the inbox
 
 ```bash
 # Run the daily inbox-triage routine (via the client's native routine surface)
-/routines run inbox-triage
+/a-loops run inbox-triage
 
 # Manually list cards waiting in the inbox
 # (calls inbox-triage-list MCP tool)

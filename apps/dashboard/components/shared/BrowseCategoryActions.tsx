@@ -156,7 +156,7 @@ const NEW_ACTION_PROMPTS: Partial<Record<ViewMode, string>> = {
   integrations: 'Set up a new integration. Ask me which service to integrate and what capabilities are needed.',
   commands: 'Create a new command doc. Ask me what it should do and which skill command folder it belongs to.',
   'agent-profiles': 'Create a new agent configuration. Ask me what model, tools, and instructions it should have.',
-  'background-routines': 'Create a new background routine. Ask me what should run, what trigger owns it, and how cadence, cost, and failures should be surfaced.',
+  'loops': 'Create a new background routine. Ask me what should run, what trigger owns it, and how cadence, cost, and failures should be surfaced.',
   tests: 'Create a new test file. Ask me what module or feature to test.',
   'api-routes': 'Create a new API route. Ask me what endpoint and methods it should support.',
   scripts: 'Create a new script. Ask me what it should automate.',
@@ -373,7 +373,7 @@ export function useBrowseCategoryActions({
     });
   }
 
-  if (category === 'background-routines') {
+  if (category === 'loops') {
     menuItems.push(
       {
         id: 'routines-refresh-codex',

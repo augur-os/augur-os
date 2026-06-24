@@ -49,3 +49,16 @@ three; navigation should teach that model.
 
 Relates to: ADR-802 (two surfaces), ADR-805 (workflows fold), the 2026-06-09 category
 refactor spec §3/§3.1.
+
+## Amendment (2026-06-23): Loops rename + full loop anatomy
+
+- The `background-routines` category is renamed `loops` (label "Routines" → "Loops").
+  Old `?category=background-routines` and `scheduled-executions` URLs alias to `loops`.
+- The `loop` ("LOOP ENGINEERING") journey group now bundles the full loop anatomy:
+  Loops · Agents · Skills · Integrations · MCP Tools · MCP Servers. `skills` moves
+  out of `prompt`, `mcp-tools` out of `capabilities`, `mcp-servers` out of
+  `diagnostics` (one-group-per-tab model). This consciously overrides the original
+  "skills = prompt engineering" and "MCP = dev capabilities/diagnostics" placement:
+  in loop-engineering, skills and connectors are loop components, and surfacing them
+  together teaches the anatomy. The "How it runs without you" subtitle is unchanged.
+- See spec `docs/superpowers/specs/2026-06-23-browse-loops-rename-regroup-design.md`.

@@ -19,7 +19,7 @@ def test_bootstrap_writes_private_scenarios_under_documents(tmp_path, monkeypatc
         "- `/discover`\n"
         "- `/adr`\n"
         "- `/dev`\n"
-        "- `/routines`\n"
+        "- `/a-loops`\n"
         "- `/sweep`\n",
         encoding="utf-8",
     )

@@ -10,9 +10,7 @@ x-augur-tags:
 - self-heal
 - monitoring
 - autoloops
-description: Use when managing background services, checking daemon status, configuring
-  autoloops, debugging self-heal pipeline issues, or controlling the unified daemon
-  via macOS launchd or Windows Task Scheduler.
+description: Use when managing background services, checking daemon status, configuring autoloops, debugging self-heal pipeline issues, or controlling the unified daemon via macOS launchd or Windows Task Scheduler.
 x-augur-tab: monitor
 x-augur-callable: project-brain/capabilities/skills/daemon/scripts/routine_orchestrator/orchestrator.py
 x-augur-data-deps:
@@ -21,23 +19,8 @@ x-augur-data-deps:
 - lifestyle
 - apple
 - channels
-x-augur-routine:
-  id: self-heal
-  execution: tiered
-  policy: adaptive
-  callable: scripts/routine_orchestrator/orchestrator.py
-  loop: self-heal
-  hub: command
-  description: Runtime self-healing and validation routine.
-x-augur-routines:
-- id: goal-loop
-  execution: inline-session
-  policy: oneshot
-  callable: commands/goal-loop.md
-  hub: command
-  description: Drive a catalog goal (harden/clean) to convergence in-session.
 x-augur-commands:
-- id: routines
+- id: a-loops
   type: workflow
   visibility: dev
   description: List, run, report, and inspect unified routines
@@ -76,8 +59,7 @@ x-augur-commands:
 - id: auto-stale-paths
   type: workflow
   visibility: auto
-  description: Detect ADR-270 folder/path drift across active code, workflows, and
-    operational references
+  description: Detect ADR-270 folder/path drift across active code, workflows, and operational references
   callable: scripts/ops/stale_paths.py
   protocol: scan-fix
   loop:
@@ -129,8 +111,7 @@ x-augur-commands:
 - id: auto-mcp-hygiene
   type: workflow
   visibility: auto
-  description: Per-plugin MCP tool naming, registration, dead-tool, and duplicate
-    audit
+  description: Per-plugin MCP tool naming, registration, dead-tool, and duplicate audit
   callable: scripts/ops/mcp_hygiene.py
   protocol: scan-fix
   loop:
@@ -155,6 +136,24 @@ x-augur-env:
 x-augur-evolution:
   last_updated: 2026-03-22 23:52:40.236998+00:00
   improvements_applied: 1
+x-augur-loops:
+- id: self-heal
+  skill: daemon
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: scripts/routine_orchestrator/orchestrator.py
+  loop_name: self-heal
+  memory:
+    trust: adaptive
+- id: goal-loop
+  skill: daemon
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: commands/goal-loop.md
+  memory:
+    trust: oneshot
 ---
 
 
@@ -198,8 +197,8 @@ as child subprocesses with health monitoring, automatic restart, mode-aware
 self-healing, and AI-powered error classification and auto-fix capabilities.
 
 Daemon is the canonical owner for the legacy `/ops-self-heal-test` command surface. Keep self-heal verification guidance with the daemon and self-heal runtime, not in a separate top-level wrapper skill.
-Daemon is also the canonical owner for the adaptive loop engine surfaced through `/routines`. Keep adaptive loop operations, implementation notes, and overview actions with the daemon runtime instead of a separate wrapper skill.
-Daemon also owns the ADR-755 routine orchestrator. `scripts/routine_orchestrator/` provides the session-aware scan, mechanical-fix, semantic bucket, pending-escalation, and subagent-dispatch path used by the new `/routine` command and by marked auto-commands such as `routine-vault/auto-frontmatter-lint`.
+Daemon is also the canonical owner for the adaptive loop engine surfaced through `/a-loops`. Keep adaptive loop operations, implementation notes, and overview actions with the daemon runtime instead of a separate wrapper skill.
+Daemon also owns the ADR-755 routine orchestrator. `scripts/routine_orchestrator/` provides the session-aware scan, mechanical-fix, semantic bucket, pending-escalation, and subagent-dispatch path used by the new `aug a-loops` CLI and by marked auto-commands such as `routine-vault/auto-frontmatter-lint`.
 
 ## Capabilities
 
@@ -224,7 +223,7 @@ Set mode via:
 
 ### Adaptive Loop Engine
 
-Manage the Adaptive Loop Engine directly from the daemon. Use `/routines` for loop status, registry inspection, heal/diagnose flows, and autonomous multi-cycle runs (the former `/dev-loops` alias was retired in ADR-758).
+Manage the Adaptive Loop Engine directly from the daemon. Use `/a-loops` for loop status, registry inspection, heal/diagnose flows, and autonomous multi-cycle runs (the former `/dev-loops` alias was retired in ADR-758).
 
 See [references/routines-implementation.md](references/routines-implementation.md) for executor details.
 
@@ -268,7 +267,7 @@ See [Additional resources](references/additional-resources.md) for details.
 - [commands/loop-history.md](commands/loop-history.md)
 - [commands/loop-status.md](commands/loop-status.md)
 - [commands/run-loop-cycle.md](commands/run-loop-cycle.md)
-- [commands/routines.md](commands/routines.md)
+- [commands/a-loops.md](commands/a-loops.md)
 - [assets/seeds/_seed.yaml](assets/seeds/_seed.yaml)
 - [assets/seeds/example-routines.yaml](assets/seeds/example-routines.yaml)
 - [assets/seeds/plugin-events.json](assets/seeds/plugin-events.json)

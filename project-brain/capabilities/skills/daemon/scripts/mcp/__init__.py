@@ -93,6 +93,7 @@ _ROUTINE_VERBS = [
     "report",
     "schedule",
     "goal",
+    "all",
     "scan-only",
     "orchestrate",
     "pending-escalations",
@@ -107,6 +108,8 @@ _ROUTINE_VERBS = [
     "goal-drain-backlog",
     "goal-consume-finding",
     "goal-run-maintenance",
+    "goal-fanout-plan",
+    "goal-fanout-report",
 ]
 
 # Plugin paths
@@ -186,48 +189,49 @@ def register_subcommands(subparsers) -> None:
 
 
 def _register_routine_subcommand(subparsers) -> None:
-    """Register `aug routine <verb>` for routine orchestration."""
+    """Register `aug a-loops <verb>` for loop orchestration."""
     parser = subparsers.add_parser(
-        "routine",
-        help="Unified routine registry and runner -- ADR-758",
+        "a-loops",
+        help="Unified loops registry and runner -- ADR-758",
     )
     sub = parser.add_subparsers(dest="routine_verb")
 
-    sub.add_parser(
+    p_list = sub.add_parser(
         "list",
-        help="list every declared routine",
+        help="list every declared loop (grouped table; --json for raw)",
     )
+    p_list.add_argument("--json", action="store_true", help="emit raw JSON instead of the table")
 
     p_status = sub.add_parser(
         "status",
-        help="show ledger-derived status for one routine or all routines",
+        help="show ledger-derived status for one loop or all loops",
     )
-    p_status.add_argument("routine_id", nargs="?", help="routine id to filter")
-    p_status.add_argument("--limit", type=int, default=5, help="recent runs per routine")
+    p_status.add_argument("routine_id", nargs="?", help="loop id to filter")
+    p_status.add_argument("--limit", type=int, default=5, help="recent runs per loop")
 
     p_run = sub.add_parser(
         "run",
-        help="run one declared routine",
+        help="run one declared loop",
     )
-    p_run.add_argument("routine_id", help="routine id to run")
+    p_run.add_argument("routine_id", help="loop id to run")
 
     p_report = sub.add_parser(
         "report",
-        help="show report files for one declared routine",
+        help="show report files for one declared loop",
     )
-    p_report.add_argument("routine_id", help="routine id")
+    p_report.add_argument("routine_id", help="loop id")
     p_report.add_argument("--limit", type=int, default=10, help="maximum reports to return")
 
     p_schedule = sub.add_parser(
         "schedule",
-        help="show schedule seed bindings for one routine or all routines",
+        help="show schedule seed bindings for one loop or all loops",
     )
-    p_schedule.add_argument("routine_id", nargs="?", help="routine id to filter")
+    p_schedule.add_argument("routine_id", nargs="?", help="loop id to filter")
     p_schedule.add_argument("--source", default="", help="optional schedule source filter")
 
     p_goal = sub.add_parser(
         "goal",
-        help="run or list goal-oriented routine loops",
+        help="run or list goal-oriented loops",
     )
     p_goal.add_argument("goal_id", nargs="?", help="goal id or alias")
     p_goal.add_argument(
@@ -268,6 +272,24 @@ def _register_routine_subcommand(subparsers) -> None:
     p_goal.add_argument("--project-root", type=Path, default=None)
     p_goal.add_argument("--runtime-dir", type=Path, default=None)
 
+    p_all = sub.add_parser(
+        "all",
+        help="parallel scan-triage + capped fan-out across orchestrator loops (in-session)",
+    )
+    p_all.add_argument("--dry-run", action="store_true",
+                       help="triage only: print the fan-out plan, create nothing")
+    p_all.add_argument("--cap", type=int, default=6,
+                       help="max concurrent loop worktrees (clamped to registry headroom)")
+    p_all.add_argument("--include", default="",
+                       help="comma-separated subset of orchestrator loops")
+    p_all.add_argument("--exclude", default="",
+                       help="comma-separated orchestrator loops to skip")
+    p_all.add_argument("--max-iterations", type=int, default=8,
+                       help="whole-run iteration budget per loop")
+    p_all.add_argument("--loop-cap", type=int, default=6, help="per-loop iteration cap")
+    p_all.add_argument("--scan-timeout-seconds", type=float, default=8.0,
+                       help="per-loop scan timeout for triage in seconds (default 8.0; values below 0.5 are clamped to 0.5)")
+
     p_scan = sub.add_parser(
         "scan-only",
         help="scan one loop and apply deterministic mechanical fixes",
@@ -294,7 +316,7 @@ def _register_routine_subcommand(subparsers) -> None:
 
     p_drift = sub.add_parser(
         "drift",
-        help="report drift between Augur seeds and installed Codex/Claude routines",
+        help="report drift between Augur seeds and installed Codex/Claude loops",
     )
     p_drift.add_argument(
         "--source",
@@ -307,13 +329,13 @@ def _register_routine_subcommand(subparsers) -> None:
         "adopt",
         help="adopt installed-surface state into the owning seed file",
     )
-    p_adopt.add_argument("routine_id", help="Browse routine id, e.g. codex:codex-dev-loop-testing")
+    p_adopt.add_argument("routine_id", help="Browse loop id, e.g. codex:codex-dev-loop-testing")
 
     p_push = sub.add_parser(
         "push",
-        help="force-sync seed over installed surface for one routine",
+        help="force-sync seed over installed surface for one loop",
     )
-    p_push.add_argument("routine_id", help="Browse routine id")
+    p_push.add_argument("routine_id", help="Browse loop id")
 
     # --- ADR-793 atomic goal-op verbs ---
 
@@ -393,6 +415,27 @@ def _register_routine_subcommand(subparsers) -> None:
         "--findings-json", default="[]", help="JSON array of maintenance finding dicts"
     )
 
+    p_fanout_plan = sub.add_parser(
+        "goal-fanout-plan",
+        help="triage orchestrator loops (non-mutating); print the fan-out plan",
+    )
+    p_fanout_plan.add_argument("--scope", default="orchestrator")
+    p_fanout_plan.add_argument("--include", default="")
+    p_fanout_plan.add_argument("--exclude", default="")
+    p_fanout_plan.add_argument("--cap", type=int, default=6)
+    p_fanout_plan.add_argument("--scan-timeout-seconds", type=float, default=8.0)
+    p_fanout_plan.add_argument("--max-iterations", type=int, default=8)
+    p_fanout_plan.add_argument("--loop-cap", type=int, default=6)
+
+    p_fanout_report = sub.add_parser(
+        "goal-fanout-report",
+        help="write the honest per-loop rollup for a parallel /a-loops all run",
+    )
+    p_fanout_report.add_argument("--results-json", required=True,
+        help="JSON array of {loop,verdict,branch,residual} dicts")
+    p_fanout_report.add_argument("--stamp", default="")
+    p_fanout_report.add_argument("--runtime-dir", default=None)
+
     parser.set_defaults(func=_run_routine_cli)
 
 
@@ -406,6 +449,9 @@ def _run_routine_cli(args, remaining) -> int:
     try:
         if verb == "list":
             payload = _routine_list_payload()
+            if not getattr(args, "json", False):
+                print(_render_routine_table(payload))
+                return 0
         elif verb == "status":
             payload = _routine_status_payload(
                 routine_id=getattr(args, "routine_id", None),
@@ -425,6 +471,31 @@ def _run_routine_cli(args, remaining) -> int:
             )
         elif verb == "goal":
             payload = _routine_goal_payload(args)
+        elif verb == "all":
+            from routine_orchestrator import goal_ops
+            plan = goal_ops.op_fanout_plan(
+                scope="orchestrator",
+                include=[s.strip() for s in args.include.split(",") if s.strip()],
+                exclude=[s.strip() for s in args.exclude.split(",") if s.strip()],
+                cap=args.cap,
+                project_root=str(get_project_root()),
+                scan_timeout_seconds=getattr(args, "scan_timeout_seconds", 8.0),
+                max_iterations=args.max_iterations,
+                loop_cap=args.loop_cap,
+            )
+            if getattr(args, "dry_run", False):
+                payload = plan
+            else:
+                payload = {
+                    "success": False,
+                    "error": "no session",
+                    "detail": (
+                        "aug a-loops all fans out fix-subagents and requires an inline "
+                        "AI-client session; run /a-loops all in-session, or use "
+                        "--dry-run for the triage plan."
+                    ),
+                    "plan": plan,
+                }
         elif verb == "scan-only":
             result = _load_routine_orchestrator().scan_only(args.loop)
             payload = _routine_result_payload(result)
@@ -437,7 +508,7 @@ def _run_routine_cli(args, remaining) -> int:
                         {
                             "error": "no session detected",
                             "detail": (
-                                "aug routine orchestrate requires a native AI-client session; "
+                                "aug a-loops orchestrate requires a native AI-client session; "
                                 "use scan-only for deterministic runs."
                             ),
                         },
@@ -516,6 +587,25 @@ def _run_routine_cli(args, remaining) -> int:
                 auto_command=args.auto_command,
                 findings=json.loads(args.findings_json),
             )
+        elif verb == "goal-fanout-plan":
+            from routine_orchestrator import goal_ops
+            payload = goal_ops.op_fanout_plan(
+                scope=args.scope,
+                include=[s.strip() for s in args.include.split(",") if s.strip()],
+                exclude=[s.strip() for s in args.exclude.split(",") if s.strip()],
+                cap=args.cap,
+                scan_timeout_seconds=args.scan_timeout_seconds,
+                max_iterations=args.max_iterations,
+                loop_cap=args.loop_cap,
+                project_root=str(get_project_root()),
+            )
+        elif verb == "goal-fanout-report":
+            from routine_orchestrator import goal_ops
+            payload = goal_ops.op_fanout_report(
+                results=json.loads(args.results_json),
+                runtime_dir=args.runtime_dir or str(_resolve_runtime_root()),
+                stamp=args.stamp,
+            )
         else:
             print(
                 json.dumps(
@@ -544,6 +634,53 @@ def _load_routine_registry():
     from routine_orchestrator import registry
 
     return registry
+
+
+def _loop_kind_sets() -> tuple[set[str], set[str], set[str]]:
+    """(prompt_loops, orchestrator_loops, goals) from the live registry + goal catalog.
+
+    `goal-loop` is the catalog driver, not a bare-name target — excluded.
+    """
+    registry = _load_routine_registry()
+    prompt: set[str] = set()
+    orch: set[str] = set()
+    for r in registry.list_routines():
+        if r.id == "goal-loop":
+            continue
+        if getattr(r, "execution", "") == "inline-session":
+            prompt.add(r.id)
+        else:
+            orch.add(r.id)
+    try:
+        from routine_orchestrator import goal_catalog  # type: ignore
+    except ImportError:  # pragma: no cover
+        goal_catalog = None
+    goals = set(getattr(goal_catalog, "GOAL_CATALOG", {})) if goal_catalog else set()
+    return prompt, orch, goals
+
+
+def _rewrite_loop_argv(sub_argv: list[str]) -> tuple[list[str], str | None]:
+    """Resolve a bare `a-loops <name>` into the routed verb invocation."""
+    if not sub_argv:
+        return sub_argv, None
+    try:
+        from routine_orchestrator.loop_name_resolver import resolve_loop_token  # type: ignore
+    except ImportError:  # pragma: no cover
+        from loop_name_resolver import resolve_loop_token  # type: ignore
+    prompt, orch, goals = _loop_kind_sets()
+    decision = resolve_loop_token(
+        sub_argv[0],
+        verbs=set(_ROUTINE_VERBS),
+        prompt_loops=prompt,
+        orchestrator_loops=orch,
+        goals=goals,
+    )
+    if decision.kind == "verb":
+        return sub_argv, None
+    if decision.kind == "unknown":
+        return sub_argv, decision.message
+    # routed: replace the first token with the routed argv, preserve any trailing flags
+    return list(decision.argv) + list(sub_argv[1:]), None
 
 
 def _load_routine_ledger_view():
@@ -616,6 +753,31 @@ def _routine_status_payload(*, routine_id: str | None, limit: int) -> dict[str, 
     )
 
 
+def _annotate_run_status(payload: dict[str, Any]) -> dict[str, Any]:
+    """Surface a clear status when a run applied nothing (e.g. headless CLI)."""
+    if not isinstance(payload, dict):
+        return payload
+    counts = payload.get("counts") or {}
+    findings = int(counts.get("findings", 0) or 0)
+    applied = int(counts.get("mechanical_applied", 0) or 0)
+    dispatched = int(counts.get("dispatched", 0) or 0)
+    deferred = int(counts.get("deferred", 0) or 0)
+    escalated = int(counts.get("enqueued", 0) or 0)
+    payload["summary"] = {
+        "findings": findings, "applied": applied, "dispatched": dispatched,
+        "deferred": deferred, "escalated": escalated,
+    }
+    if findings > 0 and (applied + dispatched) == 0:
+        payload["status"] = "scanned-only"
+        payload["message"] = (
+            f"0 fixes applied — this run had no live fix-capable client session. "
+            f"{escalated} finding(s) escalated. To actually fix, run in-session: "
+            f"`/a-loops goal <id> --catalog-loop` (or `aug a-loops scan-only --loop <id>` "
+            f"for a deterministic preview)."
+        )
+    return payload
+
+
 def _routine_run_payload(routine_id: str) -> Any:
     registry = _load_routine_registry()
     routine = registry.get_routine(routine_id)
@@ -628,12 +790,12 @@ def _routine_run_payload(routine_id: str) -> Any:
                 "success": False,
                 "error": "no session detected",
                 "detail": (
-                    "aug routine run requires a native AI-client session for tiered routines; "
-                    "use aug routine scan-only --loop <id> for deterministic scans."
+                    "aug a-loops run requires a native AI-client session for tiered loops; "
+                    "use aug a-loops scan-only --loop <id> for deterministic scans."
                 ),
             }
         kwargs["session"] = session
-    return _routine_result_payload(registry.dispatch(routine_id, **kwargs))
+    return _annotate_run_status(_routine_result_payload(registry.dispatch(routine_id, **kwargs)))
 
 
 def _routine_report_payload(routine_id: str, *, limit: int) -> dict[str, Any]:
@@ -719,6 +881,7 @@ def _routine_summary(routine: Any) -> dict[str, Any]:
     return {
         "id": routine.id,
         "execution": routine.execution,
+        "runner": getattr(routine, "runner", "") or "",
         "policy": routine.policy,
         "skill_name": routine.skill_name,
         "skill_root": str(routine.skill_root),
@@ -728,6 +891,55 @@ def _routine_summary(routine: Any) -> dict[str, Any]:
         "hub": getattr(routine, "hub", None),
         "description": getattr(routine, "description", None),
     }
+
+
+def _render_routine_table(payload: dict[str, Any]) -> str:
+    """Render the loop list as a grouped human table with run guidance."""
+    routines = payload.get("routines", []) or []
+    count = payload.get("count", len(routines))
+    prompts = sorted(
+        (r for r in routines if r.get("execution") == "inline-session"),
+        key=lambda r: str(r.get("id") or ""),
+    )
+    orchestrators = sorted(
+        (r for r in routines if r.get("execution") != "inline-session"),
+        key=lambda r: str(r.get("id") or ""),
+    )
+
+    def _row(r: dict[str, Any]) -> str:
+        kind = "prompt" if r.get("execution") == "inline-session" else "orchestrator"
+        return (
+            f"  {str(r.get('id') or ''):20} {kind:12} "
+            f"{str(r.get('runner') or ''):7} {str(r.get('skill_name') or ''):18} "
+            f"{str(r.get('policy') or '')}"
+        )
+
+    lines: list[str] = [
+        f"Augur Loops — {count} standard loops (all run natively in the active client)",
+        "",
+        f"{'ID':22} {'KIND':12} {'RUNNER':7} {'SKILL':18} TRUST",
+        f"{'─' * 22} {'─' * 12} {'─' * 7} {'─' * 18} {'─' * 18}",
+    ]
+    if prompts:
+        lines.append("PROMPT loops (hand the client a ready-to-run prompt)")
+        lines.extend(_row(r) for r in prompts)
+    if orchestrators:
+        if prompts:
+            lines.append("")
+        lines.append("ORCHESTRATOR loops (scan → fix → verify; fixes can edit files)")
+        lines.extend(_row(r) for r in orchestrators)
+    lines += [
+        "",
+        "How to run — the loop name is the command:",
+        "  a-loops <id>        names any loop (orchestrator -> single-loop goal in-session; prompt -> renders the prompt)",
+        "  a-loops <goal>      a curated bundle (harden / clean / harden-and-clean)",
+        "Explicit verbs (escape hatches):",
+        "  a-loops run <id>                lightweight in-place run",
+        "  a-loops scan-only --loop <id>   preview only (orchestrator loops, no edits)",
+        "  a-loops status <id>             status / history",
+        "  a-loops list --json             raw JSON",
+    ]
+    return "\n".join(lines)
 
 
 def _read_routine_schedules(routine: Any) -> list[dict[str, Any]]:
@@ -791,7 +1003,7 @@ def _routine_report_files(routine: Any) -> list[Path]:
 
 
 def _routine_drift_payload(*, source: str = "all") -> dict[str, Any]:
-    """Report drift between Augur seeds and installed routines across surfaces."""
+    """Report drift between Augur seeds and installed loops across surfaces."""
     try:
         from src.mcp.augur_framework.tools.infrastructure.browse.scheduled_executions import (
             list_scheduled_execution_items,
@@ -892,7 +1104,7 @@ def _routine_catalog_goal_payload(
             "error": "bare-cli",
             "detail": (
                 "goal --catalog-loop is an in-session routine. "
-                "Run /routines goal <id> --catalog-loop inside an AI-client session. "
+                "Run /a-loops goal <id> --catalog-loop inside an AI-client session. "
                 "A bare CLI subprocess has no Task tool and cannot dispatch semantic fixes."
             ),
         }

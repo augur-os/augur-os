@@ -38,7 +38,7 @@ def test_sync_codex_automations_writes_local_execution_environment(tmp_path, mon
             "id": "codex-command-evolution-drain",
             "title": "Command Evolution Drain",
             "rrule": "RRULE:FREQ=MINUTELY;INTERVAL=15",
-            "prompt": "/routines run command-evolution --drain",
+            "prompt": "/a-loops run command-evolution --drain",
             "workspace": "/Users/example/Projects/Augur",
             "model": "gpt-5.4",
             "reasoning_effort": "high",
@@ -58,7 +58,7 @@ def test_sync_codex_automations_writes_local_execution_environment(tmp_path, mon
     assert written == [automation_toml]
     content = automation_toml.read_text(encoding="utf-8")
     assert 'execution_environment = "local"' in content
-    assert 'prompt = "/routines run command-evolution --drain"' in content
+    assert 'prompt = "/a-loops run command-evolution --drain"' in content
     assert 'cwds = ["/Users/example/Projects/Augur"]' in content
     assert 'reasoning_effort = "high"' in content
     assert 'model = "gpt-5.4"' in content
@@ -90,7 +90,7 @@ def test_sync_codex_automations_dry_run_does_not_write_files(tmp_path, monkeypat
             "id": "codex-dev-loop-testing",
             "title": "Testing",
             "rrule": "RRULE:FREQ=WEEKLY;BYDAY=SU;BYHOUR=3;BYMINUTE=0",
-            "prompt": "/routines run testing",
+            "prompt": "/a-loops run testing",
             "workspace": "/Users/example/Projects/Augur",
             "model": "gpt-5.4",
             "reasoning_effort": "high",
@@ -175,7 +175,7 @@ def test_sync_codex_automations_removes_stale_augur_managed_entries(tmp_path, mo
                 "id": "codex-dev-loop-testing",
                 "title": "Testing",
                 "rrule": "RRULE:FREQ=WEEKLY;BYDAY=SU;BYHOUR=3;BYMINUTE=0",
-                "prompt": "/routines run testing",
+                "prompt": "/a-loops run testing",
                 "workspace": str(tmp_path / "repo"),
                 "model": "gpt-5.4",
                 "reasoning_effort": "high",
@@ -204,7 +204,7 @@ def test_load_codex_schedule_seed_rejects_non_mapping_rows(tmp_path) -> None:
         "schedules:\n"
         "  - id: codex-dev-loop-testing\n"
         "    rrule: RRULE:FREQ=WEEKLY;BYDAY=SU;BYHOUR=3;BYMINUTE=0\n"
-        "    prompt: /routines run testing\n"
+        "    prompt: /a-loops run testing\n"
         "    model: gpt-5.4\n"
         "    reasoning_effort: high\n"
         "    runs_in: local\n"
@@ -225,7 +225,7 @@ def test_load_codex_schedule_seed_resolves_project_root_placeholder(tmp_path) ->
         "schedules:\n"
         "  - id: codex-dev-loop-testing\n"
         "    rrule: RRULE:FREQ=WEEKLY;BYDAY=SU;BYHOUR=3;BYMINUTE=0\n"
-        "    prompt: /routines run testing\n"
+        "    prompt: /a-loops run testing\n"
         "    workspace: __PROJECT_ROOT__\n"
         "    model: gpt-5.4\n"
         "    reasoning_effort: high\n"

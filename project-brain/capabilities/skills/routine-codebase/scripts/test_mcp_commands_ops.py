@@ -74,7 +74,7 @@ def _discover_tools(project_root: Path) -> list[dict]:
 
     Only canonical sources (repo skills/ + vault skills/). Client wrapper
     folders (.gemini/skills, .opencode/skills, etc.) are packaging output,
-    not loop sources — see project-brain/capabilities/skills/daemon/commands/routines.md.
+    not loop sources — see project-brain/capabilities/skills/daemon/commands/a-loops.md.
     """
     from src.config.paths import get_managed_skill_source_dirs
 

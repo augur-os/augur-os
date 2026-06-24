@@ -21,7 +21,7 @@ Calls `apply_improvement_to_skill` from ADR-102 for each improvement, commits ch
 
 ### Usage
 
-Run automatically by the daemon at `tier: 0` after each command execution (`trigger: post-execution`). Can also be invoked manually via `/routines`.
+Run automatically by the daemon at `tier: 0` after each command execution (`trigger: post-execution`). Can also be invoked manually via `/a-loops`.
 
 ### Protocol
 
@@ -47,7 +47,7 @@ Runs `claude --print --max-turns 8` with allowed tools `Read,Write,Grep,Glob` fo
 
 ### Usage
 
-Run automatically by the daemon at `tier: 2` (`trigger: nightly`) in the `knowledge-enrichment` loop when external issues are queued. Can also be invoked manually via `/routines`.
+Run automatically by the daemon at `tier: 2` (`trigger: nightly`) in the `knowledge-enrichment` loop when external issues are queued. Can also be invoked manually via `/a-loops`.
 
 ### Protocol
 

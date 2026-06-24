@@ -33,9 +33,15 @@ _ensure_package()
 foundation = importlib.import_module(f"{PKG}.probes.foundation")
 
 
-def test_index_machine_done_when_manifest_present(setup_env) -> None:
-    manifest = PROJECT_ROOT / "docs" / "generated" / "skill-manifest.json"
-    assert manifest.exists(), "Repo manifest expected for this test"
+def test_index_machine_done_when_manifest_present(setup_env, monkeypatch, tmp_path) -> None:
+    # Hermetic: the build-time docs/generated/skill-manifest.json is gitignored and
+    # may be absent in a clean checkout/CI, so point the probe at a controlled root
+    # that has one rather than depending on the developer's real-repo build state.
+    fake_root = tmp_path / "manifest-root"
+    (fake_root / "docs" / "generated").mkdir(parents=True)
+    (fake_root / "docs" / "generated" / "skill-manifest.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(foundation, "get_project_root", lambda: fake_root)
+    monkeypatch.setattr(foundation, "get_runtime_dir", lambda: tmp_path / "empty-runtime")
 
     result = foundation.index_machine()
 

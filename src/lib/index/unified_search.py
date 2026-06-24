@@ -453,17 +453,29 @@ def _collect_rg_hits(pattern: str, globs: list[str], directories: list[Path], ma
         return _collect_python_hits(pattern, globs, directories, max_hits=max_hits)
     rg = _rg_binary()
     hits: list[dict] = []
+
+    def _path_line_key(hit: dict) -> tuple[str, int]:
+        """Sort key replicating ripgrep's `--sort path` (path, then line)."""
+        try:
+            lineno = int(hit.get("line") or 0)
+        except (TypeError, ValueError):
+            lineno = 0
+        return (str(hit.get("file") or ""), lineno)
+
     for directory in directories:
         if not directory.exists():
             continue
         try:
-            # `--sort path` forces ripgrep to walk single-threaded in a stable
-            # path order. Without it, ripgrep's parallel directory walk returns
-            # matches in a non-deterministic order, and the downstream
-            # `max_hits` cutoff then keeps a different file set on every run —
-            # which makes retrieval (and any eval replay over it, ADR-742)
-            # non-reproducible. Deterministic ordering is strictly correct here.
-            cmd = [rg, "-n", "-i", "--sort", "path", pattern, *globs, "."]
+            # Fast PARALLEL walk — deliberately NOT `--sort path`. That flag
+            # forces ripgrep to walk single-threaded AND buffer+sort the entire
+            # corpus before emitting any line, which on a cold cache stalled the
+            # shared MCP process for 20-40s and starved every concurrent tool
+            # call (the framework server runs all tools in one process). The
+            # determinism `--sort path` provided — a stable file set under the
+            # `max_hits` cutoff, required for retrieval + ADR-742 eval replay —
+            # is preserved by sorting the parsed hits by (path, line) in Python
+            # below before the cutoff. Same result set, a fraction of the wall time.
+            cmd = [rg, "-n", "-i", pattern, *globs, "."]
             output = subprocess.check_output(cmd, cwd=directory, stderr=subprocess.DEVNULL)
         except subprocess.CalledProcessError:
             continue
@@ -472,10 +484,9 @@ def _collect_rg_hits(pattern: str, globs: list[str], directories: list[Path], ma
             return _collect_python_hits(pattern, globs, directories, max_hits=max_hits)
         if isinstance(output, bytes):
             output = output.decode("utf-8", errors="replace")
-        for line in output.strip().split("\n"):
-            if not line:
-                continue
-            hit = parse_ripgrep_hit(line)
+        dir_hits = [parse_ripgrep_hit(line) for line in output.strip().split("\n") if line]
+        dir_hits.sort(key=_path_line_key)
+        for hit in dir_hits:
             file_path = hit.get("file")
             if isinstance(file_path, str) and not file_path.startswith("/") and not Path(file_path).is_absolute():
                 hit["file"] = str((directory / file_path).resolve())

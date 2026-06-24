@@ -383,7 +383,7 @@ def _enforce_run_all_worktree(project_root: Path) -> None:
     if git_entry.is_file():
         return
     raise SystemExit(
-        "`/routines run --all` requires an isolated git worktree. "
+        "`/a-loops run --all` requires an isolated git worktree. "
         "Create or reuse a routines-YYYY-MM-DD worktree, then run the command there."
     )
 

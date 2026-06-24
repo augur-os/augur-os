@@ -4,28 +4,17 @@ x-augur-type: domain
 x-augur-group: augur_core
 x-augur-release: mvp
 x-augur-tags: []
-description: AI integration layer for connecting Augur to LLMs through various interfaces
-  (CLI, IDE, API, SDK)
+description: AI integration layer for connecting Augur to LLMs through various interfaces (CLI, IDE, API, SDK)
 x-augur-tab: agents
-x-augur-routine:
-  id: auto-agent-digest
-  execution: tiered
-  policy: adaptive
-  callable: ../daemon/scripts/routine_orchestrator/orchestrator.py
-  loop: auto-agent-digest
-  hub: workspace
-  description: Agent directive and violation digest routine.
 x-augur-commands:
 - id: harden
   type: workflow
   visibility: ops
-  description: Audit a skill or hub, identify gaps, and drive hardening follow-up
-    work
+  description: Audit a skill or hub, identify gaps, and drive hardening follow-up work
 - id: reindex-rag
   type: workflow
   visibility: auto
-  description: Rebuild centralized RAG indexes for skills with plugin-local or vault-backed
-    markdown content
+  description: Rebuild centralized RAG indexes for skills with plugin-local or vault-backed markdown content
   callable: scripts/ops/rag_reindex.py
   protocol: scan-fix
   loop:
@@ -65,8 +54,7 @@ x-augur-commands:
 - id: sync-agents
   type: workflow
   visibility: auto
-  description: Detect IDE config drift and regenerate agent configs via the sync_agents
-    package entrypoint
+  description: Detect IDE config drift and regenerate agent configs via the sync_agents package entrypoint
   callable: scripts/ops/agent_sync.py
   protocol: scan-fix
   loop:
@@ -76,8 +64,7 @@ x-augur-commands:
 - id: auto-command-evolution
   type: workflow
   visibility: auto
-  description: Scan command execution logs and evolve SKILL.md files with learned
-    improvements
+  description: Scan command execution logs and evolve SKILL.md files with learned improvements
   callable: scripts/ops/command_evolution.py
   protocol: scan-fix
   loop:
@@ -97,8 +84,7 @@ x-augur-commands:
 - id: auto-agent-digest
   type: workflow
   visibility: auto
-  description: Compile violation signals into Hot/Warm digest sections prepended to
-    MEMORY.md
+  description: Compile violation signals into Hot/Warm digest sections prepended to MEMORY.md
   callable: scripts/ops/agent_digest/compile_digest.py
   protocol: scan-fix
   loop:
@@ -112,8 +98,7 @@ x-augur-commands:
 - id: auto-doc-freshness
   type: workflow
   visibility: auto
-  description: Detect stale docs and broken internal links across docs/ and SKILL.md
-    files
+  description: Detect stale docs and broken internal links across docs/ and SKILL.md files
   callable: scripts/ops/doc_freshness.py
   protocol: scan-fix
   loop:
@@ -162,6 +147,16 @@ x-augur-evolution:
   last_updated: 2026-03-21 22:59:09.564859+00:00
   improvements_applied: 1
 x-augur-config-file: config.yaml
+x-augur-loop:
+  id: auto-agent-digest
+  skill: ai
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: ../daemon/scripts/routine_orchestrator/orchestrator.py
+  loop_name: auto-agent-digest
+  memory:
+    trust: adaptive
 ---
 
 

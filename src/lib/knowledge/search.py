@@ -17,10 +17,10 @@ from typing import Optional
 import yaml
 
 from src.config.paths import (
+    get_daily_logs_dir,
     get_memory_dir,
     get_project_brain_skills_dir,
     get_project_root,
-    get_runtime_dir,
 )
 from src.lib.frontmatter_utils import load_skill_contract
 from src.logging import get_entity_logger
@@ -69,7 +69,7 @@ class MemorySearcher(IndexMixin, RipgrepMixin, IterativeMixin):
         self._memory_dir = get_memory_dir()
         self._search_root = search_root or self._memory_dir
         self._index_path = self._memory_dir / "index.yaml"
-        self._daily_dir = get_runtime_dir() / "memory" / "daily"
+        self._daily_dir = get_daily_logs_dir()
         self._memory_file = self._memory_dir / "MEMORY.md"
         self._config = self._load_config()
         self._ensure_directories()

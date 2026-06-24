@@ -12,4 +12,4 @@ Implementation:
 - `scripts/mcp/__init__.py`
 
 Usage:
-- `/routines run hardening`
+- `/a-loops run hardening`

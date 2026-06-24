@@ -210,6 +210,12 @@ def test_scan_skips_intentional_enforcement_scripts(tmp_path: Path):
         repo_root / ".github" / "scripts" / "validate_skill_structure.py",
         'pattern = r"\\skills/[^/]+/augur/data/"\n',
     )
+    # audit_logging.py is itself a path-drift detector — its regex patterns name
+    # runtime/ paths to find them elsewhere; it must be skipped, not self-flagged.
+    _write(
+        repo_root / ".github" / "scripts" / "audit_logging.py",
+        'PATTERNS = [r"src/lib/runtime/codex_automations\\.py$"]\n',
+    )
     _write(
         repo_root / "scripts" / "check-skill-structure.sh",
         '*/augur/data/*) warn "augur/data/ is deprecated. Use assets/seeds/ instead." ;;\n',

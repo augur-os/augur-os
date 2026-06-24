@@ -37,7 +37,7 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
 
   if (rawUrlCategory === "scheduled-executions") {
     const params = toSearchParams(paramsRecord);
-    params.set("category", "background-routines");
+    params.set("category", "loops");
     redirect(`/browse?${params.toString()}`);
   }
 

@@ -39,18 +39,18 @@ def test_aug_routine_verbs_parse() -> None:
     module = _load_mcp_module()
     parser = _parser_for(module)
 
-    scan_args = parser.parse_args(["routine", "scan-only", "--loop", "testing"])
-    assert scan_args.cmd == "routine"
+    scan_args = parser.parse_args(["a-loops", "scan-only", "--loop", "testing"])
+    assert scan_args.cmd == "a-loops"
     assert scan_args.routine_verb == "scan-only"
     assert scan_args.loop == "testing"
 
-    orchestrate_args = parser.parse_args(["routine", "orchestrate", "--loop", "hardening"])
-    assert orchestrate_args.cmd == "routine"
+    orchestrate_args = parser.parse_args(["a-loops", "orchestrate", "--loop", "hardening"])
+    assert orchestrate_args.cmd == "a-loops"
     assert orchestrate_args.routine_verb == "orchestrate"
     assert orchestrate_args.loop == "hardening"
 
-    pending_args = parser.parse_args(["routine", "pending-escalations", "--show"])
-    assert pending_args.cmd == "routine"
+    pending_args = parser.parse_args(["a-loops", "pending-escalations", "--show"])
+    assert pending_args.cmd == "a-loops"
     assert pending_args.routine_verb == "pending-escalations"
     assert pending_args.show is True
 
@@ -81,7 +81,7 @@ def test_aug_routine_scan_only_invokes_orchestrator_scan_only(monkeypatch, capsy
     )
 
     parser = _parser_for(module)
-    args = parser.parse_args(["routine", "scan-only", "--loop", "testing"])
+    args = parser.parse_args(["a-loops", "scan-only", "--loop", "testing"])
     exit_code = args.func(args, [])
 
     assert exit_code == 0
@@ -98,7 +98,7 @@ def test_aug_routine_orchestrate_refuses_without_session(monkeypatch, capsys) ->
     monkeypatch.setattr(module, "_routine_session_surface", lambda _session: None)
 
     parser = _parser_for(module)
-    args = parser.parse_args(["routine", "orchestrate", "--loop", "testing"])
+    args = parser.parse_args(["a-loops", "orchestrate", "--loop", "testing"])
     exit_code = args.func(args, [])
 
     assert exit_code == 1
@@ -110,7 +110,7 @@ def test_aug_routine_orchestrate_refuses_without_session(monkeypatch, capsys) ->
 def test_aug_routine_no_verb_prints_help_with_exit_code_2(capsys) -> None:
     module = _load_mcp_module()
     parser = _parser_for(module)
-    args = parser.parse_args(["routine"])
+    args = parser.parse_args(["a-loops"])
 
     exit_code = args.func(args, [])
 
@@ -149,7 +149,7 @@ def test_aug_routine_pending_escalations_show_does_not_clear_stale(
     monkeypatch.setattr(module, "_resolve_runtime_root", lambda: runtime_root)
     parser = _parser_for(module)
 
-    args = parser.parse_args(["routine", "pending-escalations", "--show"])
+    args = parser.parse_args(["a-loops", "pending-escalations", "--show"])
     assert args.func(args, []) == 0
 
     payload = json.loads(capsys.readouterr().out)
@@ -158,7 +158,7 @@ def test_aug_routine_pending_escalations_show_does_not_clear_stale(
     assert payload["entries"][0]["id"] == "fresh"
     assert len(queue_path.read_text(encoding="utf-8").splitlines()) == 2
 
-    args = parser.parse_args(["routine", "pending-escalations", "--clear-stale"])
+    args = parser.parse_args(["a-loops", "pending-escalations", "--clear-stale"])
     assert args.func(args, []) == 0
 
     payload = json.loads(capsys.readouterr().out)

@@ -479,7 +479,7 @@ def _classify_instruction_issues(
             result.setdefault("Action Prompts (dashboard → IDE agent)", []).append({
                 "name": "auto-markdowns (passive)",
                 "issues": contextless_count,
-                "detail": f"{contextless_count} runAction calls without prompt templates — run /routines run auto-markdowns to scan",
+                "detail": f"{contextless_count} runAction calls without prompt templates — run /a-loops run auto-markdowns to scan",
             })
 
     return result

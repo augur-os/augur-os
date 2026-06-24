@@ -21,7 +21,7 @@ def test_declared_routine_deduped_against_scheduling_prompt():
     """A declared routine that a schedule actually runs is the same routine twice.
 
     The codex/claude schedule (richer: real cadence + drift) invokes the declared
-    routine via `/routines run <id>`, so the declared twin is dropped (ADR-813).
+    routine via `/a-loops run <id>`, so the declared twin is dropped (ADR-813).
     """
     from src.mcp.augur_framework.tools.infrastructure.browse.background_routines import (
         dedupe_routine_items_against_schedules,
@@ -34,8 +34,8 @@ def test_declared_routine_deduped_against_scheduling_prompt():
         {"id": "dream", "metadata": {"source_kind": "daemon-service"}},
     ]
     scheduled_items = [
-        {"id": "codex:codex-dev-loop-code-quality", "description": "/routines run code-quality"},
-        {"id": "codex:codex-dream-nightly", "description": "/routines run dream"},
+        {"id": "codex:codex-dev-loop-code-quality", "description": "/a-loops run code-quality"},
+        {"id": "codex:codex-dream-nightly", "description": "/a-loops run dream"},
         # Free-form prompt invokes no declared routine.
         {"id": "claude:weekly-disk-cleanup-report", "description": "Keep the report tight."},
     ]

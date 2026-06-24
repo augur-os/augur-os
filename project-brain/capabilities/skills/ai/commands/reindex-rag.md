@@ -24,7 +24,7 @@ single batched git commit for all updated skills.
 ## Usage
 
 Run automatically by the daemon at `tier: 0` (`trigger: nightly`) in the
-`knowledge-enrichment` loop. Can also be invoked manually via `/routines`.
+`knowledge-enrichment` loop. Can also be invoked manually via `/a-loops`.
 
 ## Protocol
 

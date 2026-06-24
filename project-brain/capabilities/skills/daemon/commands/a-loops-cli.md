@@ -4,9 +4,9 @@ visibility: dev
 x-augur-export-command: false
 ---
 
-# /routine
+# aug a-loops
 
-`aug routine` is the deterministic and session-bound control surface for the
+`aug a-loops` is the deterministic and session-bound control surface for the
 ADR-755 routine orchestrator. It keeps no hidden model call inside Augur:
 scan-only runs pure Python scan/mechanical phases, while orchestrate requires
 an active AI-client session for native subagent dispatch.
@@ -14,10 +14,10 @@ an active AI-client session for native subagent dispatch.
 ## Usage
 
 ```text
-aug routine scan-only --loop <name>
-aug routine orchestrate --loop <name>
-aug routine pending-escalations --show
-aug routine pending-escalations --clear-stale
+aug a-loops scan-only --loop <name>
+aug a-loops orchestrate --loop <name>
+aug a-loops pending-escalations --show
+aug a-loops pending-escalations --clear-stale
 ```
 
 ## Verbs
@@ -37,6 +37,6 @@ aug routine pending-escalations --clear-stale
 
 ## Notes
 
-- Use `/routines` for the full adaptive-loop management workflow.
-- Use `aug routine scan-only --loop testing` as the session-agnostic smoke test
+- Use `/a-loops` for the full adaptive-loop management workflow.
+- Use `aug a-loops scan-only --loop testing` as the session-agnostic smoke test
   before relying on session-bound orchestration.

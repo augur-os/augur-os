@@ -4,8 +4,7 @@ x-augur-type: autoloop
 x-augur-group: augur_autoloops
 x-augur-release: mvp
 x-augur-license: MIT
-description: Use when Augur needs codebase validation across tests, builds, lint, formatting, dashboard page routes,
-  API/MCP wiring, or UI interaction quality after code changes or nightly drift.
+description: Use when Augur needs codebase validation across tests, builds, lint, formatting, dashboard page routes, API/MCP wiring, or UI interaction quality after code changes or nightly drift.
 x-augur-tab: codebase
 x-augur-tags:
 - routine
@@ -16,28 +15,6 @@ x-augur-tags:
 - wiring
 x-augur-dashboard-pages: []
 x-augur-data-dir: routine-codebase
-x-augur-routines:
-- id: testing
-  execution: tiered
-  policy: adaptive
-  callable: ../daemon/scripts/routine_orchestrator/orchestrator.py
-  loop: testing
-  hub: adaptive
-  description: Test and build verification routine.
-- id: code-quality
-  execution: tiered
-  policy: adaptive
-  callable: ../daemon/scripts/routine_orchestrator/orchestrator.py
-  loop: code-quality
-  hub: adaptive
-  description: Formatting, linting, and code health routine.
-- id: ui-quality
-  execution: tiered
-  policy: adaptive
-  callable: ../daemon/scripts/routine_orchestrator/orchestrator.py
-  loop: ui-quality
-  hub: adaptive
-  description: UI and interaction quality routine.
 x-augur-commands:
 - id: auto-e2e-actions
   type: workflow
@@ -82,8 +59,7 @@ x-augur-commands:
 - id: auto-test-api
   type: workflow
   visibility: auto
-  description: Validate dashboard API route health, classify failures, and apply safe path
-    repairs
+  description: Validate dashboard API route health, classify failures, and apply safe path repairs
   callable: scripts/test_api_ops.py
   protocol: scan-fix
   loop:
@@ -173,8 +149,7 @@ x-augur-commands:
 - id: auto-test-webmcp
   type: workflow
   visibility: auto
-  description: Validate WebMCP tool registration, execution, and state reporting across all
-    phases
+  description: Validate WebMCP tool registration, execution, and state reporting across all phases
   callable: scripts/webmcp_ops.py
   protocol: scan-fix
   loop:
@@ -184,8 +159,7 @@ x-augur-commands:
 - id: auto-ui-quality
   type: workflow
   visibility: auto
-  description: Nightly UI/UX quality audit with accessibility, interaction, and responsive
-    checks.
+  description: Nightly UI/UX quality audit with accessibility, interaction, and responsive checks.
   callable: scripts/ui_quality.py
   protocol: scan-fix
   loop:
@@ -244,8 +218,7 @@ x-augur-config:
     - id: auto-e2e-pipeline
       type: workflow
       visibility: auto
-      description: Validate the vault-to-dashboard data pipeline and pinpoint the failing
-        stage
+      description: Validate the vault-to-dashboard data pipeline and pinpoint the failing stage
       callable: scripts/e2e_pipeline.py
       protocol: scan-fix
     - id: auto-format
@@ -281,8 +254,7 @@ x-augur-config:
     - id: auto-test-api
       type: workflow
       visibility: auto
-      description: Validate dashboard API route health, classify failures, and apply safe
-        path repairs
+      description: Validate dashboard API route health, classify failures, and apply safe path repairs
       callable: scripts/test_api_ops.py
       protocol: scan-fix
     - id: auto-test-build
@@ -336,15 +308,13 @@ x-augur-config:
     - id: auto-test-webmcp
       type: workflow
       visibility: auto
-      description: Validate WebMCP tool registration, execution, and state reporting across
-        all phases
+      description: Validate WebMCP tool registration, execution, and state reporting across all phases
       callable: scripts/webmcp_ops.py
       protocol: scan-fix
     - id: auto-ui-quality
       type: workflow
       visibility: auto
-      description: Nightly UI/UX quality audit with accessibility, interaction, and responsive
-        checks.
+      description: Nightly UI/UX quality audit with accessibility, interaction, and responsive checks.
       callable: scripts/ui_quality.py
       protocol: scan-fix
     - id: auto-view-schema
@@ -359,6 +329,34 @@ x-augur-config:
       description: Lint YAML config for syntax, formatting, and structural drift.
       callable: scripts/yaml_lint_ops.py
       protocol: scan-fix
+x-augur-loops:
+- id: testing
+  skill: routine-codebase
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: ../daemon/scripts/routine_orchestrator/orchestrator.py
+  loop_name: testing
+  memory:
+    trust: adaptive
+- id: code-quality
+  skill: routine-codebase
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: ../daemon/scripts/routine_orchestrator/orchestrator.py
+  loop_name: code-quality
+  memory:
+    trust: adaptive
+- id: ui-quality
+  skill: routine-codebase
+  automation:
+    trigger: nightly
+    runner: auto
+    discover: ../daemon/scripts/routine_orchestrator/orchestrator.py
+  loop_name: ui-quality
+  memory:
+    trust: adaptive
 ---
 
 # routine-codebase

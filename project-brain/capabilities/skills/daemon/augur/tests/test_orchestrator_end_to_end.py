@@ -266,7 +266,7 @@ def test_orchestrator_escalates_when_claude_surface_has_no_invoker(
     """A headless run inherits CLAUDECODE env (surface detects as claude-code)
     but has no in-process Task invoker. The orchestrator must escalate, not raise
     NoSessionAvailable and record a hard failure. Regression for the
-    skill-standards `aug routine run` crash."""
+    skill-standards `aug a-loops run` crash."""
     orchestrator = _load_orchestrator()
     fixtures = _load_fixture_helpers()
     repo = _init_repo(tmp_path)

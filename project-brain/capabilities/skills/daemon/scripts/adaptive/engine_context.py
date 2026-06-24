@@ -48,7 +48,7 @@ from routine_orchestrator.ledger_view import LedgerJournalReader
 _LOCAL_DOC_NAMES = ("README.md", "README.mdx", "NOTES.md", "docs.md")
 _LOOP_REFERENCE_PATHS = (
     Path("project-brain/capabilities/skills/daemon/references/routines-implementation.md"),
-    Path("project-brain/capabilities/skills/daemon/commands/routines.md"),
+    Path("project-brain/capabilities/skills/daemon/commands/a-loops.md"),
 )
 
 

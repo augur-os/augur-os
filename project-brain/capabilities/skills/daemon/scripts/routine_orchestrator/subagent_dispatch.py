@@ -67,7 +67,7 @@ def dispatch_available(
 
     Surface detection (``session_detect``) only proves a client *environment*
     (e.g. ``CLAUDECODE=1`` plus a ``claude`` binary on PATH). It does not prove
-    a usable in-process invoker exists. A headless ``aug routine run`` subprocess
+    a usable in-process invoker exists. A headless ``aug a-loops run`` subprocess
     inherits that environment but has no Task tool, so the claude-code surface is
     detected while ``_TASK_INVOKER`` stays ``None``. Callers must gate the
     dispatch-vs-escalate decision on this (not on surface presence alone) so the

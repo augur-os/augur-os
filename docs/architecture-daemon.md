@@ -55,7 +55,7 @@ Structural findings should produce a design gate or ADR-backed follow-up rather 
 
 ## Loop history and status surfaces
 
-The daemon writes trust state, evolve queue, journal, and reports under runtime adaptive paths. `/routines` and `aug routine` are the human and agent-facing surfaces for that state.
+The daemon writes trust state, evolve queue, journal, and reports under runtime adaptive paths. `/a-loops` and `aug a-loops` are the human and agent-facing surfaces for that state.
 
 Browse exposes background routine rows through the capability and routine discovery layers rather than requiring agents to inspect daemon internals.
 
@@ -83,8 +83,8 @@ Nightly and continuous triggers can launch or request sessions, but they should 
 
 ADR-758 collapses auto-loops and dream-class compounding into one registry and
 one operator surface. A routine is declared by the owning skill with
-`x-augur-routine:` or `x-augur-routines:` in `SKILL.md`; `aug routine` and
-`/routines` are the canonical list, status, run, report, and schedule surfaces.
+`x-augur-routine:` or `x-augur-routines:` in `SKILL.md`; `aug a-loops` and
+`/a-loops` are the canonical list, status, run, report, and schedule surfaces.
 `/dream` remains a deprecated alias for one release cycle.
 
 Execution models stay distinct below the registry:
@@ -108,7 +108,7 @@ separate:
 ```mermaid
 flowchart LR
   Skill[Skill SKILL.md routine declaration] --> Registry[Routine registry]
-  Registry --> Surface["/routines and aug routine"]
+  Registry --> Surface["/a-loops and aug a-loops"]
   Registry --> Projection[sync_agents routine schedules]
   Projection --> Codex[Codex automations]
   Surface --> Tiered{"execution model"}
@@ -130,7 +130,7 @@ projection or graceful manual invocation depending on their capabilities.
 ## Implementation pointers
 
 - `project-brain/capabilities/skills/daemon/SKILL.md` owns daemon commands and actions.
-- `project-brain/capabilities/skills/daemon/commands/routines.md` documents the unified routine operator surface.
+- `project-brain/capabilities/skills/daemon/commands/a-loops.md` documents the unified routine operator surface.
 - `project-brain/capabilities/skills/daemon/scripts/routine_orchestrator/registry.py` discovers `x-augur-routine` declarations.
 - `project-brain/capabilities/skills/daemon/scripts/routine_orchestrator/orchestrator.py` dispatches tiered routines.
 - `project-brain/capabilities/skills/daemon/scripts/unified_daemon.py` is the supervisor.

@@ -3161,7 +3161,7 @@ class TestSkillScopeCleanup:
                         "key": "dev",
                         "label": "Dev Commands",
                         "commands": [
-                            {"id": "routines"},
+                            {"id": "a-loops"},
                             {"id": "skillify"},
                         ],
                     },
@@ -3186,7 +3186,7 @@ class TestSkillScopeCleanup:
             )
         }
 
-        assert exported == {"ask", "discover", "keep", "project", "routines", "skillify"}
+        assert exported == {"ask", "discover", "keep", "project", "a-loops", "skillify"}
         assert "adr" not in exported
         assert "dev" not in exported
         assert "sweep" not in exported
@@ -3210,7 +3210,7 @@ class TestSkillScopeCleanup:
             )
         }
 
-        assert exported == {"ask", "discover", "keep", "project", "routines", "skillify"}
+        assert exported == {"ask", "discover", "keep", "project", "a-loops", "skillify"}
         assert "adr" not in exported
         assert "dev" not in exported
         assert "sweep" not in exported
@@ -3235,7 +3235,7 @@ class TestSkillScopeCleanup:
             )
         }
 
-        assert exported == {"ask", "discover", "keep", "project", "routines", "skillify"}
+        assert exported == {"ask", "discover", "keep", "project", "a-loops", "skillify"}
         assert "adr" not in exported
         assert "dev" not in exported
         assert "sweep" not in exported

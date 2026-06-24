@@ -2,7 +2,8 @@ import { BROWSE_CATEGORIES, RETIRED_VIEW_MODES, type ViewMode } from "./types";
 
 const LEGACY_VIEW_MODE_MAP: Record<string, ViewMode> = {
   "dashboard-surfaces": "pages",
-  "scheduled-executions": "background-routines",
+  "scheduled-executions": "loops",
+  "background-routines": "loops",
   vault: "notes",
   agents: "agent-profiles",
 };

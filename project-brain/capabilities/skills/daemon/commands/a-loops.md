@@ -1,60 +1,74 @@
 ---
 x-augur-export-command: true
 ---
-# /routines
+# /a-loops
 
-Unified command surface for Augur routines. A routine is recurring AI-orchestrated
+Unified command surface for Augur loops. A loop is recurring AI-orchestrated
 work declared by a skill with `x-augur-routine` or `x-augur-routines` frontmatter.
 
 ## Usage
 
 ```text
-/routines list
-/routines status [routine-id]
-/routines run <routine-id>
-/routines report <routine-id>
-/routines schedule [routine-id]
-/routines goal [goal-id]
+# The loop name is the command — names any loop directly:
+/a-loops <loop-name>          # e.g. /a-loops inbox-triage, /a-loops hardening
+/a-loops <goal-name>          # e.g. /a-loops harden  (a curated multi-loop bundle)
+
+# Explicit verbs (escape hatches):
+/a-loops list
+/a-loops status [routine-id]
+/a-loops run <routine-id>
+/a-loops report <routine-id>
+/a-loops schedule [routine-id]
+/a-loops goal [goal-id]
+/a-loops all                  # parallel scan-triage + capped fan-out (orchestrator loops)
 ```
+
+Naming a loop runs it with the right loop-engineering treatment for its kind — orchestrator loops as a single-loop goal (isolated worktree, subagent fixes, verified checkpoints), prompt loops as an in-session prompt. You never need `run`/`goal`/`--catalog-loop`; they remain for explicit control.
 
 CLI equivalent:
 
 ```bash
-aug routine list
-aug routine status [routine-id]
-aug routine run <routine-id>
-aug routine report <routine-id>
-aug routine schedule [routine-id]
-aug routine goal [goal-id]
+# The loop name is the command:
+aug a-loops <loop-name>
+aug a-loops <goal-name>
+
+# Explicit verbs:
+aug a-loops list
+aug a-loops status [routine-id]
+aug a-loops run <routine-id>
+aug a-loops report <routine-id>
+aug a-loops schedule [routine-id]
+aug a-loops goal [goal-id]
 ```
 
 ## Verbs
 
 | Verb | Purpose |
 |---|---|
-| `list` | Show every declared routine, execution model, policy, skill owner, and callable. |
-| `status` | Show recent ledger-derived runs for one routine or the full registry. |
-| `run` | Dispatch one routine through its declared execution model. |
-| `report` | Show recent report artifacts for a routine-owned report directory. |
+| `list` | Show every declared loop as a grouped table (PROMPT vs ORCHESTRATOR) with kind, runner, owning skill, and trust, plus a "how to run" footer. Add `--json` for raw machine output. |
+| `status` | Show recent ledger-derived runs for one loop or the full registry. |
+| `run` | Dispatch one loop through its declared execution model. |
+| `report` | Show recent report artifacts for a loop-owned report directory. |
 | `schedule` | Show client schedule seed bindings from each owning skill. |
 | `goal` | Run or list concrete goal proofs; `--suggest` and `--catalog-loop` expose ADR-792 catalog goals. |
+| `all` | Scan-triage every orchestrator loop, then fan out capped-parallel single-loop goal runs (own worktree each) only for loops with findings. In-session; bare CLI `aug a-loops all` fails fast (use `--dry-run` for the plan). |
 
 ## Goal Mode (ADR-792)
 
-`/routines goal` without flags lists concrete goal proofs such as
-`demo-readiness`. `aug routine goal demo-readiness` runs deterministic proof
+`/a-loops goal` without flags lists concrete goal proofs such as
+`demo-readiness`. `aug a-loops goal demo-readiness` runs deterministic proof
 steps and writes a runtime report.
 
-`/routines goal --suggest` assesses live project debt across routine loops and
-presents ranked catalog goal suggestions. `/routines goal <goal-id>
+`/a-loops goal --suggest` assesses live project debt across loops and
+presents ranked catalog goal suggestions. `/a-loops goal <goal-id>
 --catalog-loop` runs a catalog goal to convergence independently of further user
 interaction. Built-in catalog goals: `harden`, `clean`, `harden-and-clean`.
 
-**Catalog-loop is an inline-session routine (ADR-793).** The catalog-loop
-(`goal-loop`) is an `inline-session` routine: the AI client is the invoker and
+**Catalog-loop is an inline-session loop (ADR-793).** The catalog-loop
+(`goal-loop`) is an `inline-session` loop: the AI client is the invoker and
 drives the loop using seven atomic goal-* MCP ops. Bare-CLI
-`aug routine goal <id> --catalog-loop` **fails fast** — the `uv run` subprocess
-has no Task tool. Run `/routines goal <id> --catalog-loop` in-session, which
+`aug a-loops goal <id> --catalog-loop` **fails fast** — the `uv run` subprocess
+has no Task tool. Run `/a-loops goal <id> --catalog-loop` in-session, which
 renders the inline-session prompt.
 
 The seven atomic ops the client calls during a catalog-loop run:
@@ -74,7 +88,7 @@ When you (the AI client) run a picked goal:
 1. Confirm a native AI-client session is active. Catalog loop mode requires it, and that
    is exactly what drains the no-session escalation backlog the nightly daemon
    cannot touch.
-2. Run `/routines goal <goal-id> --catalog-loop` (in-session). It renders the
+2. Run `/a-loops goal <goal-id> --catalog-loop` (in-session). It renders the
    inline-session prompt; the client creates an isolated
    `<repo>/.worktrees/goal/<id>-<stamp>` worktree off the **current** branch
    (never main), then drives each loop in the goal's ordered plan
@@ -94,12 +108,12 @@ timestamp), `--max-iterations N` (whole-run budget), `--loop-cap N`
 
 ## Execution Models
 
-`tiered` routines dispatch through the ADR-755 routine orchestrator and require a
-native AI-client session for agentic runs. Use `aug routine scan-only --loop <id>`
+`tiered` loops dispatch through the ADR-755 routine orchestrator and require a
+native AI-client session for agentic runs. Use `aug a-loops scan-only --loop <id>`
 for deterministic scanner-only execution.
 
-`inline-session` routines render their command prompt into the current session.
-Dream is the first inline-session routine. The catalog-loop (`goal-loop`, ADR-793)
+`inline-session` loops render their command prompt into the current session.
+Dream is the first inline-session loop. The catalog-loop (`goal-loop`, ADR-793)
 is the second: the AI client drives the loop and uses its own Agent/Task tool as
 the invoker, calling the seven `goal-*` atomic ops directly. Bare-CLI invocation
 of `--catalog-loop` fails fast because the `uv run` subprocess context provides
@@ -107,9 +121,9 @@ no Task tool.
 
 ## Extended Dispatch (Consolidation)
 
-### /routines goal [goal-id]
+### /a-loops goal [goal-id]
 
-Run a bounded, in-session goal loop over existing routine and demo proof
+Run a bounded, in-session goal loop over existing loop and demo proof
 surfaces. This is the surface for "set goal: prepare demo" after a merge. The
 Python runner performs deterministic checks and writes runtime reports; the
 active AI client owns the semantic edit loop by reading `next_actions`, patching
@@ -126,24 +140,24 @@ Current goal:
 Examples:
 
 ```text
-/routines goal
-/routines goal demo-readiness
-/routines goal demo-readiness --max-iterations 3
-/routines goal demo-readiness --compound-proposal-json <runtime-proposal-json>
+/a-loops goal
+/a-loops goal demo-readiness
+/a-loops goal demo-readiness --max-iterations 3
+/a-loops goal demo-readiness --compound-proposal-json <runtime-proposal-json>
 ```
 
 CLI equivalent:
 
 ```bash
-aug routine goal
-aug routine goal demo-readiness
-aug routine goal demo-readiness --max-iterations 3
-aug routine goal demo-readiness --compound-proposal-json <runtime-proposal-json>
+aug a-loops goal
+aug a-loops goal demo-readiness
+aug a-loops goal demo-readiness --max-iterations 3
+aug a-loops goal demo-readiness --compound-proposal-json <runtime-proposal-json>
 ```
 
 Agent contract:
 
-1. Run `aug routine goal demo-readiness --max-iterations 1`.
+1. Run `aug a-loops goal demo-readiness --max-iterations 1`.
 2. If status is `ready`, report the JSON and Markdown runtime artifacts.
 3. If status is `needs_agent_action`, inspect `next_actions` and the failed
    check output. Make the smallest code/docs/skill fix in the current worktree,
@@ -152,7 +166,49 @@ Agent contract:
 5. Never call the goal ready from tests alone; cite the real check outputs and
    runtime report path.
 
-### /routines scan <category>
+### /a-loops all
+
+Run **all orchestrator (tiered) loops in parallel** — cheap scan-triage first,
+then a capped-parallel fan-out of single-loop goal runs only for the loops that
+have findings. This is an **inline-session** command (the AI client is the
+invoker and spawns the fix-subagents). Bare-CLI `aug a-loops all` fails fast;
+`aug a-loops all --dry-run` prints the triage plan only.
+
+Scope is the 14 orchestrator loops; `dream`/`inbox-triage` (prompt loops) and
+`goal-loop` (the driver) are excluded.
+
+Flags: `--dry-run` (triage only), `--cap N` (default 6, clamped to worktree
+headroom), `--include a,b` / `--exclude a,b`, `--max-iterations N`, `--loop-cap N`.
+
+Phases 1 and 3 are also available as atomic CLI verbs — deterministic,
+non-mutating, and callable without an in-session client:
+`aug a-loops goal-fanout-plan` (triage) and `aug a-loops goal-fanout-report`
+(rollup). Both follow the same pattern as the other `goal-*` ops. A returned
+`safe_cap: 0` means the worktree registry is full — queue all loops; launch
+as slots free rather than refusing.
+
+When you (the AI client) run `/a-loops all`:
+
+1. **Triage** — call `goal-fanout-plan` (apply `--include`/`--exclude`/`--cap`).
+   It returns `loops_with_work`, `per_loop_counts`, `skipped_clean`, and
+   `safe_cap`. Print the plan. If `--dry-run`, stop here.
+2. **Fan out** — for each loop in `loops_with_work`, dispatch a subagent, at most
+   `safe_cap` concurrently (queue the rest). Each subagent drives **one** loop to
+   convergence in its **own** worktree exactly like a single-loop goal:
+   `goal-worktree <loop>` → repeat (`goal-scan-loop` → spawn the returned bucket
+   fix-subagents → `goal-record-bucket` per bucket → `goal-loop-status`) until
+   `converged`/`stalled`/`exhausted`, honoring `--max-iterations`/`--loop-cap`.
+   Push residuals with `goal-escalate`. Commit only verified checkpoints. Do
+   **not** merge.
+3. **Aggregate** — collect each loop's `{loop, verdict, branch, residual}` and
+   call `goal-fanout-report` to write the rollup. Surface every branch for
+   `/dev-merge`. Report per-loop verdicts honestly — never "all clean" if any
+   loop stalled/exhausted/failed.
+
+This reuses the single-loop goal machinery per loop; `/a-loops all` only adds the
+triage + capped fan-out + aggregate layer.
+
+### /a-loops scan <category>
 
 Run daemon scan-fix operations manually. This absorbs all 76 auto-* commands
 that previously ran as standalone daemon operations.
@@ -169,7 +225,7 @@ Categories map to loop groups in the adaptive loop engine:
 
 Execution: call the routine orchestrator with the specified category filter.
 
-### /routines ops <verb>
+### /a-loops ops <verb>
 
 Operational commands (absorbs former ops-* standalone commands):
 - `daemon` -> manage daemon lifecycle (start, stop, restart, status, heal)
@@ -187,7 +243,7 @@ Operational commands (absorbs former ops-* standalone commands):
 - `memory` -> sync session memory across agents, curate daily logs
 - `learn` -> extract learnings from thread, persist to memory + docs
 
-### /routines <engine-verb>
+### /a-loops <engine-verb>
 
 Adaptive-loop-engine operator verbs pass through to
 `project-brain/capabilities/skills/daemon/scripts/adaptive_loop_executor.py` (which accepts
@@ -200,13 +256,13 @@ both subcommand and `--flag` forms). These are the successors to the retired
 - `reset` -> reset trust state only (preserves lifetime stats)
 - `disable <loop>` -> stop scheduling a loop
 - `diagnose` -> report trust/structural findings without fixing
-- `registry` / `manifest` -> alias of `list` (declared routines / schedule manifest)
+- `registry` / `manifest` -> alias of `list` (declared loops / schedule manifest)
 - `history` -> alias of `status` (ledger-derived run history)
-- `pending [--create-adr]` -> show pending escalations (also `aug routine pending-escalations`)
+- `pending [--create-adr]` -> show pending escalations (also `aug a-loops pending-escalations`)
 
 Execution: dispatch the verb and its arguments to `adaptive_loop_executor.py`.
 
 ## Alias Window
 
 `/dream` remains available during the ADR-758 transition period.
-New automation and operator workflows should use `/routines`.
+New automation and operator workflows should use `/a-loops`.

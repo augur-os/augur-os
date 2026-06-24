@@ -1,4 +1,4 @@
-"""Tests for `aug routine adopt` and `aug routine push` CLI verbs."""
+"""Tests for `aug a-loops adopt` and `aug a-loops push` CLI verbs."""
 from __future__ import annotations
 
 import json

@@ -337,7 +337,7 @@ def register_browse_tools(mcp, mcp_tool_interceptor=None, metrics=None):
             category: One of: skills, adrs, actions, prompts, vault, documents,
                       agents, integrations, commands, mcp-tools, scripts,
                       api-routes, tests, pages, blocks, workflows, wiki, logs,
-                      background-routines, scheduled-executions, profile
+                      loops, scheduled-executions, profile
             hub: Optional hub filter (career, finance, health, etc.)
             limit: Max items to return (0 = default limit of 1000)
             search: Optional text search (filters on name + description server-side)

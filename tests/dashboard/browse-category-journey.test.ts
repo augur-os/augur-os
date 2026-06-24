@@ -25,8 +25,8 @@ describe("Browse category journey metadata", () => {
 
     // Spec 2026-06-09 §3 (amended 2026-06-11): three AI-engineering concept
     // groups — context (what the AI knows), prompt (how you instruct it),
-    // loop (how it runs without you). prompts/commands/background-routines/
-    // agent-profiles promoted to user-facing tabs.
+    // loop (how it runs without you). prompts/commands/loops/
+    // agent-profiles/skills/integrations promoted to user-facing tabs.
     expect(ordered).toEqual([
       "notes",
       "documents",
@@ -35,9 +35,9 @@ describe("Browse category journey metadata", () => {
       "archive",
       "prompts",
       "commands",
-      "skills",
-      "background-routines",
+      "loops",
       "agent-profiles",
+      "skills",
       "integrations",
     ]);
   });
@@ -53,8 +53,8 @@ describe("Browse category journey metadata", () => {
 
     expect(grouped).toMatchObject({
       context: ["notes", "documents", "wiki", "pages", "archive"],
-      prompt: ["prompts", "commands", "skills"],
-      loop: ["background-routines", "agent-profiles", "integrations"],
+      prompt: ["prompts", "commands"],
+      loop: ["loops", "agent-profiles", "skills", "integrations"],
     });
   });
 
@@ -83,8 +83,8 @@ describe("Browse category journey metadata", () => {
     expect(byId["commands"]).toMatchObject({
       devOnly: false, journey_group: "prompt", tier: "primary",
     });
-    expect(byId["background-routines"]).toMatchObject({
-      label: "Routines", devOnly: false, journey_group: "loop", tier: "primary",
+    expect(byId["loops"]).toMatchObject({
+      label: "Loops", devOnly: false, journey_group: "loop", tier: "primary",
     });
     expect(byId["agent-profiles"]).toMatchObject({
       label: "Agents", singularLabel: "Agent", devOnly: false, journey_group: "loop", tier: "primary",
@@ -108,16 +108,18 @@ describe("Browse category journey metadata", () => {
       .sort(compareBrowseCategoriesByJourney)
       .map((category) => category.id);
 
-    // Groups: CAPABILITIES (mcp-tools, scripts, api-routes, tests),
-    // DIAGNOSTICS (mcp-servers, logs, system-metadata), REFERENCE (adrs).
-    // commands/agent-profiles/background-routines promoted to user tabs
-    // (spec 2026-06-09 §3 amended 2026-06-11).
+    // LOOP ENGINEERING dev subset: mcp-tools (order 5), mcp-servers (order 6)
+    // CAPABILITIES: scripts, api-routes, tests
+    // DIAGNOSTICS: logs, system-metadata
+    // REFERENCE: adrs
+    // mcp-tools/mcp-servers moved into LOOP ENGINEERING as full loop anatomy
+    // (task-1 regroup 2026-06-23).
     expect(ordered).toEqual([
       "mcp-tools",
+      "mcp-servers",
       "scripts",
       "api-routes",
       "tests",
-      "mcp-servers",
       "logs",
       "system-metadata",
       "adrs",
