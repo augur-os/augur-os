@@ -45,6 +45,23 @@ def test_write_and_read_sidecar_roundtrip(tmp_path: Path) -> None:
     assert loaded == sc
 
 
+def test_read_sidecar_raises_clear_error_when_required_field_missing(tmp_path: Path) -> None:
+    """A sidecar missing required fields raises a diagnostic ValueError naming them,
+    not an opaque ``TypeError: Sidecar.__init__() missing 4 required positional arguments``.
+    """
+    import pytest
+
+    sidecar_path = tmp_path / "incomplete.meta.yaml"
+    sidecar_path.write_text("---\nnote: incomplete\n---\n", encoding="utf-8")
+
+    with pytest.raises(ValueError) as exc:
+        read_sidecar(sidecar_path)
+    msg = str(exc.value)
+    assert str(sidecar_path) in msg
+    for field_name in ("slug", "title", "kind", "hub"):
+        assert field_name in msg
+
+
 def test_derive_title_from_html_title_tag() -> None:
     html = "<html><head><title>My Title</title></head><body></body></html>"
     assert derive_title(html, fallback="x.html") == "My Title"
@@ -96,6 +113,32 @@ def test_artifacts_list_skips_html_without_sidecar(tmp_path: Path) -> None:
     (tmp_path / "orphan.html").write_text("<html></html>", encoding="utf-8")
     result = artifacts_list_impl(docs_dir=tmp_path)
     assert result["artifacts"] == []
+
+
+def test_artifacts_list_skips_corrupt_sidecar(tmp_path: Path) -> None:
+    """A sidecar missing required fields must not 500 the whole list — it is skipped.
+
+    Regression: a single incomplete `.meta.yaml` crashed the artifacts list with
+    `TypeError: Sidecar.__init__() missing 4 required positional arguments`
+    (seen in production logs). One bad file must not take down the whole catalog.
+    """
+    bad_dir = tmp_path / "dev" / "artifacts"
+    bad_dir.mkdir(parents=True)
+    (bad_dir / "aaa-corrupt.html").write_text("<html>x</html>", encoding="utf-8")
+    # Sidecar present but missing required fields (slug/title/kind/hub).
+    (bad_dir / "aaa-corrupt.meta.yaml").write_text("note: incomplete\n", encoding="utf-8")
+
+    good_dir = tmp_path / "career" / "artifacts"
+    good_dir.mkdir(parents=True)
+    (good_dir / "good-one.html").write_text("<html><title>Good</title></html>", encoding="utf-8")
+    write_sidecar(
+        good_dir / "good-one.meta.yaml",
+        Sidecar(slug="good-one", title="Good", kind="saved", hub="career"),
+    )
+
+    result = artifacts_list_impl(docs_dir=tmp_path)
+
+    assert [e["slug"] for e in result["artifacts"]] == ["good-one"]
 
 
 def test_reindex_creates_sidecar_for_html_without_one(tmp_path: Path) -> None:
