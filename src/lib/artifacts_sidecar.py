@@ -6,7 +6,7 @@ Pure helpers only: no MCP imports allowed here (the indexer CLI loads this in is
 from __future__ import annotations
 
 from collections.abc import Iterator
-from dataclasses import asdict, dataclass, field
+from dataclasses import MISSING, asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -45,8 +45,21 @@ def read_sidecar(path: Path) -> Sidecar:
     data = yaml.safe_load(body) or {}
     if not isinstance(data, dict):
         data = {}
-    known = set(Sidecar.__dataclass_fields__)
-    return Sidecar(**{k: v for k, v in data.items() if k in known})
+    fields = Sidecar.__dataclass_fields__
+    kwargs = {k: v for k, v in data.items() if k in fields}
+    # Fields with no default are required; an incomplete/corrupt sidecar would
+    # otherwise raise an opaque `TypeError: Sidecar.__init__() missing ...`.
+    # Raise a clear, diagnostic error instead so caller logs are actionable.
+    missing = [
+        name
+        for name, f in fields.items()
+        if f.default is MISSING and f.default_factory is MISSING and name not in kwargs
+    ]
+    if missing:
+        raise ValueError(
+            f"artifact sidecar {path} is missing required field(s): {', '.join(missing)}"
+        )
+    return Sidecar(**kwargs)
 
 
 def _sidecar_yaml_body(text: str) -> str:

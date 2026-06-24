@@ -119,7 +119,13 @@ def artifacts_list_impl(*, docs_dir: Path) -> dict[str, Any]:
     """Return Browse-shape entries for every sidecar-backed HTML artifact."""
     entries: list[dict[str, Any]] = []
     for html_path, sidecar_path in _iter_artifact_files(docs_dir):
-        sc = read_sidecar(sidecar_path)
+        try:
+            sc = read_sidecar(sidecar_path)
+        except Exception:
+            # A corrupt/incomplete sidecar (missing a required field) must not
+            # 500 the whole list — skip it and keep building the catalog.
+            _log.warning("Skipping unreadable artifact sidecar: %s", sidecar_path)
+            continue
         entries.append(
             {
                 "slug": sc.slug,
