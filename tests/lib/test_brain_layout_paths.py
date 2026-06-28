@@ -127,8 +127,7 @@ def test_write_brain_manifest_rewrites_genuinely_moved_attached_project(tmp_path
     moved = tmp_path / "Augur-moved"
     moved.mkdir()
     (brain_root / "BRAIN.yaml").write_text(
-        "schema_version: 1\nid: project-augur\ntype: project\n"
-        "root: .\nattached_project: ..\n",
+        "schema_version: 1\nid: project-augur\ntype: project\n" "root: .\nattached_project: ..\n",
         encoding="utf-8",
     )
 

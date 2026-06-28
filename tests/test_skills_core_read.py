@@ -68,9 +68,7 @@ async def test_list_skills_json_lists_all(monkeypatch, tmp_path):
     metrics = MagicMock()
     records = [_skill_record("ask"), _skill_record("keep")]
 
-    result = await list_skills_impl(
-        ListSkillsInput(format=ResponseFormat.JSON), cache, metrics, lambda **kw: records
-    )
+    result = await list_skills_impl(ListSkillsInput(format=ResponseFormat.JSON), cache, metrics, lambda **kw: records)
     data = json.loads(result)
     assert data["count"] == 2
     assert {s["name"] for s in data["skills"]} == {"ask", "keep"}
@@ -99,9 +97,7 @@ async def test_list_skills_returns_cached_value(monkeypatch, tmp_path):
     cache.get.return_value = "CACHED"
     registry = MagicMock()
 
-    result = await list_skills_impl(
-        ListSkillsInput(format=ResponseFormat.JSON), cache, MagicMock(), registry
-    )
+    result = await list_skills_impl(ListSkillsInput(format=ResponseFormat.JSON), cache, MagicMock(), registry)
     assert result == "CACHED"
     registry.assert_not_called()
 
@@ -132,9 +128,7 @@ async def test_get_skill_reads_skill_md(tmp_path):
     (skill_path / "SKILL.md").write_text("# Ask Skill\nUse me.", encoding="utf-8")
     entry = SimpleNamespace(name="ask", path=skill_path)
 
-    result = await get_skill_impl(
-        GetSkillInput(skill_name="ask"), lambda n: entry, lambda: ["ask"], MagicMock()
-    )
+    result = await get_skill_impl(GetSkillInput(skill_name="ask"), lambda n: entry, lambda: ["ask"], MagicMock())
     assert "# Ask Skill" in result
 
 

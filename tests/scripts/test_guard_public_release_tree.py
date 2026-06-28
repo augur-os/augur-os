@@ -175,9 +175,7 @@ def test_guard_cli_allows_generated_public_release_tree(tmp_path: Path) -> None:
 # --- Machine-specific path leak guard (regression: BRAIN.yaml /Users/<name> in v1.12.0) ---
 
 
-def test_scan_content_safety_flags_builder_home_path(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_scan_content_safety_flags_builder_home_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A file containing the building user's absolute home dir is a leak.
 
     Regression: `project-brain/BRAIN.yaml` mutated locally to
@@ -191,18 +189,14 @@ def test_scan_content_safety_flags_builder_home_path(
 
     tree = tmp_path / "public"
     (tree / "project-brain").mkdir(parents=True)
-    (tree / "project-brain" / "BRAIN.yaml").write_text(
-        f"root: {fake_home}/project-brain\n", encoding="utf-8"
-    )
+    (tree / "project-brain" / "BRAIN.yaml").write_text(f"root: {fake_home}/project-brain\n", encoding="utf-8")
 
     violations = scan_content_safety(tree)
     assert any(v.reason == "machine-specific path" for v in violations), violations
     assert any(str(fake_home) in v.format() for v in violations)
 
 
-def test_scan_content_safety_ignores_placeholder_user_paths(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_scan_content_safety_ignores_placeholder_user_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Generic placeholder home paths in fixtures/docs are NOT leaks.
 
     The release tree legitimately carries `/Users/example`, `/home/user`, and
@@ -230,9 +224,7 @@ def test_machine_path_markers_skips_degenerate_home(monkeypatch: pytest.MonkeyPa
     assert machine_path_markers() == []
 
 
-def test_full_scope_guard_blocks_machine_path(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_full_scope_guard_blocks_machine_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Under `full` scope the guard must still block machine-path leaks.
 
     Regression: full scope previously returned ONLY partition findings, so
@@ -263,9 +255,7 @@ def test_full_scope_guard_blocks_machine_path(
     assert "src/leak.py" in message
 
 
-def test_full_scope_guard_honors_private_marker_regex(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_full_scope_guard_honors_private_marker_regex(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Full scope must apply the configured AUGUR_PRIVATE_MARKER_REGEX to content.
 
     Regression: full scope previously returned ONLY partition findings, so the
@@ -291,9 +281,7 @@ def test_full_scope_guard_honors_private_marker_regex(
     assert "forbidden content marker 'Au-vault'" in message
 
 
-def test_full_scope_guard_ignores_envvar_name_markers(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_full_scope_guard_ignores_envvar_name_markers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Full scope must NOT flag env-var NAMES in real source (false-positive guard).
 
     OPENAI_API_KEY / ANTHROPIC_API_KEY / "PRIVATE KEY" appear legitimately across

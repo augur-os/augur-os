@@ -130,9 +130,11 @@ def normalize_skill_frontmatter(
         x_augur.get("commands") if "commands" in x_augur else _legacy_commands(frontmatter),
     )
     routines = _normalize_routines(
-        x_augur.get("routines")
-        if "routines" in x_augur
-        else (_loop_routines(frontmatter) or _legacy_routines(frontmatter)),
+        (
+            x_augur.get("routines")
+            if "routines" in x_augur
+            else (_loop_routines(frontmatter) or _legacy_routines(frontmatter))
+        ),
     )
     dashboard_pages = _normalize_dashboard_pages(
         x_augur.get("dashboard") if "dashboard" in x_augur else _legacy_dashboard_pages(frontmatter)

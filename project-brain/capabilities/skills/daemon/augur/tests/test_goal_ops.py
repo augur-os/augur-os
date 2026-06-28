@@ -1640,17 +1640,40 @@ def test_op_run_inplace_runtime_auto_applies_without_git_commit():
     assert out["gated_on"] is None
 
 
-def test_op_run_inplace_vault_is_gated_on_adr816_scan_escalate_only():
-    """vault surface must NOT aggressive-auto-commit without the ADR-816 lock:
-    difficulty is forced to 0 (scan + escalate) and gated_on is reported."""
+def test_op_run_inplace_vault_aggressive_then_syncs_under_lock():
+    """ADR-816 Alternative 3 (ratified 2026-06-28): vault surface auto-applies
+    aggressively (difficulty preserved, NEVER touches the code repo) and, when
+    fixes landed, commits+pushes the vault via vault_sync under the lock."""
     rec = {}
+    synced = {"n": 0}
+
+    def _fake_sync():
+        synced["n"] += 1
+        return {"success": True, "committed": 4, "pushed": 4}
+
     out = goal_ops.op_run_inplace(
         loop="knowledge-enrichment", surface="vault", difficulty=1,
-        _orchestrate=_capture_orchestrate(rec, enqueued=3),
+        _orchestrate=_capture_orchestrate(rec, applied=4),
+        _vault_sync=_fake_sync,
     )
-    assert rec["difficulty"] == 0, "vault must scan+escalate, not auto-apply, until ADR-816"
-    assert rec["commit_runner"] is goal_ops._no_repo_commit
-    assert out["gated_on"] == "ADR-816"
+    assert rec["difficulty"] == 1, "vault now auto-applies aggressively (gate lifted)"
+    assert rec["commit_runner"] is goal_ops._no_repo_commit, "code repo must never be committed"
+    assert out["gated_on"] is None
+    assert synced["n"] == 1, "vault_sync must run after vault fixes are applied"
+    assert out["vault_sync"] == {"success": True, "committed": 4, "pushed": 4}
+
+
+def test_op_run_inplace_vault_skips_sync_when_nothing_applied():
+    """No vault fixes applied -> no vault commit/push (don't sync an unchanged vault)."""
+    rec = {}
+    synced = {"n": 0}
+    out = goal_ops.op_run_inplace(
+        loop="knowledge-enrichment", surface="vault", difficulty=1,
+        _orchestrate=_capture_orchestrate(rec, applied=0, enqueued=3),
+        _vault_sync=lambda: synced.__setitem__("n", synced["n"] + 1) or {},
+    )
+    assert synced["n"] == 0, "must not commit/push when nothing changed"
+    assert out["vault_sync"] is None
     assert out["escalated"] == 3
 
 

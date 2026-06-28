@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import math
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Callable
 
@@ -278,11 +279,37 @@ def _real_orchestrate_run(loop: str, **kwargs: Any) -> Any:
     return orchestrator.orchestrate_run(loop, **kwargs)
 
 
-# Surfaces whose aggressive in-session auto-commit is BLOCKED on an unmet
-# dependency: ADR-816 (cross-machine vault write lock) is still Proposed, so we
-# must not auto-commit/push the vault from an on-demand session (it would race
-# the nightly daemon or another machine). vault loops therefore scan+escalate.
-_SURFACE_COMMIT_GATED = frozenset({"vault"})
+def _real_vault_sync() -> dict[str, Any]:
+    """Commit + pull(ff/merge, abort-on-conflict) + push the vault repo under the
+    ADR-195 machine-local merge lock — the SAME coordination the daemon uses
+    nightly (ADR-816 Alternative 3, ratified 2026-06-28). Conflict-safe and never
+    forces. Best-effort: returns a result dict; never raises into op_run_inplace."""
+    try:
+        from src.config.paths import get_vault_dir, get_project_root
+        from src.lib.vault_sync import vault_sync_run
+    except Exception as exc:  # pragma: no cover
+        return {"success": False, "message": f"vault sync unavailable: {exc}"}
+    lock_script = (
+        get_project_root()
+        / "project-brain/capabilities/skills/platform-admin/scripts/merge_lock.py"
+    )
+    acquired = False
+    if lock_script.is_file():
+        rc = subprocess.run(  # noqa: S603
+            [sys.executable, str(lock_script), "acquire", "--tool", "a-loops-inplace", "--wait", "30"],
+            capture_output=True, text=True,
+        ).returncode
+        acquired = rc == 0
+        if not acquired:
+            return {"success": False, "message": "vault merge lock contended; skipped (try again)"}
+    try:
+        return vault_sync_run(get_vault_dir())
+    finally:
+        if acquired:
+            subprocess.run(  # noqa: S603
+                [sys.executable, str(lock_script), "release", "--tool", "a-loops-inplace"],
+                capture_output=True, text=True, check=False,
+            )
 
 
 def op_run_inplace(
@@ -293,6 +320,7 @@ def op_run_inplace(
     project_root: str | Path | None = None,
     runtime_dir: str | Path | None = None,
     _orchestrate: Callable[..., Any] = _real_orchestrate_run,
+    _vault_sync: Callable[[], dict[str, Any]] = _real_vault_sync,
 ) -> dict[str, Any]:
     """ADR-818 phase-2: drive a loop IN-PLACE against the live target (no
     worktree) via the daemon engine, with surface-tiered guardrails.
@@ -301,12 +329,14 @@ def op_run_inplace(
       - repo:    code-repo commit (engine default).
       - runtime: auto-apply; NO git commit — external writes go through the
                  loop's own sanctioned tools (configure_mcp / repair-mcp).
-      - vault:   scan + escalate ONLY (difficulty forced to 0). Aggressive
-                 vault auto-commit is gated on ADR-816 (Proposed); applying/
-                 committing the vault from a live session without the
-                 cross-machine lock would race the nightly daemon / another
-                 machine. The escalated findings are drained by the coordinated
-                 daemon run. TODO_ADR816: lift the gate once the lock lands.
+      - vault:   auto-apply to vault files, then commit + pull + push the vault
+                 repo via vault_sync under the ADR-195 machine-local merge lock
+                 — the SAME coordination the daemon uses nightly (ADR-816
+                 Alternative 3, ratified 2026-06-28). The CODE repo is never
+                 touched (commit_runner=_no_repo_commit; vault command modules
+                 set external_commit=True). Cross-machine collisions are handled
+                 cheaply by vault_sync's conflict-safe pull/abort + push-retry,
+                 not eliminated (the ADR-816 remote lease would do that).
       - mixed:   code-repo commit (per-finding repo/vault split is a future
                  refinement; today mixed loops stay worktree so this is unused).
     """
@@ -316,10 +346,11 @@ def op_run_inplace(
     if surface == "runtime":
         commit_runner = _no_repo_commit
         commit_policy = "external-tools (no git commit)"
-    elif surface in _SURFACE_COMMIT_GATED:
-        eff_difficulty = 0  # scan + escalate only until ADR-816 lands
+    elif surface == "vault":
+        # Never touch the CODE repo; vault mutations are committed/pushed by
+        # vault_sync under the machine-local lock after the engine applies them.
         commit_runner = _no_repo_commit
-        commit_policy = "scan+escalate (auto-commit gated on ADR-816)"
+        commit_policy = "vault: apply + vault_sync commit/push under machine-local lock"
     else:  # repo / mixed
         commit_policy = "code-repo commit"
 
@@ -338,6 +369,16 @@ def op_run_inplace(
     escalated = len(getattr(result, "enqueued", []) or [])
     dispatched = len(getattr(result, "dispatched", []) or [])
     deferred = len(getattr(result, "deferred", []) or [])
+
+    # Vault: after the engine applied fixes to vault files in place, commit + push
+    # the vault repo under the machine-local merge lock (ADR-816 Alternative 3).
+    vault_sync: dict[str, Any] | None = None
+    if surface == "vault" and applied > 0:
+        try:
+            vault_sync = _vault_sync()
+        except Exception as exc:  # pragma: no cover - never fail the run on sync
+            vault_sync = {"success": False, "message": f"vault sync raised: {exc}"}
+
     return {
         "success": True,
         "loop": loop,
@@ -349,7 +390,8 @@ def op_run_inplace(
         "dispatched": dispatched,
         "deferred": deferred,
         "did_work": applied > 0,
-        "gated_on": "ADR-816" if surface in _SURFACE_COMMIT_GATED else None,
+        "vault_sync": vault_sync,
+        "gated_on": None,
     }
 
 

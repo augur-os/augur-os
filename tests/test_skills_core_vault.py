@@ -86,9 +86,7 @@ async def test_list_skill_vault_notes_parses_and_groups(monkeypatch, tmp_path):
     """Notes parse frontmatter type, preview, line count, and group by dir."""
     vault = tmp_path / "vault-ask"
     (vault / "topic").mkdir(parents=True)
-    (vault / "root-note.md").write_text(
-        '---\ntype: log\n---\nFirst line\nSecond line\n', encoding="utf-8"
-    )
+    (vault / "root-note.md").write_text('---\ntype: log\n---\nFirst line\nSecond line\n', encoding="utf-8")
     (vault / "topic" / "nested.md").write_text("# Nested\nBody text", encoding="utf-8")
 
     monkeypatch.setattr(skills_vault, "get_skill_data_dir", lambda name: vault)

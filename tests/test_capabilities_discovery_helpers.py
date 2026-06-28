@@ -127,10 +127,10 @@ def test_merge_metadata_primary_surface_skill_and_conflicts():
     existing = {"primary_surface": "browse", "skill": "alpha", "owner": "augur"}
     incoming = {
         "primary_surface": "mcp",  # setdefault -> keeps existing
-        "skill": "beta",           # union-merged
-        "owner": "user",           # conflict -> union
-        "new": "value",            # added
-        "empty": "",               # skipped
+        "skill": "beta",  # union-merged
+        "owner": "user",  # conflict -> union
+        "new": "value",  # added
+        "empty": "",  # skipped
     }
     merged = _merge_metadata(existing, incoming)
     assert merged["primary_surface"] == "browse"

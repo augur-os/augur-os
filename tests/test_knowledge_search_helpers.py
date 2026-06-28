@@ -31,7 +31,6 @@ from src.lib.knowledge._search_helpers import (
     _tokenize_search_text,
 )
 
-
 # ── constants ─────────────────────────────────────────────────────────────────
 
 
@@ -253,10 +252,7 @@ def test_rank_and_dedup_removes_duplicate_source_paths() -> None:
 
 
 def test_rank_and_dedup_respects_limit() -> None:
-    hits = [
-        {"file": f"/x/{i}.md", "source_path": f"/real/{i}.md", "content": "alpha"}
-        for i in range(5)
-    ]
+    hits = [{"file": f"/x/{i}.md", "source_path": f"/real/{i}.md", "content": "alpha"} for i in range(5)]
     result = _rank_and_dedup_hits(hits, "alpha", limit=2)
     assert len(result) == 2
 

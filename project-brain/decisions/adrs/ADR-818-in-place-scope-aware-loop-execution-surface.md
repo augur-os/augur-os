@@ -45,14 +45,24 @@ git commit**; `repo` commits the code repo; `mixed` → code-repo. Triage emits
 `goal-run-inplace`. Validated on real data (vault scan+escalate: 5 deferred;
 self-heal runtime scan: 74 deferred, no git commit).
 
-**Phase 2 dependency / deferred:** the **`vault` surface is gated on ADR-816**
-(cross-machine vault write lock), still **Proposed/unimplemented**. Aggressive
-in-session vault auto-commit without that lock would race the nightly daemon /
-another machine, so `op_run_inplace` forces `vault` to `difficulty=0` (scan +
-escalate; the coordinated daemon applies). Lift `_SURFACE_COMMIT_GATED` once
-ADR-816 lands. Still pending: `hardening` per-finding `mixed` routing (stays
-worktree today), and an explicit report-only bound for runtime self-heal during
-a live session (currently difficulty-gated like the daemon).
+**Vault gate LIFTED 2026-06-28 (ADR-816 Alternative 3, ratified by Gur).**
+Rather than block on the unimplemented ADR-816 remote lease, `op_run_inplace`'s
+`vault` surface now auto-applies aggressively and commits + pushes the vault via
+`vault_sync_run` under the ADR-195 **machine-local merge lock** — the SAME
+coordination the daemon already uses nightly. It is conflict-safe (pull ff/merge,
+abort on conflict, never force) and only commits when fixes actually landed
+(`applied > 0`); the CODE repo is never touched (`commit_runner=_no_repo_commit`).
+Cross-machine collisions are made *cheap* (push-rebase-retry), not *eliminated* —
+eliminating them is what the ADR-816 remote advisory lease would do, and that
+remains the open follow-up if the collision rate proves high (the ADR suggests
+measuring first). Validated on real data: aggressive knowledge-enrichment run
+applied 0 mechanical fixes (all semantic/deferred) so it correctly skipped the
+vault commit, leaving the vault pristine.
+
+Still pending: implement the ADR-816 remote lease (full cross-machine
+elimination); `hardening` per-finding `mixed` routing (stays worktree today);
+an explicit report-only bound for runtime self-heal (currently difficulty-gated
+like the daemon).
 
 ## Context
 

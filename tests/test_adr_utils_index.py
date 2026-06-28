@@ -54,9 +54,7 @@ def test_empty_impact_shape():
 
 
 def test_archivable_statuses_constant():
-    assert ARCHIVABLE_STATUSES == frozenset(
-        {"Implemented", "Deprecated", "Superseded", "Cancelled"}
-    )
+    assert ARCHIVABLE_STATUSES == frozenset({"Implemented", "Deprecated", "Superseded", "Cancelled"})
     assert "Accepted" not in ARCHIVABLE_STATUSES
 
 
@@ -82,9 +80,7 @@ def test_load_adrs_index_non_list_returns_empty(tmp_path):
 
 
 def test_load_adrs_index_filters_non_dict_members(tmp_path):
-    get_adrs_index_path(tmp_path).write_text(
-        json.dumps([{"adr_number": "ADR-001"}, "garbage", 3]), encoding="utf-8"
-    )
+    get_adrs_index_path(tmp_path).write_text(json.dumps([{"adr_number": "ADR-001"}, "garbage", 3]), encoding="utf-8")
     assert load_adrs_index(tmp_path) == [{"adr_number": "ADR-001"}]
 
 
