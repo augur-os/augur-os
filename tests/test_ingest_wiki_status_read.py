@@ -22,7 +22,6 @@ from src.lib.ingest.wiki_status_read import (
     _structure_from_wiki_dir,
 )
 
-
 # ── _load_compiler_state_raw ──────────────────────────────────────────────────
 
 

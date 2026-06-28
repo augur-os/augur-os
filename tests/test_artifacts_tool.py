@@ -342,9 +342,7 @@ def _make_artifact(docs_dir: Path, slug: str, hub: str = "career") -> None:
     """Write one sidecar-backed HTML artifact under docs_dir."""
     hub_dir = docs_dir / hub / "artifacts"
     hub_dir.mkdir(parents=True, exist_ok=True)
-    (hub_dir / f"{slug}.html").write_text(
-        f"<html><title>{slug}</title></html>", encoding="utf-8"
-    )
+    (hub_dir / f"{slug}.html").write_text(f"<html><title>{slug}</title></html>", encoding="utf-8")
     write_sidecar(
         hub_dir / f"{slug}.meta.yaml",
         Sidecar(slug=slug, title=slug, kind="saved", hub=hub),
@@ -466,9 +464,7 @@ def test_artifacts_reindex_tool_invalidates_cache(tmp_path: Path, monkeypatch) -
     artifacts_mod._invalidate_artifacts_cache()
     docs = tmp_path / "docs"
     (docs / "career" / "resumes").mkdir(parents=True)
-    (docs / "career" / "resumes" / "resume.html").write_text(
-        "<html><title>My Resume</title></html>", encoding="utf-8"
-    )
+    (docs / "career" / "resumes" / "resume.html").write_text("<html><title>My Resume</title></html>", encoding="utf-8")
     mcp = _register(monkeypatch, docs)
 
     # HTML has no sidecar yet -> empty listing primes the cache.

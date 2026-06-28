@@ -75,13 +75,35 @@ def register_artifacts_serve_tools(mcp: Any, mcp_tool_interceptor: Any, metrics:
     def _intercept(fn: Any) -> Any:
         return mcp_tool_interceptor(fn) if mcp_tool_interceptor else fn
 
-    @mcp.tool(name="artifact-resolve", annotations=tool_annotations({"title": "Resolve Artifact", "readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}))
+    @mcp.tool(
+        name="artifact-resolve",
+        annotations=tool_annotations(
+            {
+                "title": "Resolve Artifact",
+                "readOnlyHint": True,
+                "destructiveHint": False,
+                "idempotentHint": True,
+                "openWorldHint": False,
+            }
+        ),
+    )
     @_intercept
     async def artifact_resolve(slug: str) -> str:
         metrics.track_tool("artifact_resolve")
         return json.dumps(artifact_resolve_impl(slug, docs_dir=get_documents_dir()))
 
-    @mcp.tool(name="artifact-html", annotations=tool_annotations({"title": "Read Artifact HTML", "readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}))
+    @mcp.tool(
+        name="artifact-html",
+        annotations=tool_annotations(
+            {
+                "title": "Read Artifact HTML",
+                "readOnlyHint": True,
+                "destructiveHint": False,
+                "idempotentHint": True,
+                "openWorldHint": False,
+            }
+        ),
+    )
     @_intercept
     async def artifact_html(slug: str) -> str:
         metrics.track_tool("artifact_html")

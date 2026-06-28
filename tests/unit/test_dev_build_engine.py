@@ -17,9 +17,7 @@ def _wire(monkeypatch, inst, *, build_rc=0, stop=None):
     rec = {"build": 0, "prod": None}
     monkeypatch.setattr(db, "resolve_target", lambda **k: inst)
     monkeypatch.setattr(db, "_preflight_ok", lambda i: True)
-    monkeypatch.setattr(
-        db, "_stop_instance", lambda i: stop or {"decision": "granted", "recycled_mcp_pids": ["200"]}
-    )
+    monkeypatch.setattr(db, "_stop_instance", lambda i: stop or {"decision": "granted", "recycled_mcp_pids": ["200"]})
     monkeypatch.setattr(db, "_run_build", lambda i: rec.__setitem__("build", 1) or build_rc)
     monkeypatch.setattr(db, "_start_server", lambda i, *, prod=False: rec.__setitem__("prod", prod))
     monkeypatch.setattr(db, "_poll_ready", lambda i, timeout=90: True)
@@ -38,9 +36,7 @@ def test_start_server_captures_output_to_log_not_devnull(monkeypatch, tmp_path):
     monkeypatch.setattr(db, "get_logs_dir", lambda: tmp_path)
     monkeypatch.setattr(db, "get_project_root", lambda: tmp_path)
     captured: dict = {}
-    monkeypatch.setattr(
-        db.subprocess, "Popen", lambda cmd, **kw: captured.update(cmd=cmd, kw=kw)
-    )
+    monkeypatch.setattr(db.subprocess, "Popen", lambda cmd, **kw: captured.update(cmd=cmd, kw=kw))
     db._start_server(inst, prod=True)
 
     stdout = captured["kw"]["stdout"]

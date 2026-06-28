@@ -16,7 +16,6 @@ if str(PROJECT_ROOT) not in sys.path:
 from scripts.build_public_release_tree import DOCS_ONLY_ALLOWLIST, DOCS_ONLY_DIR_ALLOWLIST
 from src.lib.partition_integrity import load_policy, resolve_scope, scan_partition
 
-
 FORBIDDEN_PATH_PATTERNS = [
     ".claude/**",
     ".codex/**",
@@ -116,6 +115,33 @@ def machine_path_markers() -> list[str]:
     home/username is treated as a leak.
     """
     markers: list[str] = []
+    # Generic/shared accounts (CI runners, default OS users) are not a specific
+    # person's private identity and recur as common substrings (e.g. "runner" in
+    # "workflow_runner" or "test runners"), so they must never become leak
+    # markers — otherwise the guard false-positives across the whole tree when it
+    # runs in CI (where the build user is "runner"). The configured
+    # AUGUR_PRIVATE_MARKER_REGEX still catches real private markers regardless.
+    generic_users = {
+        "runner",
+        "runneradmin",
+        "ubuntu",
+        "admin",
+        "administrator",
+        "user",
+        "users",
+        "github",
+        "vsts",
+        "circleci",
+        "build",
+        "vagrant",
+        "docker",
+    }
+    try:
+        user = getpass.getuser()
+    except Exception:
+        user = ""
+    if user.lower() in generic_users:
+        return markers
     try:
         home = str(Path.home())
         # Skip degenerate roots like "/" or "\" that would match everything.
@@ -123,14 +149,10 @@ def machine_path_markers() -> list[str]:
             markers.append(home)
     except (RuntimeError, OSError):
         pass
-    try:
-        user = getpass.getuser()
-        # Short/common usernames (me, ci, bob) risk false positives; require a
-        # distinctive length before treating a bare username as a leak marker.
-        if len(user) >= 5 and user not in markers:
-            markers.append(user)
-    except Exception:
-        pass
+    # Short/common usernames (me, ci, bob) risk false positives; require a
+    # distinctive length before treating a bare username as a leak marker.
+    if len(user) >= 5 and user not in markers:
+        markers.append(user)
     return markers
 
 
@@ -267,15 +289,14 @@ def guard_public_tree(
     source_root: Path | None = None,
     allowed_paths: set[str] | None = None,
 ) -> list[PublicReleaseViolation]:
-    src = (source_root or Path.cwd())
+    src = source_root or Path.cwd()
     scope_cfg = os.environ.get("AUGUR_RELEASE_SCOPE_CONFIG")
     scope = resolve_scope(Path(scope_cfg) if scope_cfg else src / "config/system/release_scope.yaml")
     if scope == "full" and allowed_paths is None:
         policy = load_policy(src / "config/system/partition_policy.yaml")
         findings = scan_partition(root=root, policy=policy)
         violations = [
-            PublicReleaseViolation(f"partition: {f.kind}", f.path,
-                                   f"line {f.line}" if f.line else None)
+            PublicReleaseViolation(f"partition: {f.kind}", f.path, f"line {f.line}" if f.line else None)
             for f in findings
         ]
         # The partition scan checks file *placement*; it does not inspect content

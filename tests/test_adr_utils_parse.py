@@ -99,15 +99,10 @@ def test_slug_from_title():
 
 
 def test_plain_member_for_record():
-    assert (
-        _plain_member_for_record({"adr_number": "ADR-042", "title": "My Decision"})
-        == "ADR-042-my-decision.md"
-    )
+    assert _plain_member_for_record({"adr_number": "ADR-042", "title": "My Decision"}) == "ADR-042-my-decision.md"
     # Existing archive_member wins (idempotency).
     assert (
-        _plain_member_for_record(
-            {"adr_number": "ADR-042", "title": "x", "archive_member": "ADR-042-frozen.md"}
-        )
+        _plain_member_for_record({"adr_number": "ADR-042", "title": "x", "archive_member": "ADR-042-frozen.md"})
         == "ADR-042-frozen.md"
     )
 

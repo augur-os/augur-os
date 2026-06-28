@@ -453,6 +453,7 @@ For tool-specific help:
             # the daemon skill's mcp/__init__.py; look it up from sys.modules to avoid
             # colliding with the MCP SDK's own 'mcp' package.
             import sys as _sys
+
             _daemon_mcp = _sys.modules.get("skill_cli_daemon")
             _rewrite_loop_argv = getattr(_daemon_mcp, "_rewrite_loop_argv", None) if _daemon_mcp else None
             if _rewrite_loop_argv is not None:

@@ -1113,6 +1113,7 @@ def register_core_tools(
     # ==========================================================================
 
     from .artifacts_serve import register_artifacts_serve_tools
+
     register_artifacts_serve_tools(mcp, mcp_tool_interceptor, metrics)
 
 
