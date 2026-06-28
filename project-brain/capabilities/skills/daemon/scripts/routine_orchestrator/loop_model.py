@@ -8,6 +8,11 @@ from typing import Any
 ALLOWED_RUNNERS = frozenset({"daemon", "claude", "codex", "auto"})
 ALLOWED_FIX = frozenset({"mechanical", "subagent"})
 ALLOWED_ISOLATION = frozenset({"worktree", "in-place"})
+# ADR-818 phase 2: where an in-place loop writes. Picks the guardrail policy in
+# the in-place runner (vault -> vault repo + ADR-816 lock; runtime -> no repo
+# commit, external configs via sanctioned tools; repo -> code repo; mixed ->
+# per-finding routing). Worktree loops are implicitly "repo".
+ALLOWED_SURFACE = frozenset({"repo", "vault", "runtime", "mixed"})
 
 
 class LoopValidationError(Exception):
@@ -25,6 +30,9 @@ class Automation:
 class Isolation:
     mode: str = "in-place"
     branch: str | None = None
+    # ADR-818 phase 2 execution surface (see ALLOWED_SURFACE). Defaults to "repo"
+    # for worktree loops and "mixed" for in-place loops when unset.
+    surface: str = "repo"
 
 
 @dataclass(frozen=True)
@@ -78,6 +86,9 @@ def parse_standard_loop(declaration: dict[str, Any], *, skill_name: str, skill_r
     mode = str(iso.get("mode", "in-place"))
     if mode not in ALLOWED_ISOLATION:
         raise LoopValidationError(f"{skill_name} loop {declaration['id']!r} invalid isolation.mode {mode!r}")
+    surface = str(iso.get("surface") or ("mixed" if mode == "in-place" else "repo"))
+    if surface not in ALLOWED_SURFACE:
+        raise LoopValidationError(f"{skill_name} loop {declaration['id']!r} invalid isolation.surface {surface!r}")
 
     sub = declaration.get("subagents") or {}
     fix = str(sub.get("fix", "subagent"))
@@ -100,7 +111,7 @@ def parse_standard_loop(declaration: dict[str, Any], *, skill_name: str, skill_r
             runner=runner,
             discover=discover,
         ),
-        isolation=Isolation(mode=mode, branch=_str_or_none(iso.get("branch"))),
+        isolation=Isolation(mode=mode, branch=_str_or_none(iso.get("branch")), surface=surface),
         subagents=Subagents(
             scan=_str_or_none(sub.get("scan")),
             fix=fix,

@@ -11,6 +11,12 @@ ides:
     server_key: mcpServers
     cli_arg: --claude-config
     notes: Anthropic's desktop app
+    # Home-config-only client: Claude Desktop/Cowork loads MCP servers ONLY from
+    # this config (no repo-local .mcp.json path), so project-scoped Augur servers
+    # (augur-core/augur-framework) must be emitted here. Without this, configure_mcp
+    # would perpetually flag them as drift against the adapter that writes them
+    # (ADR-783 scope-split exception; see config/system/mcp_servers.yaml).
+    include_project_scoped: true
   claude_code:
     enabled: true
     display_name: Claude Code CLI
@@ -55,6 +61,9 @@ ides:
     server_key: mcp_servers
     cli_arg: --codex-config
     notes: OpenAI's Codex CLI tool
+    # Home-config-only client (no repo-local .mcp.json) — keep project-scoped
+    # Augur servers here. See claude_desktop above.
+    include_project_scoped: true
   copilot_cli:
     enabled: true
     display_name: GitHub Copilot CLI
@@ -85,6 +94,9 @@ ides:
     server_key: mcp
     cli_arg: --opencode-config
     notes: OpenCode agent config using opencode.json
+    # Home-config-only client (no repo-local .mcp.json) — keep project-scoped
+    # Augur servers here. See claude_desktop above.
+    include_project_scoped: true
   gemini:
     enabled: true
     display_name: Gemini CLI
@@ -105,6 +117,9 @@ ides:
     server_key: mcpServers
     cli_arg: --antigravity-config
     notes: Gemini-based agent
+    # Home-config-only client (no repo-local .mcp.json) — keep project-scoped
+    # Augur servers here. See claude_desktop above.
+    include_project_scoped: true
   cline:
     enabled: true
     display_name: Cline
@@ -127,6 +142,11 @@ ides:
     dxt_id: augur%2Faugur-mcp
     cli_arg: --perplexity-config
     notes: Perplexity AI app (macOS) — DXT connector format. Auto-installs manifest.json into Perplexity container.
+    # Home-config-only client: the DXT connector is the only load path, so it
+    # needs the project-scoped Augur server (augur-framework) resolved. Without
+    # this the entry set is empty and the DXT branch has nothing to install.
+    # See claude_desktop above.
+    include_project_scoped: true
   generic:
     enabled: true
     display_name: Generic MCP Config

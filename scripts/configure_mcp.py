@@ -184,12 +184,23 @@ def _load_augur_server_entries(
     *,
     client_id: str,
     existing_server_ids: set[str] | None = None,
+    include_project_scoped: bool = False,
 ) -> list[ServerEntry]:
-    """Load the canonical Augur MCP server topology."""
+    """Load the canonical Augur MCP server topology.
+
+    ``include_project_scoped`` keeps project-tier servers (augur-core,
+    augur-framework) for home-config-only clients that load MCP solely from
+    their user/global config and have no repo-local ``.mcp.json`` to carry the
+    project tier (e.g. Claude Desktop/Cowork, Codex CLI, OpenCode, Antigravity).
+    Driven by the per-client ``include_project_scoped`` flag in
+    config/agents/ide_mcp_configs.yaml so configure_mcp's desired state matches
+    the adapter that writes those entries (no perpetual scope drift).
+    """
     manifest = load_manifest(repo_root / "config" / "system" / "mcp_servers.yaml")
     return manifest.all_augur_servers_for_client(
         client_id,
         existing_server_ids=existing_server_ids,
+        include_project_scoped=include_project_scoped,
     )
 
 
@@ -299,6 +310,7 @@ def _build_augur_server_entries_for_ide(
     python_path: Path,
     repo_root: Path,
     existing_server_ids: set[str] | None = None,
+    include_project_scoped: bool = False,
 ) -> dict[str, dict[str, Any]]:
     """Build all canonical Augur MCP server entries for a specific IDE/client."""
     client_id = _IDE_CLIENT_IDS.get(ide_name, ide_name)
@@ -306,6 +318,7 @@ def _build_augur_server_entries_for_ide(
         repo_root,
         client_id=client_id,
         existing_server_ids=existing_server_ids,
+        include_project_scoped=include_project_scoped,
     )
     # Gemini CLI sends all active MCP tools as function declarations in a
     # single GenerateContent request. The project-tier Augur servers already
@@ -629,10 +642,27 @@ To add a new IDE, edit that file and add a new entry.
                         python_path,
                         ide_repo_root,
                         existing_server_ids=existing_augur_server_ids,
+                        include_project_scoped=bool(
+                            ide_config.get("include_project_scoped", False)
+                        ),
                     )
                     ide_servers.update(augur_entries)
                     if config_format == "dxt":
-                        dxt_entry = augur_entries.get("augur-framework") or next(iter(augur_entries.values()))
+                        # A DXT connector installs a single Augur MCP server.
+                        # If no Augur servers resolved for this client (e.g. the
+                        # project tier was filtered out), skip cleanly rather than
+                        # letting next(iter(...)) raise a bare StopIteration with an
+                        # empty message ("Error configuring <ide>: ").
+                        dxt_entry = augur_entries.get("augur-framework") or (
+                            next(iter(augur_entries.values()), None)
+                        )
+                        if dxt_entry is None:
+                            if not quiet_mode:
+                                print(
+                                    f"Skipping {ide_name}: no Augur MCP servers resolved "
+                                    "(set include_project_scoped or disable this client)"
+                                )
+                            continue
                         mcp_args = dxt_entry["args"]
                         mcp_cwd = Path(dxt_entry.get("cwd", ide_repo_root))
                         had_changes = _configure_ide_dxt(

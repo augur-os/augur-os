@@ -3,7 +3,7 @@ import path from "path";
 
 import { readDisabledSkills } from "@/lib/server/skillsState";
 import { getRepoRoot } from "@/lib/server/repo";
-import { runCliJSON } from "@/lib/server/cliRunner";
+import { callMCPTool } from "@/lib/mcp/MCPBridge";
 import {
   normalizeSkillSlug,
   promptSlugFromTrigger,
@@ -195,9 +195,14 @@ export async function GET() {
     // Fetch data in parallel — CLI may fail if not installed, degrade gracefully
     const [disabled, registry, skillDirs] = await Promise.all([
       readDisabledSkills(),
-      runCliJSON<RegistryResponse>(["list", "-j"]).catch(
-        (): RegistryResponse => ({ skills: [] }),
-      ),
+      callMCPTool("list-skills", {})
+        .then((result): RegistryResponse => {
+          if (result.isError) return { skills: [] };
+          const text = result.content?.[0]?.text ?? "{}";
+          const data = JSON.parse(text) as { skills?: RegistrySkill[] };
+          return { skills: Array.isArray(data.skills) ? data.skills : [] };
+        })
+        .catch((): RegistryResponse => ({ skills: [] })),
       buildSkillPathMap(),
     ]);
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import getpass
 import os
 import re
 import sys
@@ -103,6 +104,98 @@ def _read_text(path: Path) -> str | None:
         return None
 
 
+def machine_path_markers() -> list[str]:
+    """Machine-specific strings that must never reach a public release tree.
+
+    The building user's absolute home directory and bare username. This catches
+    leaked working-tree dirt — e.g. ``project-brain/BRAIN.yaml`` mutated locally
+    to ``root: /Users/<name>/...`` — which the partition scan does not inspect.
+    A generic ``/Users/*`` / ``/home/*`` match is deliberately avoided: the tree
+    legitimately carries placeholder fixtures (``/Users/example``, ``/home/user``,
+    Home Assistant ``/home/skills`` entity ids), so only the *actual* builder's
+    home/username is treated as a leak.
+    """
+    markers: list[str] = []
+    try:
+        home = str(Path.home())
+        # Skip degenerate roots like "/" or "\" that would match everything.
+        if len(home.strip("/\\")) >= 2:
+            markers.append(home)
+    except (RuntimeError, OSError):
+        pass
+    try:
+        user = getpass.getuser()
+        # Short/common usernames (me, ci, bob) risk false positives; require a
+        # distinctive length before treating a bare username as a leak marker.
+        if len(user) >= 5 and user not in markers:
+            markers.append(user)
+    except Exception:
+        pass
+    return markers
+
+
+def _content_leak_violations(
+    rel_path: str,
+    text: str,
+    *,
+    marker_re: re.Pattern[str] | None,
+    marker_pattern: str | None,
+    machine_markers: list[str],
+    include_secret_markers: bool,
+) -> list[PublicReleaseViolation]:
+    """Content-safety checks for one text file: configured private markers and
+    machine-specific paths always; the ``FORBIDDEN_CONTENT_MARKERS`` env-var-name
+    list only when ``include_secret_markers`` is set.
+
+    The marker list is calibrated for the tiny docs_only allowlist; it false-
+    positives on the full code tree, where ``OPENAI_API_KEY`` / ``PRIVATE KEY``
+    legitimately appear as env-var names and detection patterns. So full scope
+    relies on the partition scan plus the configured ``AUGUR_PRIVATE_MARKER_REGEX``
+    and the machine-path check, not the env-var-name markers.
+    """
+    out: list[PublicReleaseViolation] = []
+    if include_secret_markers:
+        for marker in FORBIDDEN_CONTENT_MARKERS:
+            if marker in text:
+                out.append(PublicReleaseViolation("forbidden content marker", rel_path, repr(marker)))
+    if marker_re is not None and marker_re.search(text):
+        out.append(PublicReleaseViolation("forbidden content marker", rel_path, repr(marker_pattern)))
+    for machine_marker in machine_markers:
+        if machine_marker in text:
+            out.append(PublicReleaseViolation("machine-specific path", rel_path, repr(machine_marker)))
+    return out
+
+
+def scan_content_safety(root: Path) -> list[PublicReleaseViolation]:
+    """Walk every text file under ``root`` for content leaks that must be blocked
+    in *any* scope — machine-specific paths and the configured private-marker
+    regex. The full-scope partition scan checks file *placement*, not *content*,
+    so this is what catches working-tree dirt like the BRAIN.yaml absolute-path
+    leak. The env-var-name secret markers are intentionally excluded here (they
+    false-positive on real source); they remain a docs_only allowlist check."""
+    root = root.resolve()
+    marker_pattern = os.environ.get("AUGUR_PRIVATE_MARKER_REGEX") or None
+    marker_re = re.compile(marker_pattern) if marker_pattern else None
+    machine_markers = machine_path_markers()
+
+    violations: list[PublicReleaseViolation] = []
+    for file_path in sorted(path for path in root.rglob("*") if path.is_file()):
+        text = _read_text(file_path)
+        if text is None:
+            continue
+        violations.extend(
+            _content_leak_violations(
+                _relative_path(file_path, root),
+                text,
+                marker_re=marker_re,
+                marker_pattern=marker_pattern,
+                machine_markers=machine_markers,
+                include_secret_markers=False,
+            )
+        )
+    return violations
+
+
 def docs_only_allowed_paths(source_root: Path) -> set[str]:
     source_root = source_root.resolve()
     allowed_paths = set(DOCS_ONLY_ALLOWLIST)
@@ -126,6 +219,7 @@ def collect_public_tree_violations(
 
     marker_pattern = os.environ.get("AUGUR_PRIVATE_MARKER_REGEX") or None
     marker_re = re.compile(marker_pattern) if marker_pattern else None
+    machine_markers = machine_path_markers()
 
     violations: list[PublicReleaseViolation] = []
     actual_paths: set[str] = set()
@@ -147,20 +241,16 @@ def collect_public_tree_violations(
             violations.append(PublicReleaseViolation("non-text file", rel_path))
             continue
 
-        for marker in FORBIDDEN_CONTENT_MARKERS:
-            if marker in text:
-                violations.append(
-                    PublicReleaseViolation(
-                        "forbidden content marker",
-                        rel_path,
-                        repr(marker),
-                    )
-                )
-
-        if marker_re is not None and marker_re.search(text):
-            violations.append(
-                PublicReleaseViolation("forbidden content marker", rel_path, repr(marker_pattern))
+        violations.extend(
+            _content_leak_violations(
+                rel_path,
+                text,
+                marker_re=marker_re,
+                marker_pattern=marker_pattern,
+                machine_markers=machine_markers,
+                include_secret_markers=True,
             )
+        )
 
     if allowed_paths is not None:
         for rel_path in sorted(actual_paths - allowed_paths):
@@ -188,6 +278,10 @@ def guard_public_tree(
                                    f"line {f.line}" if f.line else None)
             for f in findings
         ]
+        # The partition scan checks file *placement*; it does not inspect content
+        # for secrets, private markers, or machine-specific paths (the BRAIN.yaml
+        # absolute-path leak in v1.12.0). Run the shared content-safety scan too.
+        violations += scan_content_safety(root)
         if violations:
             raise PublicReleaseGuardError(violations)
         return violations

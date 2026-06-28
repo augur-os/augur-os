@@ -11,8 +11,8 @@ groups:
     description: "Uses createAPIRoute - fully MCP integrated"
     color: "green"
   B:
-    name: "pythonRunner"
-    description: "Uses pythonRunner - dashboard-only routes"
+    name: "Dashboard-only"
+    description: "Dashboard-local routes (complex handling); not routed through the MCP proxy. The former pythonRunner was deleted in ADR-817 — these routes never imported it."
     color: "yellow"
   C:
     name: "Legacy spawn/exec"
@@ -119,8 +119,9 @@ routes:
     purpose: "Lists all registered skills"
 
   # ============================================
-  # Group B: Dashboard-only pythonRunner routes
-  # These intentionally remain as pythonRunner
+  # Group B: Dashboard-only routes
+  # These intentionally remain dashboard-local (not via the MCP proxy).
+  # The pythonRunner module was deleted in ADR-817; these never imported it.
   # ============================================
 
   /api/mcp/summary:

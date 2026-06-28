@@ -129,6 +129,8 @@ export async function launchNativeTerminal(
         : false,
   });
   const spawnImpl = deps.spawn ?? nodeSpawn;
+  // @spawn-exempt: intentional handoff to a native terminal app (osascript / wt.exe /
+  // powershell) — an interactive terminal cannot be a request/response MCP tool. See ADR-817.
   const child = spawnImpl(built.command, built.args, {
     cwd: built.cwd,
     detached: true,

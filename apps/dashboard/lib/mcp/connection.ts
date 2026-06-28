@@ -273,6 +273,8 @@ export class MCPBridge extends EventEmitter {
         log(
           `[MCPBridge] Launch contract root=${augurRoot} python=${pythonCmd} client=${clientId}`,
         );
+        // @spawn-exempt: launches the MCP server process itself — this IS the MCP
+        // transport channel, not work that could be routed through MCP. See ADR-817.
         this.process = spawn(
           pythonCmd,
           [

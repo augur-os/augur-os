@@ -254,6 +254,55 @@ def _ensure_standard_brain_files(root: Path) -> None:
         write_frontmatter(path, metadata, body)
 
 
+def _same_location(base: Path, existing_value: str, new_value: str | None) -> bool:
+    """True when an existing manifest path string and the new one resolve to the
+    same filesystem location (so the existing string's style can be preserved)."""
+    if new_value is None:
+        return False
+    try:
+        existing_resolved = (base / existing_value).resolve()
+        new_resolved = Path(new_value).resolve()
+    except (OSError, ValueError, RuntimeError):
+        return False
+    return existing_resolved == new_resolved
+
+
+def _preserve_manifest_path_style(root: Path, manifest: BrainManifest) -> BrainManifest:
+    """Keep the committed manifest's ``root``/``attached_project`` path *style*.
+
+    ``BrainManifest.from_brain`` (and the project-init heal path) serialize
+    registry-absolute paths, but the committed ``project-brain/BRAIN.yaml`` uses
+    the portable relative form (``root: .``, ``attached_project: ..``). Rewriting
+    absolute machine paths dirties the repo on every ``aug sync``/``project init``
+    — and that working-tree churn is what leaked ``/Users/<name>`` paths into a
+    public release tree. When the existing string resolves to the same location
+    as the new value, keep the existing string so the portable form survives;
+    only write a new path when it genuinely points somewhere else.
+    """
+    path = root / BRAIN_MANIFEST_NAME
+    if not path.is_file():
+        return manifest
+    try:
+        existing = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return manifest
+    if not isinstance(existing, dict):
+        return manifest
+
+    updates: dict[str, Any] = {}
+    existing_root = existing.get("root")
+    if isinstance(existing_root, str) and existing_root and _same_location(root, existing_root, manifest.root):
+        updates["root"] = existing_root
+    existing_attached = existing.get("attached_project")
+    if (
+        isinstance(existing_attached, str)
+        and existing_attached
+        and _same_location(root, existing_attached, manifest.attached_project)
+    ):
+        updates["attached_project"] = existing_attached
+    return replace(manifest, **updates) if updates else manifest
+
+
 def write_brain_manifest(root: Path, manifest: BrainManifest) -> Path:
     # Preserve a layout declared in the existing manifest when the caller did
     # not set one — the layout is a brain-local property (e.g. the domains
@@ -268,6 +317,9 @@ def write_brain_manifest(root: Path, manifest: BrainManifest) -> Path:
                 existing = {}
             if isinstance(existing, dict) and existing.get("layout"):
                 manifest = replace(manifest, layout=str(existing["layout"]))
+    # Preserve the committed relative path style for root/attached_project so a
+    # rewrite does not clobber it with machine-specific absolute paths.
+    manifest = _preserve_manifest_path_style(root, manifest)
     ensure_brain_skeleton(root)
     path = root / BRAIN_MANIFEST_NAME
     path.write_text(

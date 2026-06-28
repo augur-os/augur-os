@@ -68,14 +68,21 @@ def artifact_html_impl(slug: str, *, docs_dir: Path, allowed_roots: list[Path]) 
 
 
 def register_artifacts_serve_tools(mcp: Any, mcp_tool_interceptor: Any, metrics: Any) -> None:
+    # mcp_tool_interceptor is optional (the registry convention across
+    # register_core_tools): it is None when no correlation-id wrapper is
+    # supplied (e.g. tests). Use a no-op so it can stay a stacked decorator
+    # without crashing on `@None`.
+    def _intercept(fn: Any) -> Any:
+        return mcp_tool_interceptor(fn) if mcp_tool_interceptor else fn
+
     @mcp.tool(name="artifact-resolve", annotations=tool_annotations({"title": "Resolve Artifact", "readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}))
-    @mcp_tool_interceptor
+    @_intercept
     async def artifact_resolve(slug: str) -> str:
         metrics.track_tool("artifact_resolve")
         return json.dumps(artifact_resolve_impl(slug, docs_dir=get_documents_dir()))
 
     @mcp.tool(name="artifact-html", annotations=tool_annotations({"title": "Read Artifact HTML", "readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}))
-    @mcp_tool_interceptor
+    @_intercept
     async def artifact_html(slug: str) -> str:
         metrics.track_tool("artifact_html")
         return json.dumps(artifact_html_impl(slug, docs_dir=get_documents_dir(), allowed_roots=[get_documents_dir()]))

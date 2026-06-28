@@ -3,6 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { safeHeapMb } from "./lib/heap-clamp.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const dashboardDir = path.resolve(scriptDir, "..");
@@ -86,7 +87,7 @@ function startWindows() {
   env.MIMALLOC_PURGE_DELAY = "0";
   env.MIMALLOC_ARENA_EAGER_COMMIT = "0";
   env.NODE_OPTIONS = appendNodeOptions(env.NODE_OPTIONS, [
-    "--max-old-space-size=4096",
+    `--max-old-space-size=${safeHeapMb(4096)}`,
     "--max-semi-space-size=64",
   ]);
 

@@ -20,12 +20,16 @@ class Inst:
     instance_id = "main"
     dashboard_port = 3000
     mcp_port = 8080
-    project_root = Path("/proj")
+    # Plain string (not Path) so cwd string-matching is separator-consistent on
+    # every OS — Path("/proj") stringifies to "\proj" on Windows and breaks the
+    # forward-slash cwd literals below. Production coerces via str()/Path().
+    project_root = "/proj"
 
 
 def test_stop_instance_targets_only_instance_port_and_scoped_mcp(monkeypatch):
     calls = {"port_kills": [], "mcp_kills": [], "launchd": 0, "gate": [], "released": []}
 
+    monkeypatch.setattr(sr, "IS_WINDOWS", False)  # POSIX cwd-scoped MCP matching
     monkeypatch.setattr(sr, "request_gate", lambda **k: (calls["gate"].append(k) or {"decision": "granted"}))
     monkeypatch.setattr(sr, "release_gate_stopped", lambda **k: (calls["released"].append(k) or {"state": "stopped"}))
     monkeypatch.setattr(sr, "pids_on_port", lambda port: {"100"} if port == 3000 else set())
@@ -93,6 +97,7 @@ def test_stop_instance_dry_run_does_not_release_gate(monkeypatch):
 def test_stop_instance_dry_run_kills_nothing(monkeypatch):
     calls = {"port_kills": [], "mcp_kills": []}
 
+    monkeypatch.setattr(sr, "IS_WINDOWS", False)  # POSIX cwd-scoped MCP matching
     monkeypatch.setattr(sr, "request_gate", lambda **k: {"decision": "granted"})
     monkeypatch.setattr(sr, "pids_on_port", lambda port: {"100"} if port == 3000 else set())
     monkeypatch.setattr(sr, "scan_dev_server_candidates", lambda: [])
@@ -161,6 +166,67 @@ def test_drifted_pids_exclude_port_and_own_tree(monkeypatch):
     assert result["stopped_port_pids"] == ["100"]
     assert result["stopped_drifted_pids"] == ["500"]
     assert calls["group_kills"] == ["100", "500"]
+
+
+def test_client_id_from_cmd_parses_argv_and_env_forms():
+    assert sr._client_id_from_cmd("py -m augur_framework --client-id dashboard-A-1 --force") == "dashboard-A-1"
+    assert sr._client_id_from_cmd("py -m augur_core --client-id=claude") == "claude"
+    assert sr._client_id_from_cmd("AUGUR_MCP_CLIENT_ID=dashboard-B-2 py -m augur_core") == "dashboard-B-2"
+    assert sr._client_id_from_cmd("py -m augur_core") == ""
+
+
+def test_instance_client_id_matches_worktree_preflight():
+    """Drift guard: must equal scripts/worktree_preflight.py:_client_id, the
+    source start-dev exports as AUGUR_MCP_CLIENT_ID. If this drifts, Windows
+    scoping silently misses the instance's MCP children."""
+    import hashlib
+
+    root = Path(Inst.project_root)
+    digest = hashlib.sha1(str(root).encode("utf-8")).hexdigest()[:8]
+    assert sr._instance_client_id(Inst()) == f"dashboard-{root.name}-{digest}"
+
+
+def test_windows_scan_mcp_candidates_reads_client_id_off_cmdline(monkeypatch):
+    """The Windows scan identifies MCP processes by the augur_core/augur_framework
+    marker and reads --client-id off the CIM CommandLine (no env block read)."""
+    monkeypatch.setattr(sr.platform, "system", lambda: "Windows")
+    monkeypatch.setattr(sr, "_windows_proc_table", lambda: [
+        {"pid": "200", "ppid": "1", "cmd": "python.exe -m augur_framework --client-id dashboard-Augur-06e1cb97-p20276 --force"},
+        {"pid": "201", "ppid": "1", "cmd": "python.exe -m augur_core --client-id claude"},
+        {"pid": "202", "ppid": "1", "cmd": "node next-server"},  # not an MCP → excluded
+    ])
+    assert sr.scan_mcp_candidates() == [
+        {"pid": "200", "client_id": "dashboard-Augur-06e1cb97-p20276", "cwd": ""},
+        {"pid": "201", "client_id": "claude", "cwd": ""},
+    ]
+
+
+def test_instance_mcp_pids_windows_scopes_by_client_id_excludes_session(monkeypatch):
+    """On Windows there is no per-process cwd, so MCP children are scoped by the
+    instance's deterministic client-id prefix: this checkout's dashboard children
+    are reaped while the agent's own 'claude' session and other checkouts are not."""
+    monkeypatch.setattr(sr, "IS_WINDOWS", True)
+    expected = sr._instance_client_id(Inst())
+    monkeypatch.setattr(sr, "scan_mcp_candidates", lambda: [
+        {"pid": "200", "client_id": f"{expected}-p20276", "cwd": ""},          # this instance → kill
+        {"pid": "201", "client_id": "claude", "cwd": ""},                       # agent session → skip
+        {"pid": "202", "client_id": "dashboard-Other-deadbeef-p9", "cwd": ""},  # other checkout → skip
+    ])
+    monkeypatch.setattr(sr, "_own_tree_pids", lambda: set())
+    assert sr.instance_mcp_pids(Inst()) == ["200"]
+
+
+def test_windows_own_tree_walks_parent_chain(monkeypatch):
+    """_own_tree_pids on Windows walks ParentProcessId via the CIM table; the
+    own tree is never a kill target, so the walk must terminate cleanly."""
+    monkeypatch.setattr(sr.os, "getpid", lambda: 500)
+    monkeypatch.setattr(sr, "_windows_proc_table", lambda: [
+        {"pid": "500", "ppid": "400", "cmd": ""},
+        {"pid": "400", "ppid": "300", "cmd": ""},
+        {"pid": "300", "ppid": "0", "cmd": ""},
+        {"pid": "999", "ppid": "1", "cmd": ""},  # unrelated
+    ])
+    assert sr._windows_own_tree_pids() == {"500", "400", "300"}
 
 
 def test_stop_instance_denied_gate_kills_nothing(monkeypatch):

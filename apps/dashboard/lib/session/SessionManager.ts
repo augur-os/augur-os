@@ -788,6 +788,8 @@ export class SessionManager {
 
     let spawned: IPtyProcess | null = null;
     try {
+      // @spawn-exempt: interactive CLI/PTY session (the terminal feature) — a live
+      // bidirectional terminal cannot be a request/response MCP tool. See ADR-817.
       spawned = pty.spawn(command, args, {
         name: "xterm-256color",
         cols: 200,

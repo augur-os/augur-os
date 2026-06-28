@@ -57,6 +57,12 @@ const nextConfig: NextConfig = {
 
   // Turbopack config
   turbopack: {
+    // Pin the workspace root to this dashboard dir. Without this, Turbopack
+    // infers the root from the nearest lockfile and can wrongly select the
+    // home directory when a stray ~/package-lock.json exists — which then
+    // resolves `@import "tailwindcss"` against ~/node_modules and fails to
+    // start the server. The pnpm workspace file lives here, so this is root.
+    root: __dirname,
     resolveExtensions: [".tsx", ".ts", ".jsx", ".js", ".json"],
   },
 

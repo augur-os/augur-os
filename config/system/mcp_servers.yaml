@@ -11,7 +11,13 @@
 # Track 2 spec: docs/superpowers/specs/2026-04-29-track2-vault-server-split-design.md
 
 # Project-scoped servers ship with Augur framework and are emitted to the
-# checkout-local `.mcp.json`; home client configs stay user/global scoped.
+# checkout-local `.mcp.json`; home client configs stay user/global scoped —
+# EXCEPT home-config-only clients that load MCP solely from their user/global
+# config and have no repo-local `.mcp.json` to carry the project tier (Claude
+# Desktop/Cowork, Codex CLI, OpenCode, Antigravity). Those clients set
+# `include_project_scoped: true` in config/agents/ide_mcp_configs.yaml so
+# configure_mcp keeps augur-core/augur-framework in their home config and does
+# not perpetually flag them as drift against the adapter that writes them.
 # Track 3a PR 6 (atomic switchover): the legacy `augur` monolith was
 # replaced with augur-core + augur-framework. Run `aug config sync` after
 # pulling main to rewrite client configs (timestamped backups created

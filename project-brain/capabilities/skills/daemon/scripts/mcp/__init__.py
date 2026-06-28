@@ -108,6 +108,7 @@ _ROUTINE_VERBS = [
     "goal-drain-backlog",
     "goal-consume-finding",
     "goal-run-maintenance",
+    "goal-run-inplace",
     "goal-fanout-plan",
     "goal-fanout-report",
 ]
@@ -367,7 +368,7 @@ def _register_routine_subcommand(subparsers) -> None:
 
     p_goal_loop_status = sub.add_parser(
         "goal-loop-status",
-        help="report a stop verdict for the client's loop (converged/stalled/exhausted/continue)",
+        help="report a stop verdict for the client's loop (converged/no_op/stalled/exhausted/continue)",
     )
     p_goal_loop_status.add_argument(
         "--prev-fingerprint", default="[]", help="previous residual fingerprint JSON array"
@@ -378,6 +379,16 @@ def _register_routine_subcommand(subparsers) -> None:
     p_goal_loop_status.add_argument("--iterations", type=int, required=True, help="iterations completed so far")
     p_goal_loop_status.add_argument("--loop-cap", type=int, required=True, help="per-loop iteration cap")
     p_goal_loop_status.add_argument("--budget-remaining", type=int, required=True, help="remaining whole-run budget")
+    p_goal_loop_status.add_argument(
+        "--committed-count", type=int, default=None,
+        help="verified checkpoints committed so far (lets an empty fingerprint be "
+             "distinguished as genuine convergence vs a no-op); omit for legacy behavior",
+    )
+    p_goal_loop_status.add_argument(
+        "--out-of-scope-count", type=int, default=0,
+        help="findings dropped as out_of_worktree (foreign to the goal worktree); "
+             "with 0 commits this yields the no_op verdict instead of a false converged",
+    )
 
     p_goal_escalate = sub.add_parser(
         "goal-escalate",
@@ -415,6 +426,20 @@ def _register_routine_subcommand(subparsers) -> None:
         "--findings-json", default="[]", help="JSON array of maintenance finding dicts"
     )
 
+    p_goal_run_inplace = sub.add_parser(
+        "goal-run-inplace",
+        help="ADR-818: run an in-place loop against the live target (no worktree) with surface guardrails",
+    )
+    p_goal_run_inplace.add_argument("--loop", required=True, help="in-place loop name")
+    p_goal_run_inplace.add_argument(
+        "--surface", required=True, choices=["repo", "vault", "runtime", "mixed"],
+        help="execution surface (picks the guardrail policy)",
+    )
+    p_goal_run_inplace.add_argument(
+        "--difficulty", type=int, default=1,
+        help="0=scan+escalate, >=1=aggressive auto-apply (runtime/repo only; vault is gated on ADR-816)",
+    )
+
     p_fanout_plan = sub.add_parser(
         "goal-fanout-plan",
         help="triage orchestrator loops (non-mutating); print the fan-out plan",
@@ -432,7 +457,9 @@ def _register_routine_subcommand(subparsers) -> None:
         help="write the honest per-loop rollup for a parallel /a-loops all run",
     )
     p_fanout_report.add_argument("--results-json", required=True,
-        help="JSON array of {loop,verdict,branch,residual} dicts")
+        help="JSON array of {loop,verdict,branch,residual,committed_checkpoints,out_of_scope} "
+             "dicts; a silent driver may be a null or {loop,branch,unreported:true} stub "
+             "(its verdict is reconstructed from the worktree)")
     p_fanout_report.add_argument("--stamp", default="")
     p_fanout_report.add_argument("--runtime-dir", default=None)
 
@@ -559,6 +586,8 @@ def _run_routine_cli(args, remaining) -> int:
                 iterations=args.iterations,
                 loop_cap=args.loop_cap,
                 budget_remaining=args.budget_remaining,
+                committed_count=args.committed_count,
+                out_of_scope_count=args.out_of_scope_count,
             )
         elif verb == "goal-escalate":
             from routine_orchestrator import goal_ops
@@ -586,6 +615,14 @@ def _run_routine_cli(args, remaining) -> int:
                 worktree_path=args.worktree,
                 auto_command=args.auto_command,
                 findings=json.loads(args.findings_json),
+            )
+        elif verb == "goal-run-inplace":
+            from routine_orchestrator import goal_ops
+            payload = goal_ops.op_run_inplace(
+                loop=args.loop,
+                surface=args.surface,
+                difficulty=args.difficulty,
+                project_root=str(get_project_root()),
             )
         elif verb == "goal-fanout-plan":
             from routine_orchestrator import goal_ops

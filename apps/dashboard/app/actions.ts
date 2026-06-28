@@ -10,6 +10,7 @@ import yaml from "yaml";
 import { auth } from "@/lib/auth/server-action";
 import { AUGUR_ROOT, getSkillSubPath } from "@/lib/paths";
 import { runCommand } from "@/lib/server/spawn";
+import { callMCPTool, MCPBridge } from "@/lib/mcp/MCPBridge";
 
 function getClaudeDesktopConfigPath() {
   const home = os.homedir();
@@ -113,6 +114,7 @@ function tokenizeCommand(input: string): string[] {
   return tokens;
 }
 
+// @spawn-exempt: opens a file in the user's preferred editor (app-specific invocation) and is the cross-platform default-open used by openWorkspaceFile; not expressible as a request/response MCP tool. See ADR-817.
 async function spawnCommand(command: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { stdio: "ignore" });
@@ -377,9 +379,18 @@ export async function openScreenRecordingSettings(): Promise<ActionResult> {
   await auth();
 
   try {
-    await spawnCommand("open", [
-      "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
-    ]);
+    const result = await callMCPTool("system-open", {
+      target:
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
+      target_type: "url",
+    });
+    if (result.isError) {
+      return { success: false, error: "Failed to open Screen Recording settings" };
+    }
+    const data = MCPBridge.parseJSON<{ success: boolean; error?: string }>(result);
+    if (!data.success) {
+      return { success: false, error: data.error || "Failed to open Screen Recording settings" };
+    }
     return { success: true };
   } catch (error) {
     console.error("Failed to open Screen Recording settings:", error);
@@ -401,9 +412,18 @@ export async function openMicrophoneSettings(): Promise<ActionResult> {
   await auth();
 
   try {
-    await spawnCommand("open", [
-      "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
-    ]);
+    const result = await callMCPTool("system-open", {
+      target:
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
+      target_type: "url",
+    });
+    if (result.isError) {
+      return { success: false, error: "Failed to open Microphone settings" };
+    }
+    const data = MCPBridge.parseJSON<{ success: boolean; error?: string }>(result);
+    if (!data.success) {
+      return { success: false, error: data.error || "Failed to open Microphone settings" };
+    }
     return { success: true };
   } catch (error) {
     console.error("Failed to open Microphone settings:", error);
@@ -422,7 +442,14 @@ export async function openFile(filePath: string): Promise<ActionResult> {
       return { success: false, error: "Path is not a file" };
     }
 
-    await openInPreferredEditor(resolved);
+    const result = await callMCPTool("system-open", { target: resolved });
+    if (result.isError) {
+      return { success: false, error: "Failed to open file in editor" };
+    }
+    const data = MCPBridge.parseJSON<{ success: boolean; error?: string }>(result);
+    if (!data.success) {
+      return { success: false, error: data.error || "Failed to open file in editor" };
+    }
     return { success: true };
   } catch (error) {
     console.error(`Failed to open file ${filePath}:`, error);
@@ -443,7 +470,14 @@ export async function openFileInSystem(
       return { success: false, error: "Path is not a file" };
     }
 
-    await openWithSystemDefault(resolved);
+    const result = await callMCPTool("system-open", { target: resolved });
+    if (result.isError) {
+      return { success: false, error: "Failed to open file" };
+    }
+    const data = MCPBridge.parseJSON<{ success: boolean; error?: string }>(result);
+    if (!data.success) {
+      return { success: false, error: data.error || "Failed to open file" };
+    }
     return { success: true };
   } catch (error) {
     console.error(`Failed to open file ${filePath}:`, error);
@@ -464,7 +498,14 @@ export async function openDirectoryInSystem(
       return { success: false, error: "Path is not a directory" };
     }
 
-    await openWithSystemDefault(resolved);
+    const result = await callMCPTool("system-open", { target: resolved });
+    if (result.isError) {
+      return { success: false, error: "Failed to open directory" };
+    }
+    const data = MCPBridge.parseJSON<{ success: boolean; error?: string }>(result);
+    if (!data.success) {
+      return { success: false, error: data.error || "Failed to open directory" };
+    }
     return { success: true };
   } catch (error) {
     console.error(`Failed to open directory ${dirPath}:`, error);
@@ -497,7 +538,14 @@ export async function openVoiceMemoAudio(
       return { success: false, error: "Audio file not found" };
     }
 
-    await openWithSystemDefault(resolved);
+    const mcpResult = await callMCPTool("system-open", { target: resolved });
+    if (mcpResult.isError) {
+      return { success: false, error: "Failed to open audio file" };
+    }
+    const openData = MCPBridge.parseJSON<{ success: boolean; error?: string }>(mcpResult);
+    if (!openData.success) {
+      return { success: false, error: openData.error || "Failed to open audio file" };
+    }
     return { success: true };
   } catch (error) {
     console.error(`Failed to open audio file ${audioPath}:`, error);
@@ -602,7 +650,14 @@ export async function openRepoInEditor(): Promise<ActionResult> {
   try {
     // When running from apps/dashboard, repo root is two levels up.
     const repoRoot = AUGUR_ROOT;
-    await openInPreferredEditor(repoRoot);
+    const result = await callMCPTool("system-open", { target: repoRoot });
+    if (result.isError) {
+      return { success: false, error: "Failed to open repo in editor" };
+    }
+    const data = MCPBridge.parseJSON<{ success: boolean; error?: string }>(result);
+    if (!data.success) {
+      return { success: false, error: data.error || "Failed to open repo in editor" };
+    }
     return { success: true };
   } catch (error) {
     console.error("Failed to open repo in editor:", error);

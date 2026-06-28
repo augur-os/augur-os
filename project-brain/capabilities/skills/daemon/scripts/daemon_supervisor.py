@@ -384,37 +384,66 @@ def _resolve_node() -> str | None:
     return None
 
 
-def _ensure_prod_dashboard() -> None:
-    """Bring up the main :3000 production dashboard at supervisor startup (ADR-787).
+# Timestamp of the last start-dev --prod spawn, for the periodic-ensure debounce.
+_LAST_PROD_ENSURE_SPAWN: datetime | None = None
 
-    This is the reboot-survival path: the com.augur.daemon logon task starts this
-    supervisor, and the supervisor in turn ensures the production dashboard the
-    user expects on :3000 is serving — without a second scheduled task to race.
 
-    It is a one-time ensure, NOT crash recovery (recovery stays off — see
-    dashboard_monitor). Guard rails:
+def _ensure_prod_dashboard(*, periodic: bool = False) -> None:
+    """Ensure the main :3000 production dashboard is serving (ADR-787).
+
+    Called once at supervisor startup (reboot survival) and then every poll tick
+    with ``periodic=True`` (crash recovery). The two modes share the same guards;
+    the periodic mode adds a crash-vs-stop discriminator + a debounce so it never
+    fights an intentional stop and never stacks duplicate starts.
+
+    Guard rails (both modes):
       - only the main checkout (`.git` is a directory; worktrees use a gitdir file
         and their own ports),
       - only when a completed build exists (`.next/BUILD_ID`) — never builds here,
       - only when nothing is already serving :3000 (don't fight a user/dev server),
       - opt out with AUGUR_SUPERVISOR_SERVE_DASHBOARD=0.
+
+    Periodic-only guards:
+      - act only when the `dashboard.prod_managed` marker is present (a prod server
+        was meant to own :3000 but the port is dead ⇒ a CRASH). start-dev's
+        clean-exit trap removes the marker, so an intentional stop leaves no marker
+        and we correctly stay out of the way.
+      - debounce: skip if we spawned a start within the last 150s (the launcher's
+        prebuild + serve leaves :3000 down for ~60-90s).
     """
+    global _LAST_PROD_ENSURE_SPAWN
     if os.environ.get("AUGUR_SUPERVISOR_SERVE_DASHBOARD") == "0":
         return
     if not _is_main_checkout():
-        logger.info("Not the main checkout; skipping prod dashboard ensure.")
+        if not periodic:
+            logger.info("Not the main checkout; skipping prod dashboard ensure.")
         return
 
     dashboard_dir = PROJECT_ROOT / "apps" / "dashboard"
     if not (dashboard_dir / ".next" / "BUILD_ID").exists():
-        logger.warning(
-            "No production build (.next/BUILD_ID) — skipping dashboard ensure. "
-            "Run `pnpm prod` once to produce the build."
-        )
+        if not periodic:
+            logger.warning(
+                "No production build (.next/BUILD_ID) — skipping dashboard ensure. "
+                "Run `pnpm prod` once to produce the build."
+            )
         return
     if _port_is_open(3000):
-        logger.info("Dashboard already serving on :3000; not starting another.")
+        if not periodic:
+            logger.info("Dashboard already serving on :3000; not starting another.")
         return
+
+    if periodic:
+        if not (RUNTIME_DIR / "dashboard.prod_managed").exists():
+            # No marker ⇒ intentional stop (start-dev removed it on clean exit).
+            return
+        if _LAST_PROD_ENSURE_SPAWN is not None and (
+            datetime.now() - _LAST_PROD_ENSURE_SPAWN
+        ).total_seconds() < 150:
+            return
+        logger.warning(
+            "Dashboard is prod-managed but :3000 is down — self-healing "
+            "(start-dev --prod). See dashboard.ensure.log."
+        )
 
     node = _resolve_node()
     if not node:
@@ -425,17 +454,53 @@ def _ensure_prod_dashboard() -> None:
         return
 
     logger.info("Starting production dashboard on :3000 (start-dev --prod)...")
+    # Capture the detached child's output to a log instead of DEVNULL: a silent
+    # start-dev failure here is exactly the "dashboard down, no self-heal" class
+    # of bug, and DEVNULL makes it undebuggable. Best-effort; fall back to DEVNULL.
+    try:
+        ensure_log = get_logs_dir() / "dashboard.ensure.log"
+        ensure_log.parent.mkdir(parents=True, exist_ok=True)
+        out = open(ensure_log, "ab")  # noqa: SIM115 — handed to the detached child
+    except OSError:
+        out = DEVNULL
+    # launchd hands this daemon a minimal PATH (no Homebrew, no venv), but
+    # start-dev's prebuild shells out to bare `node` and `python3`. Without them
+    # on PATH the child dies with "node: command not found" and :3000 never comes
+    # up — a silent self-heal failure. Put the resolved node dir + venv bin first.
+    ensure_env = project_python_env(PROJECT_ROOT)
+    ensure_env["PATH"] = os.pathsep.join(
+        [
+            str(Path(node).parent),
+            str(Path(get_python_executable()).parent),
+            ensure_env.get("PATH", ""),
+        ]
+    )
     try:
         Popen(  # nosec B603
             [node, "scripts/start-dev.mjs", "--prod"],
             cwd=str(dashboard_dir),
+            env=ensure_env,
             stdin=DEVNULL,  # never inherit the supervisor's stdin (avoids the bridge-style hang)
-            stdout=DEVNULL,
-            stderr=DEVNULL,
+            stdout=out,
+            stderr=out,
             close_fds=True,
+            # Own session/process group: `cleanup_processes --port 3000` kills the
+            # :3000 listener's PROCESS GROUP. Without this the dashboard shares the
+            # supervisor's group, so stopping the dashboard also SIGTERMs this
+            # supervisor (launchd respawns it, but that defeats an intentional stop
+            # and races recovery). Isolating it keeps the daemon alive across a
+            # dashboard stop.
+            start_new_session=True,
         )
+        _LAST_PROD_ENSURE_SPAWN = datetime.now()
     except OSError as exc:
         logger.warning("Failed to start prod dashboard: %s", exc)
+    finally:
+        if out is not DEVNULL:
+            try:
+                out.close()
+            except OSError:
+                pass
 
 
 def run() -> int:
@@ -495,6 +560,13 @@ def run() -> int:
         while not _shutdown.is_set():
             for svc in subs.values():
                 svc.check()
+            try:
+                # Continuous crash recovery for the prod :3000 dashboard. Cheap when
+                # serving (a port check short-circuits); marker-gated + debounced so
+                # it heals a crash without fighting an intentional stop (ADR-787).
+                _ensure_prod_dashboard(periodic=True)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("periodic prod dashboard ensure failed: %s", exc)
             try:
                 _write_status(started_at, threads, subs)
             except Exception as exc:  # noqa: BLE001

@@ -47,6 +47,7 @@ export async function runCommand(
       stdio: ["ignore", "pipe", "pipe"],
     };
 
+    // @spawn-exempt: powers the native osascript file-picker dialog (pickAudioFile) — an interactive OS dialog, like the terminal. See ADR-817.
     const proc = spawn(command, args, spawnOptions);
 
     const MAX_OUTPUT = 5 * 1024 * 1024; // 5MB

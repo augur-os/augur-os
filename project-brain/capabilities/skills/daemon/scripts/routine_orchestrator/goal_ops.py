@@ -65,6 +65,38 @@ def _finding_display_path(finding: dict) -> str:
     return ""
 
 
+def _is_route_value(value: str) -> bool:
+    """True if ``value`` is a dashboard ROUTE URL (e.g. ``/login``, ``/settings/ai``,
+    ``/workspace/ai``) rather than a filesystem path.
+
+    The page-health / testing loops emit findings keyed (under ``path``) on the
+    HTTP route they probed, NOT a file on disk. Such a finding IS in-scope — a
+    worktree subagent fixes the dashboard page that serves the route — so it must
+    not be mistaken for an out-of-worktree filesystem path and dropped.
+
+    It must be distinguished from a genuine out-of-repo filesystem path (a vault
+    file like ``/Users/.../BRAIN.yaml`` or ``/private/var/Au-vault/skills/a``)
+    which MUST stay droppable. Two signals a real filesystem path has and a route
+    lacks: (1) a file extension, or (2) a top-level component that actually exists
+    as a directory on disk. A route's leading segment (``/workspace``, ``/login``,
+    ``/settings``) is not a real filesystem root, so it fails both checks.
+    """
+    if not value.startswith("/"):
+        return False
+    p = Path(value)
+    if p.suffix:  # a file extension → filesystem path, not a route
+        return False
+    parts = p.parts  # ("/", "workspace", "ai")
+    if len(parts) < 2:  # bare "/" is not a route
+        return False
+    try:
+        if (Path(parts[0]) / parts[1]).exists():
+            return False  # leading segment is a real fs root → treat as a path
+    except OSError:
+        return False
+    return True
+
+
 def _finding_in_worktree(finding: dict, root: Path) -> bool:
     """True if the finding targets a path inside the goal worktree.
 
@@ -79,6 +111,11 @@ def _finding_in_worktree(finding: dict, root: Path) -> bool:
     them reach the mutating mechanical-fix phase would relocate/modify USER DATA
     outside the isolated checkout. Findings with no path are kept (treated
     in-scope) so non-file findings still flow normally.
+
+    ROUTE-URL values (e.g. ``/login``, ``/workspace/ai`` from page-health/testing
+    scanners) are NOT filesystem paths and are ignored as path constraints — the
+    finding stays in-scope so the worktree subagent fixes the page serving it. See
+    ``_is_route_value``.
     """
     if not isinstance(finding, dict):
         return True
@@ -86,6 +123,7 @@ def _finding_in_worktree(finding: dict, root: Path) -> bool:
     paths = [
         finding[k] for k in _FINDING_PATH_KEYS
         if isinstance(finding.get(k), str) and finding[k]
+        and not _is_route_value(finding[k])
     ]
     if not paths:
         return True
@@ -158,9 +196,17 @@ def _default_runtime_dir() -> Path:
 
 
 def _default_orchestrator_loops() -> list[str]:
-    """Tiered loops eligible for parallel fan-out: every declared loop except the
-    inline-session prompt loops (dream, inbox-triage) and the catalog driver
-    (goal-loop)."""
+    """Tiered WORKTREE loops eligible for parallel fan-out: every declared loop
+    except the inline-session prompt loops (dream, inbox-triage), the catalog
+    driver (goal-loop), and ADR-818 in-place loops (isolation.mode: in-place).
+
+    In-place loops (self-heal, observability, knowledge-enrichment, ...) act on
+    the live vault/runtime/external state, which an isolated worktree cannot
+    own — fanning them out only ever produced 0 verified commits and, worse,
+    occasionally drove a harmful out-of-scope bucket (e.g. self-heal proposing
+    to delete augur-core from the live Claude Desktop config). They are routed
+    to the daemon instead and surfaced via op_fanout_plan's
+    loops_with_out_of_scope_work."""
     try:
         from . import registry
     except ImportError:  # pragma: no cover
@@ -171,8 +217,140 @@ def _default_orchestrator_loops() -> list[str]:
             continue
         if getattr(r, "execution", "") == "inline-session":
             continue
+        if getattr(r, "isolation_mode", "worktree") == "in-place":
+            continue
         out.append(r.id)
     return sorted(out)
+
+
+def _in_place_orchestrator_loops() -> list[str]:
+    """ADR-818 in-place loops (isolation.mode: in-place) — excluded from the
+    /a-loops all worktree fan-out and handled by the daemon instead. Returned in
+    the triage plan so they are visibly routed, not silently dropped (rule 8)."""
+    try:
+        try:
+            from . import registry
+        except ImportError:  # pragma: no cover
+            from routine_orchestrator import registry  # type: ignore[no-redef]
+        out = [
+            r.id
+            for r in registry.list_routines()
+            if r.id != "goal-loop"
+            and getattr(r, "execution", "") != "inline-session"
+            and getattr(r, "isolation_mode", "worktree") == "in-place"
+        ]
+        return sorted(out)
+    except Exception:  # pragma: no cover - triage must never crash on this
+        return []
+
+
+def _in_place_loop_surfaces() -> dict[str, str]:
+    """{loop_id: execution_surface} for in-place loops, so /a-loops all knows
+    which surface (guardrail policy) to pass to goal-run-inplace."""
+    try:
+        try:
+            from . import registry
+        except ImportError:  # pragma: no cover
+            from routine_orchestrator import registry  # type: ignore[no-redef]
+        return {
+            r.id: getattr(r, "execution_surface", "mixed")
+            for r in registry.list_routines()
+            if r.id != "goal-loop"
+            and getattr(r, "execution", "") != "inline-session"
+            and getattr(r, "isolation_mode", "worktree") == "in-place"
+        }
+    except Exception:  # pragma: no cover - triage must never crash on this
+        return {}
+
+
+def _no_repo_commit(*_args: Any, **_kwargs: Any) -> None:
+    """runtime-surface guardrail: never create a git commit. A runtime loop's
+    own fix() performs external writes through sanctioned tools (self-heal ->
+    configure_mcp / repair-mcp-configs), so there is nothing to commit to git."""
+    return None
+
+
+def _real_orchestrate_run(loop: str, **kwargs: Any) -> Any:
+    try:
+        from . import orchestrator
+    except ImportError:  # pragma: no cover
+        from routine_orchestrator import orchestrator  # type: ignore[no-redef]
+    return orchestrator.orchestrate_run(loop, **kwargs)
+
+
+# Surfaces whose aggressive in-session auto-commit is BLOCKED on an unmet
+# dependency: ADR-816 (cross-machine vault write lock) is still Proposed, so we
+# must not auto-commit/push the vault from an on-demand session (it would race
+# the nightly daemon or another machine). vault loops therefore scan+escalate.
+_SURFACE_COMMIT_GATED = frozenset({"vault"})
+
+
+def op_run_inplace(
+    *,
+    loop: str,
+    surface: str,
+    difficulty: int = 1,
+    project_root: str | Path | None = None,
+    runtime_dir: str | Path | None = None,
+    _orchestrate: Callable[..., Any] = _real_orchestrate_run,
+) -> dict[str, Any]:
+    """ADR-818 phase-2: drive a loop IN-PLACE against the live target (no
+    worktree) via the daemon engine, with surface-tiered guardrails.
+
+    Aggressive: difficulty>=1 auto-applies mechanical fixes. Surface policy:
+      - repo:    code-repo commit (engine default).
+      - runtime: auto-apply; NO git commit — external writes go through the
+                 loop's own sanctioned tools (configure_mcp / repair-mcp).
+      - vault:   scan + escalate ONLY (difficulty forced to 0). Aggressive
+                 vault auto-commit is gated on ADR-816 (Proposed); applying/
+                 committing the vault from a live session without the
+                 cross-machine lock would race the nightly daemon / another
+                 machine. The escalated findings are drained by the coordinated
+                 daemon run. TODO_ADR816: lift the gate once the lock lands.
+      - mixed:   code-repo commit (per-finding repo/vault split is a future
+                 refinement; today mixed loops stay worktree so this is unused).
+    """
+    surface = surface or "mixed"
+    eff_difficulty = difficulty
+    commit_runner: Callable[..., Any] | None = None
+    if surface == "runtime":
+        commit_runner = _no_repo_commit
+        commit_policy = "external-tools (no git commit)"
+    elif surface in _SURFACE_COMMIT_GATED:
+        eff_difficulty = 0  # scan + escalate only until ADR-816 lands
+        commit_runner = _no_repo_commit
+        commit_policy = "scan+escalate (auto-commit gated on ADR-816)"
+    else:  # repo / mixed
+        commit_policy = "code-repo commit"
+
+    try:
+        result = _orchestrate(
+            loop,
+            difficulty=eff_difficulty,
+            project_root=str(project_root) if project_root is not None else None,
+            runtime_dir=str(runtime_dir) if runtime_dir is not None else None,
+            commit_runner=commit_runner,
+        )
+    except Exception as exc:  # pragma: no cover - surface as a failed result
+        return {"success": False, "loop": loop, "surface": surface, "error": str(exc)}
+
+    applied = len(getattr(result, "mechanical_applied", []) or [])
+    escalated = len(getattr(result, "enqueued", []) or [])
+    dispatched = len(getattr(result, "dispatched", []) or [])
+    deferred = len(getattr(result, "deferred", []) or [])
+    return {
+        "success": True,
+        "loop": loop,
+        "surface": surface,
+        "difficulty": eff_difficulty,
+        "commit_policy": commit_policy,
+        "mechanical_applied": applied,
+        "escalated": escalated,
+        "dispatched": dispatched,
+        "deferred": deferred,
+        "did_work": applied > 0,
+        "gated_on": "ADR-816" if surface in _SURFACE_COMMIT_GATED else None,
+    }
 
 
 def _worktree_available(default: int = 9) -> int:
@@ -260,7 +438,15 @@ def op_fanout_plan(
     def _marker(f: Any, key: str) -> bool:
         return isinstance(f, dict) and bool(f.get(key))
 
+    # Pre-filter each loop's findings through the SAME worktree-scope predicate the
+    # fix flow uses (root = project_root for triage), so per_loop_counts reflects
+    # only worktree-actionable work. Findings the fan-out cannot action (vault /
+    # runtime / external) are NOT silently dropped (rule 8): they are surfaced in
+    # out_of_scope_counts / loops_with_out_of_scope_work for the separate in-place
+    # execution surface. Sentinel markers (timed_out / crashed) are not real
+    # findings and are excluded from both counts.
     per_loop_counts: dict[str, int] = {}
+    out_of_scope_counts: dict[str, int] = {}
     timed_out: list[str] = []
     crashed: list[str] = []
     for lp in loops:
@@ -269,15 +455,30 @@ def op_fanout_plan(
             timed_out.append(lp)
         if any(_marker(f, goal_suggest.SENTINEL_CRASHED) for f in data):
             crashed.append(lp)
-        per_loop_counts[lp] = sum(
-            1 for f in data
-            if not _marker(f, goal_suggest.SENTINEL_TIMEOUT) and not _marker(f, goal_suggest.SENTINEL_CRASHED)
-        )
+        in_scope = 0
+        out_scope = 0
+        for f in data:
+            if _marker(f, goal_suggest.SENTINEL_TIMEOUT) or _marker(f, goal_suggest.SENTINEL_CRASHED):
+                continue
+            if _finding_in_worktree(f, root):
+                in_scope += 1
+            else:
+                out_scope += 1
+        per_loop_counts[lp] = in_scope
+        if out_scope:
+            out_of_scope_counts[lp] = out_scope
     timed_out = sorted(timed_out)
     crashed = sorted(crashed)
     incomplete = set(timed_out) | set(crashed)
     loops_with_work = sorted({lp for lp, n in per_loop_counts.items() if n > 0} | incomplete)
-    skipped_clean = sorted(lp for lp in per_loop_counts if per_loop_counts[lp] == 0 and lp not in incomplete)
+    loops_with_out_of_scope_work = sorted(out_of_scope_counts)
+    # A loop with only out-of-scope findings is NOT clean — it has work the fan-out
+    # cannot action — so it is excluded from skipped_clean (it rides
+    # loops_with_out_of_scope_work instead).
+    skipped_clean = sorted(
+        lp for lp in per_loop_counts
+        if per_loop_counts[lp] == 0 and lp not in incomplete and lp not in out_of_scope_counts
+    )
     partial = bool(timed_out or crashed)
     headroom = (_headroom or _worktree_available)()
     safe_cap = max(0, min(cap, headroom))
@@ -286,7 +487,11 @@ def op_fanout_plan(
         "scope": scope,
         "loops_with_work": loops_with_work,
         "per_loop_counts": per_loop_counts,
+        "out_of_scope_counts": out_of_scope_counts,
+        "loops_with_out_of_scope_work": loops_with_out_of_scope_work,
         "skipped_clean": skipped_clean,
+        "in_place_loops": _in_place_orchestrator_loops(),
+        "in_place_surfaces": _in_place_loop_surfaces(),
         "timed_out": timed_out,
         "crashed": crashed,
         "partial": partial,
@@ -297,38 +502,209 @@ def op_fanout_plan(
     }
 
 
+def _real_inspect_worktree(entry: Any, *, stamp: str) -> dict[str, Any]:
+    """Ground-truth reconstruction for a driver that never reported its verdict.
+
+    Inspects the loop's `goal/<loop>-<stamp>` worktree and recovers what it can:
+    branch presence, the count of verified-checkpoint commits (subjects starting
+    ``goal:`` — exactly what op_record_bucket writes), and whether the tree is
+    dirty. Returns ``{"exists": False}`` when the worktree is gone or cannot be
+    located — the caller then marks the row ``unknown``. Defensive by design:
+    never raises for an absent/odd worktree, only for unexpected git failures the
+    caller's try/except still absorbs."""
+    wt = entry.get("worktree_path") if isinstance(entry, dict) else None
+    branch = entry.get("branch") if isinstance(entry, dict) else None
+    if not wt and branch:
+        wt = _worktree_path_for_branch(str(branch))
+    if not wt:
+        return {"exists": False}
+    path = Path(wt)
+    if not path.exists():
+        return {"exists": False}
+
+    def _git(*args: str) -> str:
+        proc = subprocess.run(  # noqa: S603
+            ["git", "-C", str(path), *args],
+            capture_output=True, text=True,
+        )
+        return proc.stdout if proc.returncode == 0 else ""
+
+    inside = _git("rev-parse", "--is-inside-work-tree").strip()
+    if inside != "true":
+        return {"exists": False}
+    cur_branch = _git("branch", "--show-current").strip() or branch
+    subjects = _git("log", "--format=%s", "-n", "500").splitlines()
+    committed = sum(1 for s in subjects if s.startswith("goal:"))
+    dirty = bool(_git("status", "--porcelain").strip())
+    return {
+        "exists": True,
+        "branch": cur_branch,
+        "committed_checkpoints": committed,
+        "dirty": dirty,
+    }
+
+
+def _worktree_path_for_branch(branch: str) -> str | None:
+    """Best-effort: locate the checked-out worktree path for a branch via
+    `git worktree list --porcelain` from the current process cwd (sibling goal
+    worktrees share the same repo). Returns None when not found."""
+    proc = subprocess.run(  # noqa: S603
+        ["git", "worktree", "list", "--porcelain"],
+        capture_output=True, text=True,
+    )
+    if proc.returncode != 0:
+        return None
+    cur_path: str | None = None
+    for line in proc.stdout.splitlines():
+        if line.startswith("worktree "):
+            cur_path = line[len("worktree "):].strip()
+        elif line.startswith("branch "):
+            ref = line[len("branch "):].strip()
+            if ref == branch or ref == f"refs/heads/{branch}":
+                return cur_path
+    return None
+
+
+def _needs_reconstruction(r: Any) -> bool:
+    """A result row is unreported when it is null/non-dict, explicitly flagged
+    ``unreported``, or carries no usable verdict."""
+    if not isinstance(r, dict):
+        return True
+    if r.get("unreported"):
+        return True
+    return not r.get("verdict")
+
+
+def _reconstruct_row(entry: Any, *, stamp: str, inspect: Callable[..., Any]) -> dict[str, Any]:
+    """Build a best-effort row for a driver that never reported. Marks the verdict
+    ``unreported (reconstructed)`` with whatever the worktree yields, or ``unknown``
+    when the worktree is gone / inspection fails."""
+    loop = entry.get("loop") if isinstance(entry, dict) else None
+    branch = entry.get("branch") if isinstance(entry, dict) else None
+    try:
+        info = inspect(entry, stamp=stamp) or {}
+    except Exception:  # noqa: BLE001 - reconstruction must never raise.
+        info = {}
+    if info.get("exists"):
+        return {
+            "loop": loop or "?",
+            "verdict": "unreported (reconstructed)",
+            "branch": info.get("branch") or branch,
+            "residual": None,
+            "committed_checkpoints": info.get("committed_checkpoints", 0),
+            "dirty": info.get("dirty"),
+            "reconstructed": True,
+        }
+    return {
+        "loop": loop or "?",
+        "verdict": "unknown",
+        "branch": branch,
+        "residual": None,
+        "committed_checkpoints": None,
+        "reconstructed": True,
+    }
+
+
+def _classify_result(r: dict[str, Any]) -> str:
+    """Honest per-loop category for the rollup:
+
+      - ``unfinished`` — stalled/exhausted/failed (residual escalated).
+      - ``unreported`` — driver was silent (reconstructed or unknown).
+      - ``no_op`` — converged/no_op but committed ZERO and had out-of-scope debt:
+        the loop fixed nothing. NOT clean.
+      - ``clean`` — converged with real commits, OR genuinely empty (nothing was
+        ever out of scope). When ``committed_checkpoints`` is absent we cannot
+        prove a no-op, so a bare ``converged`` stays clean (back-compat)."""
+    verdict = r.get("verdict")
+    if verdict in {"stalled", "exhausted", "failed"}:
+        return "unfinished"
+    if verdict in {"unknown", "unreported (reconstructed)"} or r.get("reconstructed"):
+        return "unreported"
+    committed = r.get("committed_checkpoints")
+    out_of_scope = r.get("out_of_scope", 0) or 0
+    if verdict == "no_op":
+        return "no_op"
+    if verdict == "converged":
+        if committed is None:
+            return "clean"  # back-compat: cannot prove a no-op
+        if committed > 0:
+            return "clean"
+        return "no_op" if out_of_scope > 0 else "clean"
+    return "unreported"  # missing/foreign verdict that slipped through
+
+
 def op_fanout_report(
     *,
     results: list[dict[str, Any]],
     runtime_dir: str | Path | None = None,
     stamp: str = "",
+    _inspect: Callable[..., Any] = _real_inspect_worktree,
 ) -> dict[str, Any]:
-    """Write an honest rollup of a parallel `/a-loops all` run. Never reports
-    'all clean' unless every loop converged."""
+    """Write an honest rollup of a parallel `/a-loops all` run.
+
+    Honesty (ADR-793, issues #5/#7):
+      - Never reports ``all_clean`` unless EVERY loop is genuinely clean —
+        converged WITH committed work, or genuinely empty. A loop that merely
+        no-op'd (empty only because everything was out of scope, 0 commits) is
+        NOT clean.
+      - A driver that finished but returned nothing (null/incomplete/``unreported``)
+        does not silently vanish: its verdict is RECONSTRUCTED from the worktree's
+        ground truth (`goal/<loop>-<stamp>`: checkpoint commits, clean/dirty,
+        branch present) and marked ``unreported (reconstructed)`` — or ``unknown``
+        when the worktree is gone. ``all_clean`` is never True when any loop was
+        unreported."""
     runtime = Path(runtime_dir) if runtime_dir is not None else _default_runtime_dir()
     out_dir = runtime / "a-loops-all"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    unfinished = [r for r in results if r.get("verdict") in {"stalled", "exhausted", "failed"}]
-    converged = [r for r in results if r.get("verdict") == "converged"]
-    branches = [r["branch"] for r in results if r.get("branch")]
-    all_clean = bool(results) and not unfinished and len(converged) == len(results)
+    # Normalize: reconstruct any silent/incomplete driver result from ground truth
+    # BEFORE classifying, so no loop is dropped or counted as success on silence.
+    norm: list[dict[str, Any]] = []
+    for r in results:
+        if _needs_reconstruction(r):
+            norm.append(_reconstruct_row(r, stamp=stamp, inspect=_inspect))
+        else:
+            norm.append(r)
+
+    categories = [_classify_result(r) for r in norm]
+    unfinished = [r for r, c in zip(norm, categories) if c == "unfinished"]
+    no_op = [r for r, c in zip(norm, categories) if c == "no_op"]
+    unreported = [r for r, c in zip(norm, categories) if c == "unreported"]
+    clean = [r for r, c in zip(norm, categories) if c == "clean"]
+    converged = [r for r in norm if r.get("verdict") == "converged"]
+    did_work = [r for r in norm if (r.get("committed_checkpoints") or 0) > 0]
+    branches = [r["branch"] for r in norm if r.get("branch")]
+    all_clean = bool(norm) and len(clean) == len(norm)
 
     lines = ["# /a-loops all — rollup", ""]
-    lines.append(f"- loops run: {len(results)}")
-    lines.append(f"- converged: {len(converged)}")
+    lines.append(f"- loops run: {len(norm)}")
+    lines.append(f"- converged (clean): {len(clean)}")
+    lines.append(f"- did work (committed checkpoints): {len(did_work)}")
+    lines.append(f"- no-op (0 commits, out-of-scope only): {len(no_op)}")
     lines.append(f"- unfinished (stalled/exhausted/failed): {len(unfinished)}")
+    lines.append(f"- unreported (reconstructed/unknown): {len(unreported)}")
     lines.append(f"- all_clean: {all_clean}")
     lines.append("")
-    lines.append("| loop | verdict | branch | residual |")
-    lines.append("|---|---|---|---|")
-    for r in results:
+    lines.append("| loop | verdict | did_work | committed | branch | residual |")
+    lines.append("|---|---|---|---|---|---|")
+    for r in norm:
+        committed = r.get("committed_checkpoints")
+        did = "yes" if (committed or 0) > 0 else ("no" if committed is not None else "?")
+        committed_disp = "?" if committed is None else committed
+        residual = r.get("residual")
+        residual_disp = "?" if residual is None else residual
         lines.append(
-            f"| {r.get('loop','?')} | {r.get('verdict','?')} | "
-            f"{r.get('branch') or '—'} | {r.get('residual', 0)} |"
+            f"| {r.get('loop','?')} | {r.get('verdict','?')} | {did} | "
+            f"{committed_disp} | {r.get('branch') or '—'} | {residual_disp} |"
         )
+    if no_op:
+        lines += ["", "> No-op loops committed nothing; their findings were all "
+                  "out of scope and remain escalated, not resolved."]
     if unfinished:
         lines += ["", "> Residual findings were escalated; review branches before merge."]
+    if unreported:
+        lines += ["", "> Unreported loops were reconstructed from worktree state; "
+                  "verify their branches manually before merge."]
 
     tag = stamp or "latest"
     md_path = out_dir / f"rollup-{tag}.md"
@@ -337,7 +713,9 @@ def op_fanout_report(
     json_path.write_text(
         json.dumps(
             {"all_clean": all_clean, "converged": len(converged),
-             "unfinished": len(unfinished), "results": results},
+             "clean": len(clean), "did_work": len(did_work), "no_op": len(no_op),
+             "unfinished": len(unfinished), "unreported": len(unreported),
+             "results": norm},
             indent=2,
         ),
         encoding="utf-8",
@@ -347,9 +725,14 @@ def op_fanout_report(
         "report_md": str(md_path),
         "report_json": str(json_path),
         "converged": len(converged),
+        "clean": len(clean),
+        "did_work": len(did_work),
+        "no_op": len(no_op),
         "unfinished": len(unfinished),
+        "unreported": len(unreported),
         "all_clean": all_clean,
         "branches": branches,
+        "results": norm,
     }
 
 
@@ -630,7 +1013,16 @@ def _real_verify(cmd: str, cwd: Path) -> bool:
 
 
 def _real_commit(cwd: Path, msg: str) -> str | None:
-    """Stage all changes and commit; return the new HEAD SHA or None on failure."""
+    """Stage all (tracked/untracked, NON-ignored) changes and commit; return the
+    new HEAD SHA, or None when there was nothing committable.
+
+    ``git add -A`` deliberately never stages gitignored files, so a fix that only
+    touched generated/ignored artifacts stages nothing and ``git commit`` fails —
+    returning None. That None is NOT proof the work was idle: op_record_bucket
+    calls _real_detect_changes to tell "only ignored changed" (real but
+    uncommittable) apart from "truly nothing changed". We do NOT force-add ignored
+    artifacts (that would pollute the repo); honest reporting beats a fake commit.
+    """
     subprocess.run(["git", "-C", str(cwd), "add", "-A"], check=False)  # noqa: S603
     proc = subprocess.run(  # noqa: S603
         ["git", "-C", str(cwd), "commit", "-m", msg],
@@ -647,6 +1039,69 @@ def _real_commit(cwd: Path, msg: str) -> str | None:
     return rev.stdout.strip() or None
 
 
+def _real_detect_changes(cwd: Path) -> str:
+    """Classify the worktree state for honest commit reporting. Returns one of:
+
+    - ``"tracked"``      — tracked/untracked NON-ignored changes exist; git can
+                           stage and commit them (the normal path).
+    - ``"ignored_only"`` — no committable changes, but gitignored/generated files
+                           are present in the working tree (e.g. a regenerated
+                           client-projection set). Real work with no commit
+                           possible — do NOT fake a commit, report it honestly.
+    - ``"none"``         — pristine: nothing changed at all (an honest idle).
+
+    Only consulted when a commit produced nothing, to separate case (b) from (c).
+    Presence-based: ``git status --porcelain --ignored`` lists ignored paths in
+    the tree regardless of when they changed, so "ignored_only" means "no tracked
+    work AND generated artifacts are present", which is the best signal available
+    at checkpoint time without a pre-fix snapshot — far more honest than the old
+    committed:False/idle conflation, while never polluting the repo.
+    """
+    porcelain = subprocess.run(  # noqa: S603
+        ["git", "-C", str(cwd), "status", "--porcelain"],
+        capture_output=True,
+        text=True,
+    )
+    if porcelain.returncode != 0:
+        return "none"  # not a git worktree (or git failed) — nothing to report
+    if porcelain.stdout.strip():
+        return "tracked"
+    ignored = subprocess.run(  # noqa: S603
+        ["git", "-C", str(cwd), "status", "--porcelain", "--ignored"],
+        capture_output=True,
+        text=True,
+    )
+    if any(line.startswith("!!") for line in ignored.stdout.splitlines()):
+        return "ignored_only"
+    return "none"
+
+
+def _commit_outcome(
+    commit: Callable[[Path, str], str | None],
+    changes: Callable[[Path], str],
+    cwd: Path,
+    msg: str,
+) -> tuple[str | None, bool, str | None]:
+    """Attempt the commit and classify the result for op_record_bucket.
+
+    Returns ``(commit_sha_or_None, applied, uncommittable_reason_or_None)``:
+      - tracked changes committed     -> (sha, True, None)
+      - only gitignored/generated     -> (None, True, "only gitignored/generated changes")
+      - nothing changed (honest idle) -> (None, False, None)
+
+    The injected ``commit`` runs first (preserving the existing seam/behavior):
+    when it returns a SHA, tracked work was committed and detection is skipped.
+    Detection is consulted ONLY when commit produced nothing, to tell real-but-
+    uncommittable work apart from a no-op.
+    """
+    sha = commit(cwd, msg)
+    if sha is not None:
+        return sha, True, None
+    if changes(cwd) == "ignored_only":
+        return None, True, "only gitignored/generated changes"
+    return None, False, None
+
+
 def op_loop_status(
     *,
     prev_fingerprint: list[str],
@@ -654,11 +1109,35 @@ def op_loop_status(
     iterations: int,
     loop_cap: int,
     budget_remaining: int,
+    committed_count: int | None = None,
+    out_of_scope_count: int = 0,
 ) -> dict[str, Any]:
-    """Report a stop verdict for the client's loop (converged/stalled/exhausted/
-    continue). Mirrors run_loop_to_convergence; reports evidence, does not assert done."""
+    """Report a stop verdict for the client's loop (converged/no_op/stalled/
+    exhausted/continue). Mirrors run_loop_to_convergence; reports evidence, does
+    not assert done.
+
+    An empty ``current_fingerprint`` is necessary but NOT sufficient for genuine
+    convergence: the fingerprint is also empty when every finding was filtered out
+    as ``out_of_worktree`` and the loop fixed NOTHING. ``committed_count`` (verified
+    checkpoints landed) and ``out_of_scope_count`` (findings dropped as foreign to
+    the worktree) let this op distinguish:
+
+      - ``converged`` — empty fingerprint AND either real work landed
+        (committed_count > 0) OR nothing was ever out of scope (a genuinely clean
+        scan). Also the back-compat verdict when ``committed_count`` is omitted.
+      - ``no_op`` — empty fingerprint, ZERO commits, AND findings existed only
+        out of scope (committed_count == 0 and out_of_scope_count > 0). The loop
+        proved nothing; its out-of-scope debt is escalated, not resolved.
+
+    ``committed_count`` defaults to None → legacy behavior (always ``converged`` on
+    empty), so existing callers are unaffected. ``did_work`` is True/False when
+    ``committed_count`` is known, else None (unknown)."""
+    did_work = (committed_count > 0) if committed_count is not None else None
     if not current_fingerprint:
-        verdict = "converged"
+        if committed_count is not None and committed_count <= 0 and out_of_scope_count > 0:
+            verdict = "no_op"
+        else:
+            verdict = "converged"
     elif iterations >= loop_cap or budget_remaining <= 0:
         verdict = "exhausted"
     elif set(current_fingerprint) == set(prev_fingerprint):
@@ -669,6 +1148,9 @@ def op_loop_status(
         "success": True, "verdict": verdict, "iterations": iterations,
         "loop_cap": loop_cap, "budget_remaining": budget_remaining,
         "residual_count": len(current_fingerprint),
+        "committed_count": committed_count,
+        "out_of_scope_count": out_of_scope_count,
+        "did_work": did_work,
     }
 
 
@@ -769,6 +1251,7 @@ def op_record_bucket(
     verify_command: str | None = None,
     _verify: Callable[[str, Path], bool] | None = None,
     _commit: Callable[[Path, str], str | None] | None = None,
+    _changes: Callable[[Path], str] | None = None,
 ) -> dict[str, Any]:
     """Verify the worktree after a subagent applied a bucket fix; commit if green.
 
@@ -776,9 +1259,19 @@ def op_record_bucket(
     in the orchestrator's mechanical phase, not the inline goal session loop
     (YAGNI: the goal loop operates at a coarser checkpoint granularity and does
     not require per-command trust accounting at this stage).
+
+    A bucket fix that only regenerated gitignored/generated files (observed:
+    knowledge-enrichment rewriting client-projection files) cannot produce a
+    commit — ``git add -A`` stages nothing. That is NOT idle: the result reports
+    ``applied:True`` with ``uncommittable_reason:"only gitignored/generated
+    changes"`` so the verified-checkpoint metric stops conflating real generated
+    work with a no-op. ``applied:False`` is reserved for a truly pristine
+    worktree. Tracked-change commits keep their existing (committed/verified)
+    behavior unchanged.
     """
     verify = _verify if _verify is not None else _real_verify
     commit = _commit if _commit is not None else _real_commit
+    changes = _changes if _changes is not None else _real_detect_changes
     cwd = Path(worktree_path)
     cmd = (verify_command or "").strip()
 
@@ -794,24 +1287,32 @@ def op_record_bucket(
                 "commit": None,
             }
         msg = f"goal: {loop} fix via {auto_command} (verified checkpoint)"
-        sha = commit(cwd, msg)
-        return {
+        sha, applied, reason = _commit_outcome(commit, changes, cwd, msg)
+        out = {
             "success": True,
             "verify_passed": True,
             "verified": True,
             "committed": sha is not None,
             "commit": sha,
+            "applied": applied,
         }
+        if reason:
+            out["uncommittable_reason"] = reason
+        return out
     else:
         # No verify command — still commit to allow progress, but report honestly:
         # this checkpoint was NOT verified; do NOT claim verify_passed True.
         msg = f"goal: {loop} fix via {auto_command} (UNVERIFIED — no verify command)"
-        sha = commit(cwd, msg)
-        return {
+        sha, applied, reason = _commit_outcome(commit, changes, cwd, msg)
+        out = {
             "success": True,
             "verify_passed": False,
             "verified": False,
             "committed": sha is not None,
             "commit": sha,
             "unverified": True,
+            "applied": applied,
         }
+        if reason:
+            out["uncommittable_reason"] = reason
+        return out

@@ -20119,7 +20119,7 @@
       "diarization"
     ],
     "decision_summary": "Add native, opt-in speaker diarization to the audio pipeline by porting `island-io/mila`'s pyannote.audio pipeline (Apache-2.0) as a best-effort overlay on the whisper provider, and prefer the ivrit.ai `large-v3` Hebrew model when installed.",
-    "status_notes": "Accepted 2026-06-14. Extends — does not reverse — ADR-752, which left `speaker_labels` as a per-call seam and named provider-supplied diarization as a future addition. Diarization is gated behind an optional `diarization` extra and gated model weights, so the default install and the lean whisper path are unchanged. Real-data verification on Hebrew speech requires the user's Hugging Face token (the pyannote models are gated) and is reported separately.",
+    "status_notes": "Accepted 2026-06-14. Extends — does not reverse — ADR-752, which left `speaker_labels` as a per-call seam and named provider-supplied diarization as a future addition. Diarization is gated behind an optional `diarization` extra and gated model weights, so the default install and the lean whisper path are unchanged. Real-data verification on Hebrew speech requires the user's Hugging Face token (the pyannote models are gated) and is reported separately. **2026-06-22 — pyannote 3→4 / torch 2.10 bump (clears Dependabot torch #107, #108).** Migrated the `diarization` extra to `pyannote.audio>=4,<5` + `torch/torchaudio>=2.10,<2.11`, removing the `torchaudio<2.9` ceiling that the torch advisories required. pyannote 4.x keeps the same offline SpeakerDiarization config schema (so `diarize._CONFIG_TEMPLATE` is unchanged) and no longer imports the removed `torchaudio.AudioMetaData` symbol or depends on speechbrain — the speechbrain `LazyModule` shim was dropped; only the `torch.load(weights_only=False)` patch for the (trusted, gated) pickled checkpoints remains. Verified at the compat boundary (`from pyannote.audio import Pipeline` under torch 2.10, patch applies, 17 diarize/whisper unit tests pass, ruff clean). End-to-end inference still NOT run (gated models absent locally; `is_available()=False`). New runtime dependency surfaced: pyannote 4.x decodes audio via `torchcodec`, which needs the system FFmpeg shared libs discoverable — to be validated when diarization is actually exercised with models present.",
     "impact": {
       "paths_renamed": [],
       "apis_changed": [],
@@ -20156,6 +20156,76 @@
     ],
     "decision_summary": "Adopt a **remote advisory lease** (an extension of the ADR-195 dev-merge lock onto the vault git remote) as the durable fix for concurrent vault writers across machines/clients, while keeping the already-shipped machine-local lock + push-rebase-retry as the cheap first line of defense. **Proposed —...",
     "status_notes": "",
+    "impact": {
+      "paths_renamed": [],
+      "apis_changed": [],
+      "patterns_deprecated": [],
+      "files_affected": []
+    },
+    "spec_file": null,
+    "plan_file": null,
+    "superseded_by": null
+  },
+  {
+    "adr_number": "ADR-817",
+    "title": "Dashboard rule-11 process isolation (Phase 2)",
+    "state": "live",
+    "status": "Implemented",
+    "date": "2026-06-25",
+    "deciders": [
+      "Gur"
+    ],
+    "related": [
+      "ADR-642",
+      "ADR-810"
+    ],
+    "hub": null,
+    "tags": [
+      "dashboard",
+      "mcp",
+      "rule-11",
+      "process-isolation",
+      "architecture"
+    ],
+    "decision_summary": "The dashboard server must not own process-spawning that an MCP tool can provide: migrate capabilities introspection, file/dir/editor opening, and chat-session writes to existing MCP tools; delete the now-dead generic command + Python/CLI runners; and formally mark the inherently-process surfaces...",
+    "status_notes": "**Implemented** (2026-06-25). Migrated: capabilities route → `list-skills` MCP (no per-request Python spawn); file/dir/settings open → `system-open` MCP. Deleted dead `cliRunner.ts`/`pythonRunner.ts`. Verified on `:3001`: capabilities API returns 26 real skills via MCP, Browse·Skills renders 89 skill cards, no console/chunk errors. A closeout audit found spawns beyond the original inventory and classified ALL of them honestly: interactive PTY (SessionManager, cli/actions, cli/exec) + native-terminal launcher + preferred-editor/file-picker → permanent `@spawn-exempt`; MCP-transport launch (connection/preflight) → `@spawn-exempt` (cannot route through MCP); `llm-retry.ts` → `@spawn-exempt` referencing its governing **ADR-106**; `cli-config` session write + config reads → `@fs-exempt`. Two follow-ups remain (NOT regressions): `plugin-discovery/paths.ts` spawns Python for path resolution (`TODO_CLEANUP` → migratable to `get-path-config` MCP), and `list-skills` returns empty `triggers` (minor fidelity vs the old CLI; descriptions/titles intact). The spec's open question (chains/buttons) was moot — the route made only one CLI call (`list -j`).",
+    "impact": {
+      "paths_renamed": [],
+      "apis_changed": [],
+      "patterns_deprecated": [],
+      "files_affected": []
+    },
+    "spec_file": "2026-06-25-dashboard-rule11-process-isolation-design.md",
+    "plan_file": "2026-06-25-dashboard-rule11-process-isolation.md",
+    "superseded_by": null
+  },
+  {
+    "adr_number": "ADR-818",
+    "title": "In-place, scope-aware execution surface for non-worktree loop families",
+    "state": "live",
+    "status": "Accepted",
+    "date": "2026-06-27",
+    "deciders": [
+      "Gur"
+    ],
+    "related": [
+      "ADR-755",
+      "ADR-758",
+      "ADR-793",
+      "ADR-810",
+      "ADR-816",
+      "ADR-817"
+    ],
+    "hub": null,
+    "tags": [
+      "loops",
+      "daemon",
+      "orchestrator",
+      "execution-surface",
+      "architecture"
+    ],
+    "decision_summary": "Make the **already-parsed-but-ignored `isolation.mode` the orchestrator routing key**, and add a finer **`surface` sub-classifier** that selects the in-place write target and its guardrail policy. Route in-place loops to the **existing** daemon adaptive engine, run inline in the `/a-loops all`...",
+    "status_notes": "Accepted. **Phase 1 (routing) implemented 2026-06-27.** Phase 1 ships the unambiguous core: `isolation.mode` is now a retained, routed field. `registry.Routine` carries `isolation_mode` (computed from the loop's raw declaration, defaulting to `worktree` so undeclared code loops keep fanning out), and `goal_ops._default_orchestrator_loops()` excludes `isolation.mode: in-place` loops from the `/a-loops all` worktree fan-out. The three fundamentally-in-place loops are declared in-place: `self-heal`, `observability`, `knowledge-enrichment`. Triage now reports them under a new `in_place_loops` field (routed to the daemon, never silently dropped). **Phase 2 (runner) implemented 2026-06-28.** Surface schema (`ALLOWED_SURFACE`), `registry.Routine.execution_surface`, surface declarations (self-heal/ observability → `runtime`; knowledge-enrichment → `vault`), and the in-place runner `goal_ops.op_run_inplace` (CLI `goal-run-inplace`) with surface-tiered guardrails: `runtime` auto-applies via the loop's own sanctioned tools with **no git commit**; `repo` commits the code repo; `mixed` → code-repo. Triage emits `in_place_loops` + `in_place_surfaces`; the `/a-loops all` contract runs them via `goal-run-inplace`. Validated on real data (vault scan+escalate: 5 deferred; self-heal runtime scan: 74 deferred, no git commit). **Phase 2 dependency / deferred:** the **`vault` surface is gated on ADR-816** (cross-machine vault write lock), still **Proposed/unimplemented**. Aggressive in-session vault auto-commit without that lock would race the nightly daemon / another machine, so `op_run_inplace` forces `vault` to `difficulty=0` (scan + escalate; the coordinated daemon applies). Lift `_SURFACE_COMMIT_GATED` once ADR-816 lands. Still pending: `hardening` per-finding `mixed` routing (stays worktree today), and an explicit report-only bound for runtime self-heal during a live session (currently difficulty-gated like the daemon).",
     "impact": {
       "paths_renamed": [],
       "apis_changed": [],

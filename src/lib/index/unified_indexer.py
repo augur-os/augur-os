@@ -159,6 +159,62 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 
+# macOS marks an iCloud "Optimize Mac Storage" placeholder (content evicted to the
+# cloud) with the SF_DATALESS file flag. Opening such a file forces an on-demand
+# download; under the daemon's concurrent indexing that deadlocks (EDEADLK /
+# "Resource deadlock avoided" / pymupdf "Failed to open file") and NEVER converges,
+# while the always-retry refresh policy re-attempts every cycle — an unbounded
+# storm (observed: ~448 placeholder PDFs → 82k failed conversions per log). A bare
+# stat() does NOT trigger a download, so detecting + skipping is cheap and safe.
+_SF_DATALESS = 0x40000000
+
+
+def _is_dataless(path: Path) -> bool:
+    """True if *path* is a macOS dataless iCloud placeholder (no local content)."""
+    try:
+        return bool(getattr(path.stat(), "st_flags", 0) & _SF_DATALESS)
+    except OSError:
+        return False
+
+
+def _dataless_skip_result(path: Path) -> dict[str, Any]:
+    """A non-failing 'skipped' extraction for an un-materialized iCloud placeholder.
+
+    method='skipped_dataless' (NOT 'failed') so the refresh policy does not retry it
+    every cycle; it re-extracts once the file is materialized locally. stat() is
+    side-effect-free (no download), so size is safe to read.
+    """
+    from datetime import datetime as _dt, timezone as _tz
+
+    try:
+        from .document_understanding import UNDERSTANDING_VERSION
+    except ImportError:
+        from document_understanding import UNDERSTANDING_VERSION
+    try:
+        size = path.stat().st_size
+    except OSError:
+        size = 0
+    return {
+        "format": path.suffix.lstrip(".").lower() or "unknown",
+        "size_bytes": size,
+        "created": _dt.now(_tz.utc).isoformat(),
+        "body": "",
+        "extraction_error": "icloud_placeholder_not_downloaded",
+        "document_title": path.stem,
+        "document_kind": "unknown",
+        "document_summary": "",
+        "document_key_insights": [],
+        "document_sections": [],
+        "document_extraction_method": "skipped_dataless",
+        "document_visual_structure_used": False,
+        "document_understanding_version": UNDERSTANDING_VERSION,
+        "document_action_candidates": [],
+        "document_extraction_confidence": "low",
+        "document_low_signal_warnings": ["icloud_placeholder"],
+        "document_llm_assisted": False,
+    }
+
+
 def _extract_document(path: Path) -> dict[str, Any]:
     """Extract text from a document using the document-extractor skill.
 
@@ -166,6 +222,9 @@ def _extract_document(path: Path) -> dict[str, Any]:
     extraction_error — matching the shape that index_documents() expects.
     """
     from datetime import datetime as _dt, timezone as _tz
+
+    if _is_dataless(path):
+        return _dataless_skip_result(path)
 
     try:
         from .document_understanding import understand_document
@@ -252,13 +311,20 @@ _DOCUMENT_UNDERSTANDING_FIELDS = {
 }
 
 
-def _needs_document_understanding_refresh(meta: dict[str, Any]) -> bool:
+def _needs_document_understanding_refresh(meta: dict[str, Any], path: Path | None = None) -> bool:
     if not _DOCUMENT_UNDERSTANDING_FIELDS.issubset(meta):
         return True
+    method = str(meta.get("document_extraction_method") or "")
+    # An un-materialized iCloud placeholder cannot be extracted without forcing a
+    # download (which deadlocks). Re-extract ONLY once it has been materialized
+    # locally — never every cycle, which is what turned 448 placeholders into the
+    # 82k-failure storm.
+    if method == "skipped_dataless":
+        return path is not None and not _is_dataless(path)
     # A failed/empty prior extraction must never stick: always retry it so a
     # transient read failure (e.g. EDEADLK under concurrent indexing) self-heals
     # on the next index instead of caching an unreadable-source result forever.
-    if str(meta.get("document_extraction_method") or "") == "failed":
+    if method == "failed":
         return True
     warnings = meta.get("document_low_signal_warnings") or []
     if "unreadable_source" in warnings or "empty_body" in warnings:
@@ -725,7 +791,7 @@ def _index_document_source(
                 # If the on-disk entry still carries legacy wiki compiler metadata,
                 # rewrite it in place using the existing body and manual metadata only.
                 existing_meta, existing_body = parse_frontmatter(output_path)
-                if not _needs_document_understanding_refresh(existing_meta):
+                if not _needs_document_understanding_refresh(existing_meta, file_path):
                     refreshed_meta = dict(existing_meta)
                     apply_source_metadata(refreshed_meta, rel, media_kind, skill)
                     # Backfill a human-readable display title for entries indexed
@@ -742,7 +808,14 @@ def _index_document_source(
             # Note: media files are skipped at candidate collection above, so media_kind is always empty here.
             extraction = _extract_document(file_path)
 
-            checksum, checksum_error = _document_checksum(file_path)
+            if extraction.get("document_extraction_method") == "skipped_dataless":
+                # Reading bytes for a checksum would force the iCloud download and
+                # re-arm the EDEADLK storm (and add an `unreadable_source` warning
+                # that re-triggers refresh). Skip it; the placeholder entry stays
+                # cheap and re-extracts once the file is materialized.
+                checksum, checksum_error = "", None
+            else:
+                checksum, checksum_error = _document_checksum(file_path)
             if checksum_error is not None:
                 read_error = f"Unable to read source bytes for checksum: {checksum_error}"
                 if extraction.get("extraction_error"):

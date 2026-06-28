@@ -92,6 +92,7 @@ PRINT_ALLOWED_PATTERNS = [
     r".github/scripts/",  # Shared CLI/utility scripts
     r"packages/.*/scripts/",  # Skill scripts/CLI utilities
     r"src/rag/examples/",  # Example usage scripts
+    r"docs/qa/",  # QA synthetic-data generator CLI scripts (print() is the tool's stdout)
     r"scripts/",  # Root scripts
     r"plugins/vertical-.*/skills/.*/actions/",  # CLI actions output
     r"plugins/.*/skills/.*/scripts/",  # Plugin CLI scripts

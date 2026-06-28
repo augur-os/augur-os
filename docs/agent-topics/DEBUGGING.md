@@ -91,6 +91,18 @@ Before reporting a task as complete:
 
 The rule-29 hook (`pnpm dev` / `next dev` / `rm -rf .next` / `kill`) protects the normal path; in recovery it is a redirection to the wrapper + gate reset above, not a wall and not a reason to hand the problem to the user (rule 36). **Verify** the recovered page loads to interactive state with real data (rules 28/31/34).
 
+### Dev-server memory & OOM reboots (RAM-aware heap clamp)
+
+**Symptom**: the machine runs out of memory and hard-restarts while running/debugging the dashboard. macOS records it in `~/Library/Logs/DiagnosticReports/node-*.ips` — look for `next-server`, `signal: SIGKILL`, a huge `Memory Tag 255` (V8/Chromium heap), and bug_type 309 (a jetsam memory kill).
+
+**Root cause**: `start-dev.sh` sizes the V8 heap cap by session tier (worktree 16384 MB / focused 12288 MB / default 4096 MB). On a low-RAM host those tier values can exceed physical RAM, so Next.js's "restart the dev server at 80% of the heap limit" safety never fires before the OS itself OOMs.
+
+**Fix in place**: `apps/dashboard/scripts/lib/heap-clamp.sh` (POSIX) and `lib/heap-clamp.mjs` (Windows launcher) clamp the selected cap to **`max(2048 MB, floor(total_RAM_MB × 0.30))`** — clamp DOWN only. On 16 GB RAM the cap becomes **4915 MB** (verified: a worktree server that would have requested 16384 MB ran at `--max-old-space-size=4915`, RSS plateaued ~1 GB, page interactive on its port). The server now *restarts* under pressure instead of rebooting the box.
+
+**Overrides** (env vars): `AUGUR_NODE_OLD_SPACE_MB`, `AUGUR_FOCUSED_NODE_OLD_SPACE_MB`, `AUGUR_WORKTREE_NODE_OLD_SPACE_MB` set the desired per-tier cap (still clamped down to the RAM ceiling); `AUGUR_TEST_TOTAL_RAM_MB` overrides detected RAM (testing only).
+
+**Confirm the clamp is live**: `NODE_OPTIONS` is an env var, not a CLI arg, so `ps -o command` won't show it. Read the running server's env: `ps -Eww -p <pid> -o command= | grep -oE 'max-old-space-size=[0-9]+'` (pid from `lsof -ti tcp:<port>`). Note: the deeper architectural cause — the dashboard hosting process-spawning/output-buffering at all (rule 11) — is tracked as a Phase 2 follow-up (`docs/superpowers/plans/2026-06-25-dashboard-dev-oom-fix.md`).
+
 ## Runtime Error Detection (Auto-Trigger)
 
 **IMPORTANT**: When user reports UI issues, proactively check the browser console using the active browser integration.

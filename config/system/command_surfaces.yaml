@@ -79,7 +79,7 @@ surfaces:
       - tests/scripts/test_install_alias_block.py
   dev:
     description: Agent- and human-callable dashboard build/restart (build verb) via the shared dev_build engine.
-    platforms: [posix]
+    platforms: [windows, posix]
     canonical_engine:
       type: python
       module: src.lib.dev_build

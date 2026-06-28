@@ -27,6 +27,7 @@ export type AirplaneLaunchOverrides = {
   setup_hint?: string;
   reason?: string;
   launch_argv?: unknown;
+  model?: string;
 };
 
 export type AirplaneUnavailablePayload = {
@@ -107,11 +108,23 @@ export function applyAirplaneLaunchOverride(
   }
 
   const launchArgv = requireLaunchArgv(overrides.launch_argv);
+  const ollamaBin = launchArgv[0];
+
+  // Direct-ollama bypass: `ollama launch <cli>` wraps the agent CLI
+  // (claude/codex), whose heavy request (large system prompt + 100+ tool
+  // definitions) crashes the ollama model runner on constrained local hardware
+  // (e.g. a 2GB iGPU) — the runner returns 500 and the CLI retries 11x, so
+  // offline chat appears to hang. When the override names a local model, run it
+  // directly with `ollama run <model>` — a lightweight chat the model can
+  // actually serve — and reuse the existing PTY chat surface. Agent argv is
+  // intentionally dropped; `ollama run` reads prompts from stdin.
+  const directModel = overrides.model?.trim();
+  if (directModel) {
+    return { command: ollamaBin, args: ["run", directModel] };
+  }
+
   return {
-    command: launchArgv[0],
-    args: [
-      ...launchArgv.slice(1),
-      ...stripAutoApproveFlags(args),
-    ],
+    command: ollamaBin,
+    args: [...launchArgv.slice(1), ...stripAutoApproveFlags(args)],
   };
 }
