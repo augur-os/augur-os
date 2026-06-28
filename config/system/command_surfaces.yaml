@@ -84,6 +84,9 @@ surfaces:
       type: python
       module: src.lib.dev_build
       mode: build
+    adapters:
+      windows: scripts/dev.ps1
+      posix: scripts/dev.sh
     tests:
       - tests/unit/test_dev_build_resolve.py
       - tests/unit/test_dev_build_engine.py
@@ -126,6 +129,10 @@ shell_inventory:
       reason: POSIX dashboard helper; Windows uses dashboard slash-command workflow.
     - path: apps/dashboard/scripts/start-dev.sh
       reason: POSIX dashboard helper; Windows uses dashboard slash-command workflow.
+    - path: apps/dashboard/scripts/lib/heap-clamp.sh
+      reason: POSIX dashboard heap-clamp helper; Windows uses the dashboard slash-command workflow.
+    - path: apps/dashboard/scripts/__tests__/start-dev-heap-clamp.test.sh
+      reason: POSIX test for the dashboard heap-clamp helper.
     - path: scripts/ai-launch.sh
       reason: POSIX legacy launcher retained until the Python engine migration removes direct use.
     - path: scripts/demo-mode.sh

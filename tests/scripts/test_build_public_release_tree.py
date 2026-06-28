@@ -178,7 +178,11 @@ def test_real_public_release_tree_excludes_internal_surfaces_and_private_markers
         "IntelSubmit",
         "angel-deck",
         "project-brain/decisions/adrs",
-        "adrs/",
+        # NOTE: a bare "adrs/" marker was removed — it was over-broad and matched
+        # legitimate *public* content (the dashboard route `api/adrs/extract/route.ts`
+        # and "archived ADRs" prose). The internal ADR path is already covered by
+        # "project-brain/decisions/adrs" above plus the manifest-exclusion assertion;
+        # ADR *content* is public, only the internal path must not be referenced.
         "docs/security",
         "ANTHROPIC_API_KEY",
         "OPENAI_API_KEY",
