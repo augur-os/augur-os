@@ -157,6 +157,8 @@ export function getCliAgentsConfig(): Record<string, any> {
   if (!cliAgentsPath) {
     return withDirectOllamaAgent({});
   }
+  // @fs-exempt: read-only load of local cli_agents.yaml config on session init.
+  // An MCP file-read round-trip adds no safety for read-only local config. See ADR-817.
   const content = fs.readFileSync(cliAgentsPath, "utf-8");
   const data = yaml.load(content) as Record<string, any>;
   const agents =
@@ -333,6 +335,10 @@ export function resolveSpawnCommand(rawCmd: string): string {
  * This MUST happen before the PTY spawns so Claude Code sees the page context
  * when it calls get-chat-session during its mandatory session protocol.
  */
+// @fs-exempt: writes the interactive CLI/PTY session state file. Called on every
+// CLI lifecycle transition from the exempt terminal module (api/cli/actions.ts) —
+// a hot, PTY-coupled path. Routing each status flip through an MCP file-write would
+// add latency to the interactive terminal and couple the exempt feature to MCP. See ADR-817.
 export function writeChatSession(data: Record<string, unknown>): void {
   try {
     const dir = path.dirname(CHAT_SESSION_FILE);

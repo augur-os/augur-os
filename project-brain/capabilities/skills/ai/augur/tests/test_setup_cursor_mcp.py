@@ -14,13 +14,13 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 
-def test_setup_cursor_mcp_delegates_to_configure_mcp(monkeypatch):
+def test_setup_cursor_mcp_delegates_to_configure_mcp(monkeypatch, tmp_path):
     """setup_cursor_mcp should delegate to configure_mcp with cursor auto mode."""
     import importlib
 
     module = importlib.import_module("skills.ai.scripts.setup_cursor_mcp")
-    project_root = Path("/tmp/augur")
-    python_path = Path("/tmp/augur/.venv/bin/python")
+    project_root = tmp_path / "augur"
+    python_path = project_root / ".venv" / "bin" / "python"
     expected_script = project_root / "scripts" / "configure_mcp.py"
     calls: list[tuple[list[str], bool]] = []
 

@@ -952,13 +952,13 @@ class TestClaudeCodeAdapterAgentScan:
             manifest_path.read_text(encoding="utf-8").replace(
                 "vault_tier: []",
                 textwrap.dedent(
-                    """\
+                    f"""\
                     vault_tier:
                       - id: augur-apple
                         command: python
                         args: [-m, augur_shared.bundle_server, apple]
                         bundle: apple
-                        bundle_path: /tmp/apple
+                        bundle_path: {tmp_path / "apple"}
                     """
                 ).rstrip(),
             ),
@@ -1522,14 +1522,14 @@ class TestClaudeCodeAdapterAgentScan:
         template = {
             "mcpServers": {
                 "augur-core": {
-                    "command": "/tmp/python3",
+                    "command": str(tmp_path / "python3"),
                     "args": ["-m", "augur_core", "--client-id", "opencode"],
-                    "env": {"PYTHONPATH": "/tmp/project:/tmp/project/src/mcp"},
+                    "env": {"PYTHONPATH": f"{tmp_path / 'project'}:{tmp_path / 'project' / 'src' / 'mcp'}"},
                 },
                 "augur-framework": {
-                    "command": "/tmp/python3",
+                    "command": str(tmp_path / "python3"),
                     "args": ["-m", "augur_framework", "--client-id", "opencode"],
-                    "env": {"PYTHONPATH": "/tmp/project:/tmp/project/src/mcp"},
+                    "env": {"PYTHONPATH": f"{tmp_path / 'project'}:{tmp_path / 'project' / 'src' / 'mcp'}"},
                 },
             }
         }

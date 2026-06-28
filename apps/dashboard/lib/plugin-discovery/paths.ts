@@ -155,6 +155,9 @@ function readManagedSkillDirsFromPython(repoRoot: string): string[] | null {
   ].join("; ");
 
   try {
+    // TODO_CLEANUP: rule-11 — this spawns Python to resolve managed-skill source dirs.
+    // Migratable to the get-path-config MCP tool (or a dedicated path tool). Pre-existing,
+    // outside ADR-817's pragmatic scope; logged as a follow-up, not yet migrated. See ADR-817.
     const output = execFileSync(python, ["-c", script, repoRoot], {
       cwd: repoRoot,
       encoding: "utf8",

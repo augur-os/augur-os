@@ -15,6 +15,8 @@ from scripts.build_public_release_tree import build_release_tree  # noqa: E402
 from scripts.guard_public_release_tree import (  # noqa: E402
     PublicReleaseGuardError,
     guard_public_tree,
+    machine_path_markers,
+    scan_content_safety,
 )
 
 
@@ -168,3 +170,146 @@ def test_guard_cli_allows_generated_public_release_tree(tmp_path: Path) -> None:
 
     assert result.returncode == 0
     assert "public release guard passed" in result.stdout
+
+
+# --- Machine-specific path leak guard (regression: BRAIN.yaml /Users/<name> in v1.12.0) ---
+
+
+def test_scan_content_safety_flags_builder_home_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A file containing the building user's absolute home dir is a leak.
+
+    Regression: `project-brain/BRAIN.yaml` mutated locally to
+    `root: /Users/<name>/...` was published to the public release tree because
+    the release builder copies the working tree and the partition scan does not
+    inspect content. The guard must reject the builder's real home path.
+    """
+    fake_home = tmp_path / "home" / "alice-dev-9000"
+    fake_home.mkdir(parents=True)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
+
+    tree = tmp_path / "public"
+    (tree / "project-brain").mkdir(parents=True)
+    (tree / "project-brain" / "BRAIN.yaml").write_text(
+        f"root: {fake_home}/project-brain\n", encoding="utf-8"
+    )
+
+    violations = scan_content_safety(tree)
+    assert any(v.reason == "machine-specific path" for v in violations), violations
+    assert any(str(fake_home) in v.format() for v in violations)
+
+
+def test_scan_content_safety_ignores_placeholder_user_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Generic placeholder home paths in fixtures/docs are NOT leaks.
+
+    The release tree legitimately carries `/Users/example`, `/home/user`, and
+    Home Assistant `/home/skills` entity ids; only the *actual* builder home is a
+    leak, so these must pass.
+    """
+    fake_home = tmp_path / "home" / "alice-dev-9000"
+    fake_home.mkdir(parents=True)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
+
+    tree = tmp_path / "public"
+    (tree / "tests").mkdir(parents=True)
+    (tree / "tests" / "fixtures.py").write_text(
+        'P = "/Users/example/x"\nQ = "/home/user/y"\nR = "/home/skills"\n',
+        encoding="utf-8",
+    )
+
+    assert scan_content_safety(tree) == []
+
+
+def test_machine_path_markers_skips_degenerate_home(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A degenerate home like '/' must not become a marker that matches everything."""
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: Path("/")))
+    monkeypatch.setattr("getpass.getuser", lambda: "ci")  # too short to be a marker
+    assert machine_path_markers() == []
+
+
+def test_full_scope_guard_blocks_machine_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Under `full` scope the guard must still block machine-path leaks.
+
+    Regression: full scope previously returned ONLY partition findings, so
+    content leaks (secrets, private markers, machine paths) were never scanned.
+    """
+    scope_cfg = tmp_path / "release_scope.yaml"
+    scope_cfg.write_text("scope: full\n", encoding="utf-8")
+    monkeypatch.setenv("AUGUR_RELEASE_SCOPE_CONFIG", str(scope_cfg))
+    # Isolate the content-safety addition from the real partition policy.
+    monkeypatch.setattr("scripts.guard_public_release_tree.scan_partition", lambda **_: [])
+
+    fake_home = tmp_path / "home" / "alice-dev-9000"
+    fake_home.mkdir(parents=True)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
+
+    tree = tmp_path / "public"
+    (tree / "src").mkdir(parents=True)
+    (tree / "src" / "leak.py").write_text(f'HOME = "{fake_home}"\n', encoding="utf-8")
+
+    try:
+        guard_public_tree(tree, source_root=PROJECT_ROOT)
+    except PublicReleaseGuardError as exc:
+        message = str(exc)
+    else:
+        raise AssertionError("expected full-scope guard to block machine path")
+
+    assert "machine-specific path" in message
+    assert "src/leak.py" in message
+
+
+def test_full_scope_guard_honors_private_marker_regex(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Full scope must apply the configured AUGUR_PRIVATE_MARKER_REGEX to content.
+
+    Regression: full scope previously returned ONLY partition findings, so the
+    configured private-marker regex was never applied to file content.
+    """
+    scope_cfg = tmp_path / "release_scope.yaml"
+    scope_cfg.write_text("scope: full\n", encoding="utf-8")
+    monkeypatch.setenv("AUGUR_RELEASE_SCOPE_CONFIG", str(scope_cfg))
+    monkeypatch.setenv("AUGUR_PRIVATE_MARKER_REGEX", "Au-vault")
+    monkeypatch.setattr("scripts.guard_public_release_tree.scan_partition", lambda **_: [])
+
+    tree = tmp_path / "public"
+    (tree / "src").mkdir(parents=True)
+    (tree / "src" / "cfg.py").write_text('PATH = "~/Projects/Au-vault"\n', encoding="utf-8")
+
+    try:
+        guard_public_tree(tree, source_root=PROJECT_ROOT)
+    except PublicReleaseGuardError as exc:
+        message = str(exc)
+    else:
+        raise AssertionError("expected full-scope guard to honor private marker regex")
+
+    assert "forbidden content marker 'Au-vault'" in message
+
+
+def test_full_scope_guard_ignores_envvar_name_markers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Full scope must NOT flag env-var NAMES in real source (false-positive guard).
+
+    OPENAI_API_KEY / ANTHROPIC_API_KEY / "PRIVATE KEY" appear legitimately across
+    the full code tree (adapters, config templates, security scanners). The
+    docs_only env-var-name marker list must not be applied under full scope.
+    """
+    scope_cfg = tmp_path / "release_scope.yaml"
+    scope_cfg.write_text("scope: full\n", encoding="utf-8")
+    monkeypatch.setenv("AUGUR_RELEASE_SCOPE_CONFIG", str(scope_cfg))
+    monkeypatch.delenv("AUGUR_PRIVATE_MARKER_REGEX", raising=False)
+    monkeypatch.setattr("scripts.guard_public_release_tree.scan_partition", lambda **_: [])
+
+    tree = tmp_path / "public"
+    (tree / "src").mkdir(parents=True)
+    (tree / "src" / "adapter.py").write_text(
+        'TOKEN_ENV = "ANTHROPIC_API_KEY"\nOTHER = "OPENAI_API_KEY"\n', encoding="utf-8"
+    )
+
+    assert guard_public_tree(tree, source_root=PROJECT_ROOT) == []

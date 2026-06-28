@@ -18,6 +18,22 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 DASHBOARD_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$DASHBOARD_DIR"
+
+# Production serve mode (ADR-787). The .mjs entry delegates here on macOS/Linux,
+# so this POSIX launcher — not just the Windows branch — must honor --prod.
+# Without it, the main :3000 dashboard always ran `next dev` and every start
+# wiped .next/BUILD_ID, stranding the daemon supervisor's reboot-survival ensure
+# ("No production build — skipping dashboard ensure"). In prod we preserve the
+# freshly-built .next (AUGUR_PROD_SERVE=1 → clearNextCache no-ops), skip the
+# Turbopack dev cache management + dev watchers, and serve via `next start`.
+AUGUR_PROD_MODE=0
+for _arg in "$@"; do
+    if [ "$_arg" = "--prod" ]; then
+        AUGUR_PROD_MODE=1
+        export AUGUR_PROD_SERVE=1
+    fi
+done
+
 PREFLIGHT_ARGS=(--root "$PROJECT_ROOT" --profile dashboard --repair)
 if [ "${AUGUR_INTERACTIVE:-0}" = "1" ]; then
     PREFLIGHT_ARGS+=(--interactive)
@@ -188,14 +204,20 @@ EXTERNAL_MYPY_CACHE_DIR="$EXTERNAL_DASHBOARD_CACHE/mypy"
 EXTERNAL_TSBUILDINFO_PATH="$EXTERNAL_DASHBOARD_CACHE/tsconfig.tsbuildinfo"
 
 mkdir -p "$EXTERNAL_NEXT_DIR" "$EXTERNAL_MYPY_CACHE_DIR"
-if [ -L "$NEXT_DIR" ] && [ "$(readlink "$NEXT_DIR")" != "$EXTERNAL_NEXT_DIR" ]; then
-    rm -f "$NEXT_DIR"
-fi
-if [ -d "$NEXT_DIR" ] && [ ! -L "$NEXT_DIR" ]; then
-    rm -rf "$NEXT_DIR"
-fi
-if [ ! -e "$NEXT_DIR" ]; then
-    ln -s "$EXTERNAL_NEXT_DIR" "$NEXT_DIR"
+# The .next external-cache symlink is a dev/turbopack convention. A prod build
+# writes a REAL .next dir; re-imposing the symlink here rm -rf's that build (and
+# its BUILD_ID) before `next start` can serve it. So leave a real .next alone in
+# prod mode and serve it directly. (Dev still gets the symlink.)
+if [ "$AUGUR_PROD_MODE" != "1" ]; then
+    if [ -L "$NEXT_DIR" ] && [ "$(readlink "$NEXT_DIR")" != "$EXTERNAL_NEXT_DIR" ]; then
+        rm -f "$NEXT_DIR"
+    fi
+    if [ -d "$NEXT_DIR" ] && [ ! -L "$NEXT_DIR" ]; then
+        rm -rf "$NEXT_DIR"
+    fi
+    if [ ! -e "$NEXT_DIR" ]; then
+        ln -s "$EXTERNAL_NEXT_DIR" "$NEXT_DIR"
+    fi
 fi
 if [ -L "$MYPY_CACHE_DIR" ] && [ "$(readlink "$MYPY_CACHE_DIR")" != "$EXTERNAL_MYPY_CACHE_DIR" ]; then
     rm -f "$MYPY_CACHE_DIR"
@@ -247,16 +269,20 @@ if [ ! -e "$EXTERNAL_NODE_MODULES_LINK" ]; then
     ln -s "$DASHBOARD_DIR/node_modules" "$EXTERNAL_NODE_MODULES_LINK"
 fi
 
-if [ -L "$NEXT_DIR" ] && [ "$(readlink "$NEXT_DIR")" != "$EXTERNAL_NEXT_DIR" ]; then
-    rm -f "$NEXT_DIR"
-fi
+# Second .next rewiring pass (worktree-namespaced external dir) — same hazard as
+# the first; skip in prod so the real built .next survives to be served.
+if [ "$AUGUR_PROD_MODE" != "1" ]; then
+    if [ -L "$NEXT_DIR" ] && [ "$(readlink "$NEXT_DIR")" != "$EXTERNAL_NEXT_DIR" ]; then
+        rm -f "$NEXT_DIR"
+    fi
 
-if [ -d "$NEXT_DIR" ] && [ ! -L "$NEXT_DIR" ]; then
-    rm -rf "$NEXT_DIR"
-fi
+    if [ -d "$NEXT_DIR" ] && [ ! -L "$NEXT_DIR" ]; then
+        rm -rf "$NEXT_DIR"
+    fi
 
-if [ ! -e "$NEXT_DIR" ]; then
-    ln -s "$EXTERNAL_NEXT_DIR" "$NEXT_DIR"
+    if [ ! -e "$NEXT_DIR" ]; then
+        ln -s "$EXTERNAL_NEXT_DIR" "$NEXT_DIR"
+    fi
 fi
 
 if [ -L "$SWC_DIR" ] && [ "$(readlink "$SWC_DIR")" != "$EXTERNAL_SWC_DIR" ]; then
@@ -279,35 +305,39 @@ if [ -d "$REPO_RUNTIME_DIR" ] && [ ! -L "$REPO_RUNTIME_DIR" ]; then
     rm -rf "$REPO_RUNTIME_DIR"
 fi
 
-TURBOPACK_PANIC="$EXTERNAL_NEXT_DIR/dev/cache/turbopack/PANIC"
-if [ -f "$TURBOPACK_PANIC" ] || grep -rql "TurbopackInternalError" "$EXTERNAL_NEXT_DIR/dev/cache/turbopack/*/LOG" 2>/dev/null; then
-    echo "Turbopack cache corrupted — clearing .next/ directory..."
-    rm -rf "$EXTERNAL_NEXT_DIR"
-    mkdir -p "$EXTERNAL_NEXT_DIR"
-fi
-
-if grep -rql "MODULE_UNPARSABLE" "$EXTERNAL_NEXT_DIR/dev/server" 2>/dev/null; then
-    echo "Turbopack server cache corrupted — clearing .next/ directory..."
-    rm -rf "$EXTERNAL_NEXT_DIR"
-    mkdir -p "$EXTERNAL_NEXT_DIR"
-fi
-
-# Turbopack filesystem cache grows unbounded (2+ GB observed for 134 pages).
-# Clear if it exceeds 1GB to prevent disk bloat and GC thrashing.
-# This is safe — Turbopack recompiles lazily on next page visit.
-TURBOPACK_CACHE="$EXTERNAL_NEXT_DIR/dev/cache"
-if [ -d "$TURBOPACK_CACHE" ]; then
-    CACHE_SIZE_KB=$(du -sk "$TURBOPACK_CACHE" 2>/dev/null | cut -f1)
-    if [ "${CACHE_SIZE_KB:-0}" -gt 1048576 ]; then
-        echo "Turbopack cache exceeds 1GB (${CACHE_SIZE_KB}KB) — clearing..."
-        rm -rf "$TURBOPACK_CACHE"
+# Turbopack dev-cache management — dev only. In prod serve these rm -rf the very
+# .next/BUILD_ID we are about to serve, so they are skipped entirely.
+if [ "$AUGUR_PROD_MODE" != "1" ]; then
+    TURBOPACK_PANIC="$EXTERNAL_NEXT_DIR/dev/cache/turbopack/PANIC"
+    if [ -f "$TURBOPACK_PANIC" ] || grep -rql "TurbopackInternalError" "$EXTERNAL_NEXT_DIR/dev/cache/turbopack/*/LOG" 2>/dev/null; then
+        echo "Turbopack cache corrupted — clearing .next/ directory..."
+        rm -rf "$EXTERNAL_NEXT_DIR"
+        mkdir -p "$EXTERNAL_NEXT_DIR"
     fi
-fi
 
-# Ensure Turbopack cache directory exists to prevent SST write failures.
-# Turbopack expects .next/dev/cache/turbopack/ to exist; if it's missing
-# (e.g., partial cleanup or race condition), writes fail with os error 2.
-mkdir -p "$EXTERNAL_NEXT_DIR/dev/cache/turbopack"
+    if grep -rql "MODULE_UNPARSABLE" "$EXTERNAL_NEXT_DIR/dev/server" 2>/dev/null; then
+        echo "Turbopack server cache corrupted — clearing .next/ directory..."
+        rm -rf "$EXTERNAL_NEXT_DIR"
+        mkdir -p "$EXTERNAL_NEXT_DIR"
+    fi
+
+    # Turbopack filesystem cache grows unbounded (2+ GB observed for 134 pages).
+    # Clear if it exceeds 1GB to prevent disk bloat and GC thrashing.
+    # This is safe — Turbopack recompiles lazily on next page visit.
+    TURBOPACK_CACHE="$EXTERNAL_NEXT_DIR/dev/cache"
+    if [ -d "$TURBOPACK_CACHE" ]; then
+        CACHE_SIZE_KB=$(du -sk "$TURBOPACK_CACHE" 2>/dev/null | cut -f1)
+        if [ "${CACHE_SIZE_KB:-0}" -gt 1048576 ]; then
+            echo "Turbopack cache exceeds 1GB (${CACHE_SIZE_KB}KB) — clearing..."
+            rm -rf "$TURBOPACK_CACHE"
+        fi
+    fi
+
+    # Ensure Turbopack cache directory exists to prevent SST write failures.
+    # Turbopack expects .next/dev/cache/turbopack/ to exist; if it's missing
+    # (e.g., partial cleanup or race condition), writes fail with os error 2.
+    mkdir -p "$EXTERNAL_NEXT_DIR/dev/cache/turbopack"
+fi
 
 # Force Turbopack's mimalloc allocator to return unused pages to OS immediately.
 # Without this, mimalloc retains freed memory in arenas indefinitely, causing
@@ -337,6 +367,14 @@ if [ -n "$WORKTREE_PORT" ] && [ "$NODE_OLD_SPACE_MB" -lt "$WORKTREE_NODE_OLD_SPA
 elif [ -n "${AUGUR_DEV_HUBS:-}" ] && [ "$NODE_OLD_SPACE_MB" -lt "$FOCUSED_NODE_OLD_SPACE_MB" ]; then
     NODE_OLD_SPACE_MB="$FOCUSED_NODE_OLD_SPACE_MB"
 fi
+
+# Clamp the selected heap cap to a safe fraction of physical RAM so the dev
+# server RESTARTS (Next.js 80%-of-limit safety) instead of OOM-rebooting the
+# machine on low-RAM hosts. See docs/superpowers/plans/2026-06-25-dashboard-dev-oom-fix.md
+# shellcheck source=lib/heap-clamp.sh
+source "$SCRIPT_DIR/lib/heap-clamp.sh"
+augur_clamp_heap
+
 export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--max-old-space-size=${NODE_OLD_SPACE_MB} --max-semi-space-size=64"
 
 RELOAD_LOCK_FILE="$AUGUR_RUNTIME/locks/dashboard_reload.lock"
@@ -378,25 +416,69 @@ PY
     LOCK_RELEASE_PID=$!
 }
 
+WATCHER_PID=""
+ACTIVE_ERROR_WATCH_PID=""
+PROD_MARKER=""
 cleanup() {
-    kill "$WATCHER_PID" "${ACTIVE_ERROR_WATCH_PID:-}" "${LOCK_RELEASE_PID:-}" 2>/dev/null || true
+    kill "${WATCHER_PID:-}" "${ACTIVE_ERROR_WATCH_PID:-}" "${LOCK_RELEASE_PID:-}" 2>/dev/null || true
+}
+on_stop_signal() {
+    # Remove the prod-managed marker ONLY on an INTENTIONAL stop (SIGTERM/SIGINT
+    # from cleanup_processes or the user). A server CRASH instead makes `next
+    # start` return non-zero and the shell exit normally (EXIT trap, marker kept),
+    # so the supervisor re-heals it. The marker is the crash-vs-stop signal —
+    # removing it here means "do not resurrect"; a SIGKILL/reboot skips this and
+    # leaves the marker so the supervisor brings :3000 back. See _ensure_prod_dashboard.
+    [ -n "${PROD_MARKER:-}" ] && rm -f "$PROD_MARKER" 2>/dev/null
+    cleanup
+    exit 143
 }
 
-# Start plugin watcher in background (re-mounts + regenerates tabs on page changes)
-echo "Starting plugin watcher..."
-node scripts/dist/mount-plugins.mjs --watch &
-WATCHER_PID=$!
+# Dev-only watchers (live plugin re-mount + error-stream tail) make no sense for
+# a fixed production bundle, and the --watch mount would re-clear .next. Skip in prod.
+if [ "$AUGUR_PROD_MODE" != "1" ]; then
+    # Start plugin watcher in background (re-mounts + regenerates tabs on page changes)
+    echo "Starting plugin watcher..."
+    node scripts/dist/mount-plugins.mjs --watch &
+    WATCHER_PID=$!
 
-ACTIVE_ERROR_WATCH_PID=""
-ACTIVE_ERROR_WATCH="${AUGUR_ACTIVE_ERROR_WATCH:-auto}"
-if [ "$ACTIVE_ERROR_WATCH" = "1" ] || { [ "$ACTIVE_ERROR_WATCH" = "auto" ] && [ -t 1 ]; }; then
-    echo "Starting active error watcher..."
-    python3 "$SCRIPT_DIR/watch_error_streams.py" < /dev/null &
-    ACTIVE_ERROR_WATCH_PID=$!
+    ACTIVE_ERROR_WATCH="${AUGUR_ACTIVE_ERROR_WATCH:-auto}"
+    if [ "$ACTIVE_ERROR_WATCH" = "1" ] || { [ "$ACTIVE_ERROR_WATCH" = "auto" ] && [ -t 1 ]; }; then
+        echo "Starting active error watcher..."
+        python3 "$SCRIPT_DIR/watch_error_streams.py" < /dev/null &
+        ACTIVE_ERROR_WATCH_PID=$!
+    fi
 fi
 
 release_reload_lock_when_ready
 trap cleanup EXIT
+trap on_stop_signal TERM INT
+
+# Production serve (ADR-787): serve the prebuilt bundle via `next start`. The
+# build (.next/BUILD_ID) is produced by the build:safe step in `pnpm prod` BEFORE
+# this runs; we never build or fall back to dev here — a missing build is a hard
+# error so the daemon's reboot-survival ensure can detect + report it instead of
+# silently mounting dev on :3000.
+if [ "$AUGUR_PROD_MODE" = "1" ]; then
+    if [ ! -f ".next/BUILD_ID" ]; then
+        echo "[start-dev] No production build found (.next/BUILD_ID missing)." >&2
+        echo "[start-dev] Run 'pnpm run build:safe' first, or use 'pnpm prod'." >&2
+        exit 1
+    fi
+    export NODE_ENV=production
+    # Write the prod-managed marker (ADR-787): tells the daemon a prod server is
+    # meant to own :3000. cleanup() removes it on clean exit; a crash leaves it,
+    # so the supervisor's periodic ensure can distinguish a crash from a stop.
+    # NOT exec'd, so the EXIT trap fires and removes the marker on a clean stop.
+    if [ -n "${AUGUR_STATE:-}" ]; then
+        PROD_MARKER="$AUGUR_STATE/dashboard.prod_managed"
+        mkdir -p "$AUGUR_STATE" 2>/dev/null || true
+        printf '%s\n%s\n' "$$" "$(date +%s)" > "$PROD_MARKER" 2>/dev/null || true
+    fi
+    echo "Starting production server (next start) on port ${DASHBOARD_PORT}..."
+    ./node_modules/.bin/next start --port "$DASHBOARD_PORT"
+    exit $?
+fi
 
 # Dev server runs unlocked (long-lived, HMR handles file changes)
 echo "Starting Next.js..."

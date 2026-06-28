@@ -137,6 +137,8 @@ export function resolvePreflightContract(): PreflightContract {
   );
   const preflightPython = resolvePreflightPython(fallbackRoot);
 
+  // @spawn-exempt: MCP-server preflight/bootstrap check — part of establishing the
+  // MCP transport, which cannot itself be routed through MCP. See ADR-817.
   const result = spawnSync(
     preflightPython,
     [scriptPath, "--root", fallbackRoot, "--profile", "mcp", "--repair"],

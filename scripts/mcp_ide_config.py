@@ -401,7 +401,16 @@ def _build_dxt_manifest(
                 "env": {
                     "AUGUR_ROOT": repo_root.as_posix(),
                     "PYTHONUNBUFFERED": "1",
-                    "PYTHONPATH": f"{repo_root}{os.pathsep}{repo_root / 'src' / 'mcp'}",
+                    # Mirror _build_server_entry: skill modules live under
+                    # project-brain/capabilities, so it must lead the PYTHONPATH
+                    # or the connector cannot import them.
+                    "PYTHONPATH": os.pathsep.join(
+                        [
+                            (repo_root / "project-brain" / "capabilities").as_posix(),
+                            repo_root.as_posix(),
+                            (repo_root / "src" / "mcp").as_posix(),
+                        ]
+                    ),
                 },
             },
         },

@@ -62,3 +62,68 @@ def test_dispatch_routes_daemon_loop_through_orchestrator(tmp_path: Path, monkey
     result = registry.dispatch("knowledge", skills_root=tmp_path)
     assert result == {"ok": True}
     assert captured["name"] == "knowledge"
+
+
+_IN_PLACE_SKILL = """---
+name: ip-skill
+x-augur-loop:
+  id: vault-thing
+  skill: ip-skill
+  loop_name: vault-thing
+  automation:
+    trigger: nightly
+    runner: daemon
+    discover: scripts/scan.py
+  isolation:
+    mode: in-place
+  memory:
+    trust: adaptive
+---
+# ip-skill
+"""
+
+
+def test_isolation_mode_parsed_and_defaults_worktree(tmp_path: Path):
+    """ADR-818: a loop is in-place ONLY when it explicitly declares
+    isolation.mode: in-place. An undeclared loop defaults to worktree so the
+    existing code loops keep fanning out via /a-loops all."""
+    registry = _load_registry()
+    _make_skill(tmp_path, "loop-skill", _NEW_SKILL)  # no isolation block
+    _make_skill(tmp_path, "ip-skill", _IN_PLACE_SKILL)
+    routines = {r.id: r for r in registry.list_routines(skills_root=tmp_path)}
+    assert routines["knowledge"].isolation_mode == "worktree"
+    assert routines["vault-thing"].isolation_mode == "in-place"
+
+
+_VAULT_SURFACE_SKILL = """---
+name: vault-surface-skill
+x-augur-loop:
+  id: vault-surface-loop
+  skill: vault-surface-skill
+  loop_name: vault-surface-loop
+  automation:
+    trigger: nightly
+    runner: daemon
+    discover: scripts/scan.py
+  isolation:
+    mode: in-place
+    surface: vault
+  memory:
+    trust: adaptive
+---
+# vault-surface-skill
+"""
+
+
+def test_execution_surface_parsed_and_defaults(tmp_path: Path):
+    """ADR-818 phase 2: isolation.surface routes the in-place runner's guardrail.
+    Worktree loops default to "repo"; in-place loops default to "mixed" unless a
+    surface is declared (here "vault")."""
+    registry = _load_registry()
+    _make_skill(tmp_path, "loop-skill", _NEW_SKILL)  # worktree, no surface
+    _make_skill(tmp_path, "ip-skill", _IN_PLACE_SKILL)  # in-place, no surface
+    _make_skill(tmp_path, "vault-surface-skill", _VAULT_SURFACE_SKILL)  # in-place, vault
+    routines = {r.id: r for r in registry.list_routines(skills_root=tmp_path)}
+    assert routines["knowledge"].execution_surface == "repo"  # worktree default
+    assert routines["vault-thing"].execution_surface == "mixed"  # in-place default
+    assert routines["vault-surface-loop"].execution_surface == "vault"  # declared

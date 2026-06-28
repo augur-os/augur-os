@@ -390,6 +390,137 @@ def test_op_record_bucket_none_verify_command_is_honest():
     assert out["committed"] is True
 
 
+def _init_git_repo(repo):
+    import subprocess
+    repo.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@t"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
+    return subprocess
+
+
+def test_op_record_bucket_ignored_only_reports_applied_not_idle(tmp_path):
+    """Issue #4: a fix that only touches gitignored/generated files cannot commit
+    (git add -A stages nothing) but the work IS real. op_record_bucket must report
+    applied-but-uncommittable, NOT idle (committed:False indistinguishable from a
+    no-op). Integration: real git repo, real _commit, real change detection."""
+    from routine_orchestrator import goal_ops as go
+    repo = tmp_path / "wt"
+    sp = _init_git_repo(repo)
+    (repo / ".gitignore").write_text("generated/\n")
+    sp.run(["git", "-C", str(repo), "add", ".gitignore"], check=True)
+    sp.run(["git", "-C", str(repo), "commit", "-qm", "init"], check=True)
+    # the fix regenerated an ignored (generated) projection file
+    gen = repo / "generated"
+    gen.mkdir()
+    (gen / "projection.json").write_text("{}")
+
+    out = go.op_record_bucket(
+        worktree_path=str(repo), loop="knowledge-enrichment",
+        auto_command="auto-regen", verify_command="",
+    )
+    assert out["success"] is True
+    assert out["committed"] is False
+    assert out["commit"] is None
+    assert out["applied"] is True
+    assert out["uncommittable_reason"] == "only gitignored/generated changes"
+    # HARD: nothing was force-added — the ignored file must remain untracked.
+    status = sp.run(
+        ["git", "-C", str(repo), "status", "--porcelain"],
+        capture_output=True, text=True,
+    )
+    assert "projection.json" not in status.stdout  # not staged/tracked
+
+
+def test_op_record_bucket_truly_idle_reports_not_applied(tmp_path):
+    """A pristine worktree with no changes at all => applied:False (honest idle),
+    distinct from the ignored-only case."""
+    from routine_orchestrator import goal_ops as go
+    repo = tmp_path / "wt"
+    sp = _init_git_repo(repo)
+    (repo / "f.txt").write_text("x")
+    sp.run(["git", "-C", str(repo), "add", "-A"], check=True)
+    sp.run(["git", "-C", str(repo), "commit", "-qm", "init"], check=True)
+
+    out = go.op_record_bucket(
+        worktree_path=str(repo), loop="x", auto_command="y", verify_command="",
+    )
+    assert out["committed"] is False
+    assert out["commit"] is None
+    assert out["applied"] is False
+    assert "uncommittable_reason" not in out
+
+
+def test_op_record_bucket_tracked_changes_still_commit(tmp_path):
+    """Backward-compat: real tracked changes commit normally and report applied."""
+    from routine_orchestrator import goal_ops as go
+    repo = tmp_path / "wt"
+    sp = _init_git_repo(repo)
+    (repo / "f.txt").write_text("x")
+    sp.run(["git", "-C", str(repo), "add", "-A"], check=True)
+    sp.run(["git", "-C", str(repo), "commit", "-qm", "init"], check=True)
+    (repo / "f.txt").write_text("changed")
+
+    out = go.op_record_bucket(
+        worktree_path=str(repo), loop="x", auto_command="y", verify_command="",
+    )
+    assert out["committed"] is True
+    assert out["commit"]
+    assert out["applied"] is True
+    assert "uncommittable_reason" not in out
+
+
+def test_op_record_bucket_ignored_only_via_injected_seams():
+    """Verified path: verify passes but git produces no commit (only ignored files
+    changed). Detection seam classifies it ignored_only -> applied, uncommittable.
+    Uses the injection seams so it is deterministic without a real repo."""
+    from routine_orchestrator import goal_ops as go
+    out = go.op_record_bucket(
+        worktree_path="/tmp/wt", loop="knowledge-enrichment", auto_command="auto-regen",
+        verify_command="echo ok",
+        _verify=lambda cmd, cwd: True,
+        _commit=lambda cwd, msg: None,        # git add -A staged nothing -> no commit
+        _changes=lambda cwd: "ignored_only",
+    )
+    assert out["verify_passed"] is True
+    assert out["verified"] is True
+    assert out["committed"] is False
+    assert out["commit"] is None
+    assert out["applied"] is True
+    assert out["uncommittable_reason"] == "only gitignored/generated changes"
+
+
+def test_op_record_bucket_no_change_via_injected_seams():
+    """Verified path, commit produced nothing, detection says 'none' => idle."""
+    from routine_orchestrator import goal_ops as go
+    out = go.op_record_bucket(
+        worktree_path="/tmp/wt", loop="x", auto_command="y", verify_command="echo ok",
+        _verify=lambda cmd, cwd: True,
+        _commit=lambda cwd, msg: None,
+        _changes=lambda cwd: "none",
+    )
+    assert out["committed"] is False
+    assert out["applied"] is False
+    assert "uncommittable_reason" not in out
+
+
+def test_real_detect_changes_classifies_worktree(tmp_path):
+    """_real_detect_changes distinguishes tracked / ignored_only / none."""
+    from routine_orchestrator import goal_ops as go
+    repo = tmp_path / "wt"
+    sp = _init_git_repo(repo)
+    (repo / ".gitignore").write_text("generated/\n")
+    sp.run(["git", "-C", str(repo), "add", ".gitignore"], check=True)
+    sp.run(["git", "-C", str(repo), "commit", "-qm", "init"], check=True)
+    assert go._real_detect_changes(repo) == "none"
+    gen = repo / "generated"
+    gen.mkdir()
+    (gen / "p.json").write_text("{}")
+    assert go._real_detect_changes(repo) == "ignored_only"
+    (repo / "tracked.txt").write_text("hi")  # an untracked, NON-ignored file
+    assert go._real_detect_changes(repo) == "tracked"
+
+
 def test_op_loop_status_verdicts():
     from routine_orchestrator import goal_ops as go
     # converged: empty current residual
@@ -1161,3 +1292,375 @@ def test_op_fanout_report_empty_results(tmp_path):
     assert out["unfinished"] == 0
     md = (tmp_path / "a-loops-all" / "rollup-e.md").read_text(encoding="utf-8")
     assert "loops run: 0" in md
+
+
+# ---------------------------------------------------------------------------
+# Issue #2 — route-keyed findings are not filesystem paths and stay in-scope,
+# while genuine out-of-repo filesystem paths stay out-of-scope.
+# ---------------------------------------------------------------------------
+
+
+def test_finding_in_worktree_keeps_route_url_findings(tmp_path):
+    """page-health / testing scanners emit findings keyed on a ROUTE URL (e.g.
+    ``path: "/login"`` or ``path: "/workspace/ai"``). A route URL is NOT a
+    filesystem path — Path("/login") is absolute and outside the worktree, but the
+    finding is in-scope (a worktree subagent fixes the page that serves the route).
+    """
+    from routine_orchestrator import goal_ops as go
+
+    for route in ("/login", "/settings/ai", "/workspace/ai", "/browse"):
+        finding = {"auto_command": "auto-test-dashboard", "path": route, "loop": "testing"}
+        assert go._finding_in_worktree(finding, tmp_path) is True, route
+
+
+def test_finding_in_worktree_still_drops_vault_and_abs_paths(tmp_path):
+    """The route relaxation must NOT weaken the genuine isolation protection:
+    bare vault/brain files and absolute paths into real out-of-repo filesystem
+    roots (vault, ~/.claude) stay OUT of scope so the mechanical phase never
+    mutates user data outside the worktree."""
+    from pathlib import Path
+    from routine_orchestrator import goal_ops as go
+
+    # Bare vault/brain root files (relative, parent IS the worktree root).
+    for name in ("BRAIN.yaml", "IDENTITY.md"):
+        assert go._finding_in_worktree({"file": name, "loop": "hardening"}, tmp_path) is False, name
+
+    # Vault-relative binary (relative path under a non-existent worktree subdir).
+    assert go._finding_in_worktree({"file": "voice-memos/a.m4a", "loop": "hardening"}, tmp_path) is False
+
+    # Absolute path under a REAL out-of-repo filesystem root (home dir): a real
+    # vault file the scanner found. Top-level component exists on disk, so it is a
+    # filesystem path (not a route) and must stay dropped.
+    abs_vault = str(Path.home() / "Au-vault" / "BRAIN.yaml")
+    assert go._finding_in_worktree({"path": abs_vault, "loop": "hardening"}, tmp_path) is False
+
+
+def test_finding_in_worktree_route_with_real_vault_path_still_dropped(tmp_path):
+    """A finding carrying BOTH a route AND a genuine out-of-repo filesystem path is
+    still dropped — the real foreign path is the binding constraint."""
+    from pathlib import Path
+    from routine_orchestrator import goal_ops as go
+
+    finding = {
+        "path": "/workspace/ai",                       # route (would be in-scope alone)
+        "file": str(Path.home() / "Au-vault" / "x.md"),  # real foreign fs path
+        "loop": "testing",
+    }
+    assert go._finding_in_worktree(finding, tmp_path) is False
+
+
+# ---------------------------------------------------------------------------
+# Issue #1 — op_fanout_plan triage counts only worktree-actionable findings and
+# surfaces (does not silently drop) out-of-scope work.
+# ---------------------------------------------------------------------------
+
+
+def test_op_fanout_plan_separates_out_of_scope_from_loops_with_work(tmp_path):
+    """Triage must filter each loop's findings through the same worktree-scope
+    predicate the fix flow uses. A loop whose findings are ALL out-of-worktree
+    lands in out_of_scope (surfaced, not dropped), NOT loops_with_work; a loop with
+    in-worktree findings still lands in loops_with_work."""
+    from pathlib import Path
+    from routine_orchestrator import goal_ops as go
+
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "x.py").write_text("x = 1\n")
+    in_scope = {"file": "src/x.py", "loop": "code-quality"}
+    foreign_a = {"path": str(Path.home() / "Au-vault" / "a.md"), "loop": "hardening"}
+    foreign_b = {"file": "BRAIN.yaml", "loop": "hardening"}
+
+    scans = {
+        "code-quality": [in_scope],
+        "hardening": [foreign_a, foreign_b],   # all out-of-worktree
+        "ui-quality": [],                      # genuinely clean
+    }
+    out = go.op_fanout_plan(
+        cap=6, project_root=str(tmp_path),
+        _scan=lambda loop, **k: scans[loop],
+        _orchestrator_loops=lambda: ["code-quality", "hardening", "ui-quality"],
+        _headroom=lambda: 8,
+    )
+    # in-scope counting only
+    assert out["per_loop_counts"] == {"code-quality": 1, "hardening": 0, "ui-quality": 0}
+    # the all-foreign loop is NOT actionable by the fan-out
+    assert out["loops_with_work"] == ["code-quality"]
+    # but its work is surfaced honestly (rule 8), not silently dropped
+    assert out["out_of_scope_counts"] == {"hardening": 2}
+    assert out["loops_with_out_of_scope_work"] == ["hardening"]
+    # a loop with only out-of-scope work is NOT "clean"
+    assert out["skipped_clean"] == ["ui-quality"]
+
+
+def test_op_fanout_plan_keeps_route_findings_in_loops_with_work(tmp_path):
+    """A testing/page-health loop emitting route-URL findings must be counted as
+    actionable work (the regression that lost 14 testing findings)."""
+    from routine_orchestrator import goal_ops as go
+
+    route_findings = [
+        {"path": "/login", "loop": "testing"},
+        {"path": "/settings/ai", "loop": "testing"},
+    ]
+    out = go.op_fanout_plan(
+        cap=6, project_root=str(tmp_path),
+        _scan=lambda loop, **k: route_findings if loop == "testing" else [],
+        _orchestrator_loops=lambda: ["testing", "ui-quality"],
+        _headroom=lambda: 8,
+    )
+    assert out["per_loop_counts"]["testing"] == 2
+    assert "testing" in out["loops_with_work"]
+    assert out.get("out_of_scope_counts", {}).get("testing", 0) == 0
+# ISSUE #5: "converged" must not conflate real work with all-out-of-scope no-op
+# ---------------------------------------------------------------------------
+
+
+def test_op_loop_status_no_op_when_zero_commits_and_out_of_scope():
+    # Empty fingerprint ONLY because every finding was filtered out_of_worktree
+    # and nothing was committed → distinct no_op verdict, NOT converged.
+    out = goal_ops.op_loop_status(
+        prev_fingerprint=["a"], current_fingerprint=[],
+        iterations=1, loop_cap=6, budget_remaining=4,
+        committed_count=0, out_of_scope_count=3,
+    )
+    assert out["verdict"] == "no_op"
+    assert out["committed_count"] == 0
+    assert out["out_of_scope_count"] == 3
+    assert out["did_work"] is False
+
+
+def test_op_loop_status_converged_when_committed_work():
+    # Empty fingerprint AND real verified checkpoints landed → genuinely converged.
+    out = goal_ops.op_loop_status(
+        prev_fingerprint=["a"], current_fingerprint=[],
+        iterations=2, loop_cap=6, budget_remaining=4,
+        committed_count=2, out_of_scope_count=0,
+    )
+    assert out["verdict"] == "converged"
+    assert out["did_work"] is True
+
+
+def test_op_loop_status_converged_when_genuinely_clean():
+    # Empty fingerprint, nothing committed, but nothing was ever out of scope
+    # (a genuinely clean scan) → converged, not no_op.
+    out = goal_ops.op_loop_status(
+        prev_fingerprint=[], current_fingerprint=[],
+        iterations=1, loop_cap=6, budget_remaining=4,
+        committed_count=0, out_of_scope_count=0,
+    )
+    assert out["verdict"] == "converged"
+    assert out["did_work"] is False
+
+
+def test_op_loop_status_backward_compatible_default():
+    # No committed/out_of_scope info supplied → preserve legacy converged verdict.
+    out = goal_ops.op_loop_status(
+        prev_fingerprint=["a"], current_fingerprint=[],
+        iterations=1, loop_cap=6, budget_remaining=4,
+    )
+    assert out["verdict"] == "converged"
+    assert out["committed_count"] is None
+    assert out["did_work"] is None   # unknown
+
+
+def test_op_fanout_report_no_op_is_not_clean(tmp_path):
+    from routine_orchestrator import goal_ops as go
+    results = [
+        {"loop": "testing", "verdict": "converged", "branch": "goal/testing-x",
+         "residual": 0, "committed_checkpoints": 3},
+        {"loop": "vault", "verdict": "no_op", "branch": "goal/vault-x",
+         "residual": 0, "committed_checkpoints": 0, "out_of_scope": 4},
+    ]
+    out = go.op_fanout_report(results=results, runtime_dir=str(tmp_path), stamp="n1")
+    assert out["all_clean"] is False           # a loop merely no-op'd
+    assert out["no_op"] == 1
+    assert out["did_work"] == 1
+    md = (tmp_path / "a-loops-all" / "rollup-n1.md").read_text(encoding="utf-8")
+    assert "no_op" in md
+    assert "committed" in md.lower() and "did_work" in md.lower()
+
+
+def test_op_fanout_report_converged_zero_commit_out_of_scope_treated_no_op(tmp_path):
+    from routine_orchestrator import goal_ops as go
+    # Driver reported "converged" but committed nothing and had out-of-scope debt:
+    # defensively reclassify as no-op — must not count as clean.
+    results = [
+        {"loop": "vault", "verdict": "converged", "branch": "goal/vault-x",
+         "residual": 0, "committed_checkpoints": 0, "out_of_scope": 5},
+    ]
+    out = go.op_fanout_report(results=results, runtime_dir=str(tmp_path), stamp="n2")
+    assert out["all_clean"] is False
+    assert out["no_op"] == 1
+
+
+def test_op_fanout_report_genuinely_clean_zero_commit_is_clean(tmp_path):
+    from routine_orchestrator import goal_ops as go
+    # Converged, 0 commits, but nothing was out of scope → genuinely clean.
+    results = [
+        {"loop": "testing", "verdict": "converged", "branch": "goal/testing-x",
+         "residual": 0, "committed_checkpoints": 0, "out_of_scope": 0},
+    ]
+    out = go.op_fanout_report(results=results, runtime_dir=str(tmp_path), stamp="n3")
+    assert out["all_clean"] is True
+    assert out["no_op"] == 0
+
+
+# ---------------------------------------------------------------------------
+# ISSUE #7: silent drivers — reconstruct verdict from worktree ground truth
+# ---------------------------------------------------------------------------
+
+
+def test_op_fanout_report_reconstructs_unreported_via_seam(tmp_path):
+    from routine_orchestrator import goal_ops as go
+
+    def fake_inspect(entry, *, stamp):
+        return {"exists": True, "branch": "goal/build-x",
+                "committed_checkpoints": 2, "dirty": False}
+
+    results = [
+        {"loop": "testing", "verdict": "converged", "branch": "goal/testing-x",
+         "residual": 0, "committed_checkpoints": 1},
+        {"loop": "build", "unreported": True, "branch": "goal/build-x"},
+    ]
+    out = go.op_fanout_report(results=results, runtime_dir=str(tmp_path),
+                              stamp="r1", _inspect=fake_inspect)
+    assert out["all_clean"] is False          # an unreported loop existed
+    assert out["unreported"] == 1
+    row = [r for r in out["results"] if r.get("loop") == "build"][0]
+    assert row["verdict"] == "unreported (reconstructed)"
+    assert row["committed_checkpoints"] == 2
+    md = (tmp_path / "a-loops-all" / "rollup-r1.md").read_text(encoding="utf-8")
+    assert "reconstructed" in md
+
+
+def test_op_fanout_report_reconstructs_none_entry(tmp_path):
+    from routine_orchestrator import goal_ops as go
+
+    def fake_inspect(entry, *, stamp):
+        return {"exists": True, "branch": "goal/?-x",
+                "committed_checkpoints": 0, "dirty": True}
+
+    results = [
+        {"loop": "testing", "verdict": "converged", "committed_checkpoints": 1},
+        None,   # a driver returned nothing at all
+    ]
+    out = go.op_fanout_report(results=results, runtime_dir=str(tmp_path),
+                              stamp="r2", _inspect=fake_inspect)
+    assert out["all_clean"] is False
+    assert out["unreported"] == 1
+
+
+def test_op_fanout_report_reconstruct_missing_worktree_is_unknown(tmp_path):
+    from routine_orchestrator import goal_ops as go
+
+    def fake_inspect(entry, *, stamp):
+        return {"exists": False}
+
+    results = [{"loop": "build", "unreported": True, "branch": "goal/build-x"}]
+    out = go.op_fanout_report(results=results, runtime_dir=str(tmp_path),
+                              stamp="r3", _inspect=fake_inspect)
+    assert out["all_clean"] is False
+    row = out["results"][0]
+    assert row["verdict"] == "unknown"
+
+
+def test_op_fanout_report_reconstruct_inspect_raises_is_unknown(tmp_path):
+    from routine_orchestrator import goal_ops as go
+
+    def boom_inspect(entry, *, stamp):
+        raise RuntimeError("worktree gone")
+
+    results = [{"loop": "build", "unreported": True}]
+    out = go.op_fanout_report(results=results, runtime_dir=str(tmp_path),
+                              stamp="r4", _inspect=boom_inspect)
+    assert out["all_clean"] is False
+    assert out["results"][0]["verdict"] == "unknown"
+
+
+def test_real_inspect_worktree_counts_checkpoint_commits(tmp_path):
+    """Exercise the default git-backed inspector against a real tmp repo."""
+    import subprocess
+    from routine_orchestrator import goal_ops as go
+    repo = tmp_path / "wt"
+    repo.mkdir()
+
+    def git(*args):
+        subprocess.run(["git", "-C", str(repo), *args], check=True,
+                       capture_output=True, text=True)
+
+    git("init", "-q")
+    git("config", "user.email", "t@t.t")
+    git("config", "user.name", "t")
+    (repo / "a.txt").write_text("1", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-q", "-m", "base commit")
+    (repo / "b.txt").write_text("2", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-q", "-m", "goal: testing fix via auto-x (verified checkpoint)")
+
+    info = go._real_inspect_worktree({"worktree_path": str(repo)}, stamp="x")
+    assert info["exists"] is True
+    assert info["committed_checkpoints"] == 1   # one "goal:" checkpoint commit
+    assert info["dirty"] is False
+
+
+# ---------------------------------------------------------------------------
+# ADR-818 phase 2 — op_run_inplace surface-tiered guardrails (seam-mocked; no
+# live mutation).
+# ---------------------------------------------------------------------------
+
+
+class _FakeOrchestrateResult:
+    def __init__(self, applied=0, enqueued=0):
+        self.mechanical_applied = [object()] * applied
+        self.enqueued = [object()] * enqueued
+        self.dispatched = []
+        self.deferred = []
+
+
+def _capture_orchestrate(rec, *, applied=0, enqueued=0):
+    def _fake(loop, **kw):
+        rec.clear()
+        rec["loop"] = loop
+        rec.update(kw)
+        return _FakeOrchestrateResult(applied=applied, enqueued=enqueued)
+    return _fake
+
+
+def test_op_run_inplace_runtime_auto_applies_without_git_commit():
+    """runtime surface auto-applies (difficulty preserved) but installs the
+    no-git-commit guardrail (self-heal writes via sanctioned tools)."""
+    rec = {}
+    out = goal_ops.op_run_inplace(
+        loop="self-heal", surface="runtime", difficulty=1,
+        _orchestrate=_capture_orchestrate(rec, applied=2),
+    )
+    assert rec["difficulty"] == 1  # aggressive auto-apply preserved
+    assert rec["commit_runner"] is goal_ops._no_repo_commit
+    assert out["commit_policy"].startswith("external-tools")
+    assert out["mechanical_applied"] == 2 and out["did_work"] is True
+    assert out["gated_on"] is None
+
+
+def test_op_run_inplace_vault_is_gated_on_adr816_scan_escalate_only():
+    """vault surface must NOT aggressive-auto-commit without the ADR-816 lock:
+    difficulty is forced to 0 (scan + escalate) and gated_on is reported."""
+    rec = {}
+    out = goal_ops.op_run_inplace(
+        loop="knowledge-enrichment", surface="vault", difficulty=1,
+        _orchestrate=_capture_orchestrate(rec, enqueued=3),
+    )
+    assert rec["difficulty"] == 0, "vault must scan+escalate, not auto-apply, until ADR-816"
+    assert rec["commit_runner"] is goal_ops._no_repo_commit
+    assert out["gated_on"] == "ADR-816"
+    assert out["escalated"] == 3
+
+
+def test_op_run_inplace_repo_uses_engine_default_commit():
+    """repo surface keeps the engine default (code-repo) commit policy."""
+    rec = {}
+    out = goal_ops.op_run_inplace(
+        loop="code-quality", surface="repo", difficulty=1,
+        _orchestrate=_capture_orchestrate(rec),
+    )
+    assert rec["commit_runner"] is None  # engine default code-repo commit
+    assert out["commit_policy"] == "code-repo commit"
+    assert rec["difficulty"] == 1

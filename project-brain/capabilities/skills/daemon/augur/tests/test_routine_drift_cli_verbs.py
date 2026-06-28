@@ -18,7 +18,7 @@ _PROJECT_ROOT = next(
 
 def test_adopt_verb_dispatches_adopt_cloud_impl_with_routine_id() -> None:
     result = subprocess.run(
-        ["scripts/augur", "routine", "adopt", "codex:does-not-exist"],
+        ["scripts/augur", "a-loops", "adopt", "codex:does-not-exist"],
         capture_output=True,
         text=True,
         check=False,
@@ -33,7 +33,7 @@ def test_adopt_verb_dispatches_adopt_cloud_impl_with_routine_id() -> None:
 
 def test_push_verb_dispatches_push_local_impl_with_routine_id() -> None:
     result = subprocess.run(
-        ["scripts/augur", "routine", "push", "codex:does-not-exist"],
+        ["scripts/augur", "a-loops", "push", "codex:does-not-exist"],
         capture_output=True,
         text=True,
         check=False,

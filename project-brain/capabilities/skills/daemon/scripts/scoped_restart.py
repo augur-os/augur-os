@@ -6,10 +6,13 @@ broad `pgrep -f mcp`). Used by the `aug dev build` engine and `/dev build`.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import os
 import platform
 import subprocess
+from pathlib import Path
 from typing import Any
 
 import cleanup_processes as _cp
@@ -31,9 +34,95 @@ except ImportError:  # pragma: no cover - fallback when src is unavailable
 
 logger = get_entity_logger("scoped_restart")
 
+IS_WINDOWS = platform.system() == "Windows"
+
 pids_on_port = _cp.get_pids_on_port
 kill_process_group = _cp.kill_process_group
 kill_pid = _cp.kill_pid
+
+
+def _windows_proc_table() -> list[dict[str, str]]:
+    """[{pid, ppid, cmd}] for every process via one CIM query. Empty on failure.
+
+    Win32_Process exposes ProcessId, ParentProcessId, and CommandLine — but not
+    cwd — so Windows scoping relies on the dashboard MCP client-id (which is
+    inlined on the command line as ``--client-id dashboard-<name>-<hash>-p<pid>``),
+    not on cwd as the POSIX paths do.
+    """
+    ps_cmd = (
+        "Get-CimInstance Win32_Process | "
+        "Select-Object ProcessId,ParentProcessId,CommandLine | ConvertTo-Json -Compress"
+    )
+    out = subprocess.run(
+        ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_cmd],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout
+    try:
+        data = json.loads(out)
+    except (ValueError, json.JSONDecodeError):
+        return []
+    if isinstance(data, dict):
+        data = [data]
+    rows: list[dict[str, str]] = []
+    for entry in data if isinstance(data, list) else []:
+        if not isinstance(entry, dict):
+            continue
+        pid = str(entry.get("ProcessId") or "").strip()
+        if not pid.isdigit():
+            continue
+        rows.append(
+            {
+                "pid": pid,
+                "ppid": str(entry.get("ParentProcessId") or "").strip(),
+                "cmd": str(entry.get("CommandLine") or ""),
+            }
+        )
+    return rows
+
+
+def _client_id_from_cmd(cmd: str) -> str:
+    """Extract the MCP client-id from a command line.
+
+    Windows inlines the client-id as a ``--client-id <value>`` argv pair (see
+    apps/dashboard/lib/mcp/connection.ts); the AUGUR_MCP_CLIENT_ID= env form is
+    also accepted as a fallback for parity with the POSIX env-based scans."""
+    tokens = cmd.split()
+    for idx, tok in enumerate(tokens):
+        if tok == "--client-id" and idx + 1 < len(tokens):
+            return tokens[idx + 1]
+        if tok.startswith("--client-id="):
+            return tok.split("=", 1)[1]
+        if tok.startswith("AUGUR_MCP_CLIENT_ID="):
+            return tok.split("=", 1)[1]
+    return ""
+
+
+def _instance_client_id(instance: Any) -> str:
+    """Deterministic dashboard MCP client-id base for an instance.
+
+    Must match scripts/worktree_preflight.py:_client_id (the source that
+    start-dev exports as AUGUR_MCP_CLIENT_ID), so the running children's
+    ``dashboard-<name>-<hash>`` prefix matches exactly. Drift here would either
+    miss the instance's MCP or risk matching another checkout."""
+    root = Path(instance.project_root)
+    base = root.name or "dashboard"
+    digest = hashlib.sha1(str(root).encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
+    return f"dashboard-{base}-{digest}"
+
+
+def _windows_own_tree_pids() -> set[str]:
+    """Ancestry of the current process via CIM ParentProcessId (Windows)."""
+    parents = {p["pid"]: p["ppid"] for p in _windows_proc_table()}
+    pids, pid = set(), str(os.getpid())
+    for _ in range(12):
+        pids.add(pid)
+        parent = parents.get(pid, "")
+        if not parent.isdigit() or int(parent) <= 0 or parent in pids:
+            break
+        pid = parent
+    return pids
 
 
 def stop_launchd_service(*_a: Any, **_kw: Any) -> None:
@@ -88,6 +177,16 @@ def scan_mcp_candidates() -> list[dict[str, str]]:
             pid, _cmd = parts
             rows.append({"pid": pid, "client_id": _proc_env_value(pid, "AUGUR_MCP_CLIENT_ID"), "cwd": _proc_cwd(pid)})
         return rows
+    if system == "Windows":
+        # Win32_Process exposes CommandLine (with the inlined --client-id) but not
+        # cwd, so cwd is "" and instance scoping is done by client-id downstream.
+        rows = []
+        for proc in _windows_proc_table():
+            cmd = proc["cmd"]
+            if "-m augur_core" not in cmd and "-m augur_framework" not in cmd:
+                continue
+            rows.append({"pid": proc["pid"], "client_id": _client_id_from_cmd(cmd), "cwd": ""})
+        return rows
     raise NotImplementedError(f"scan_mcp_candidates is unsupported on {system}; extend for this platform")
 
 
@@ -104,6 +203,10 @@ def _proc_env_value(pid: str, key: str) -> str:
 
 
 def _proc_cwd(pid: str) -> str:
+    if IS_WINDOWS:
+        # Win32_Process has no cwd field and reading it requires a PEB walk;
+        # Windows scopes by client-id instead, so cwd is left empty here.
+        return ""
     if platform.system() == "Linux":
         try:
             return os.readlink(f"/proc/{pid}/cwd")
@@ -119,6 +222,8 @@ def _proc_cwd(pid: str) -> str:
 
 
 def _own_tree_pids() -> set[str]:
+    if IS_WINDOWS:
+        return _windows_own_tree_pids()
     pids, pid = set(), os.getpid()
     for _ in range(12):
         pids.add(str(pid))
@@ -144,17 +249,39 @@ def instance_mcp_pids(instance: Any, own: set[str] | None = None) -> list[str]:
     different client-id; own-tree exclusion is the backstop."""
     own = _own_tree_pids() if own is None else own
     proj = str(instance.project_root)
-    return sorted(
-        c["pid"]
-        for c in scan_mcp_candidates()
-        if c["client_id"].startswith("dashboard-") and c["cwd"] == proj and c["pid"] not in own
-    )
+    expected = _instance_client_id(instance)
+    matched: list[str] = []
+    for c in scan_mcp_candidates():
+        cid = c["client_id"]
+        if not cid.startswith("dashboard-") or c["pid"] in own:
+            continue
+        if IS_WINDOWS:
+            # No cwd on Windows; scope by the instance's deterministic client-id
+            # (root name + path hash), which is at least as precise as cwd and
+            # never matches the agent's own 'claude'-prefixed session MCP.
+            if not cid.startswith(expected):
+                continue
+        elif c["cwd"] != proj:
+            continue
+        matched.append(c["pid"])
+    return sorted(matched)
 
 
 DEV_SERVER_MARKERS = ("next dev", "next-server", "start-dev.sh", "start-dev.mjs", "npm run dev")
 
 
 def scan_dev_server_candidates() -> list[dict[str, str]]:
+    if IS_WINDOWS:
+        # cwd is unavailable from CIM, so drifted-port detection (which scopes by
+        # cwd) is a no-op on Windows — the normal dashboard server is still reaped
+        # by pids_on_port in stop_instance.
+        # TODO_CLEANUP: resolve per-process cwd on Windows to reap port-drifted
+        # dev servers (self-heal respawns) the way the POSIX path does.
+        return [
+            {"pid": proc["pid"], "command": proc["cmd"], "cwd": ""}
+            for proc in _windows_proc_table()
+            if any(marker in proc["cmd"] for marker in DEV_SERVER_MARKERS)
+        ]
     out = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True, check=False).stdout
     rows: list[dict[str, str]] = []
     for line in out.splitlines():

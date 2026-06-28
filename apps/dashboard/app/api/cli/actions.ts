@@ -205,6 +205,8 @@ function spawnPtyOrThrow(
 ): IPtyProcess {
   try {
     // boundary-ignore: spawn\(
+    // @spawn-exempt: interactive CLI/PTY terminal session — a live bidirectional
+    // terminal cannot be a request/response MCP tool. See ADR-817.
     return pty.spawn(resolvedCmd, args, {
       name: "xterm-256color",
       cols: 120,

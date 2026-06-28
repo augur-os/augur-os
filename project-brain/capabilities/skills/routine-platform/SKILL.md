@@ -302,6 +302,9 @@ x-augur-loops:
     runner: auto
     discover: ../daemon/scripts/routine_orchestrator/orchestrator.py
   loop_name: observability
+  isolation:
+    mode: in-place
+    surface: runtime
   memory:
     trust: adaptive
 - id: page-health

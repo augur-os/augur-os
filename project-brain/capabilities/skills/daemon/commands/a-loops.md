@@ -197,13 +197,34 @@ When you (the AI client) run `/a-loops all`:
    convergence in its **own** worktree exactly like a single-loop goal:
    `goal-worktree <loop>` → repeat (`goal-scan-loop` → spawn the returned bucket
    fix-subagents → `goal-record-bucket` per bucket → `goal-loop-status`) until
-   `converged`/`stalled`/`exhausted`, honoring `--max-iterations`/`--loop-cap`.
-   Push residuals with `goal-escalate`. Commit only verified checkpoints. Do
-   **not** merge.
-3. **Aggregate** — collect each loop's `{loop, verdict, branch, residual}` and
-   call `goal-fanout-report` to write the rollup. Surface every branch for
-   `/dev-merge`. Report per-loop verdicts honestly — never "all clean" if any
-   loop stalled/exhausted/failed.
+   `converged`/`no_op`/`stalled`/`exhausted`, honoring `--max-iterations`/`--loop-cap`.
+   Pass `goal-loop-status` the running `committed_count` (verified checkpoints
+   landed) and `out_of_scope_count` (sum of each scan's `out_of_worktree`) so it
+   can return `no_op` — a loop whose fingerprint went empty ONLY because every
+   finding was out of scope and nothing was committed — instead of a false
+   `converged`. Push residuals with `goal-escalate`. Commit only verified
+   checkpoints. Do **not** merge.
+2b. **Run in-place loops (ADR-818 phase 2)** — the plan also returns
+   `in_place_loops` (loops the worktree fan-out excludes because they act on the
+   live vault/runtime/external state) and `in_place_surfaces` (`{loop: surface}`).
+   These are NOT fanned out into worktrees. For each, call
+   `goal-run-inplace --loop <loop> --surface <surface>`, which drives the daemon
+   engine against the live target with surface-tiered guardrails: `runtime`
+   aggressively auto-applies via the loop's own sanctioned tools (no git commit);
+   `repo` commits to the code repo; `vault` is **gated on ADR-816** (the
+   cross-machine write lock) and currently scans + escalates only (no auto-commit)
+   so it cannot race the nightly daemon / another machine. Collect each
+   `{loop, surface, mechanical_applied, escalated, gated_on}` for the rollup.
+3. **Aggregate** — collect each loop's `{loop, verdict, branch, residual,
+   committed_checkpoints, out_of_scope}` and call `goal-fanout-report` to write the
+   rollup. Surface every branch for `/dev-merge`. Report per-loop verdicts honestly
+   — never "all clean" if any loop stalled/exhausted/failed OR merely no-op'd
+   (0 commits, out-of-scope-only). If a driver subagent finishes but returns
+   nothing, still include a stub `{loop, branch, unreported: true}` (or `null`):
+   `goal-fanout-report` reconstructs that loop's verdict from its worktree
+   (checkpoint commits, clean/dirty, branch) and marks it
+   `unreported (reconstructed)` or `unknown` rather than dropping it or claiming
+   success.
 
 This reuses the single-loop goal machinery per loop; `/a-loops all` only adds the
 triage + capped fan-out + aggregate layer.

@@ -85,6 +85,8 @@ export function isEnabledFor(
 
 function whichSync(name: string): string | null {
   try {
+    // @spawn-exempt: ADR-106 LLM-assisted retry — resolves and invokes a CLI to
+    // diagnose failures. Governed by ADR-106, not ADR-817's migration scope.
     const result = execSync(`which ${name}`, {
       encoding: "utf-8",
       timeout: 5000,
@@ -228,6 +230,8 @@ export function diagnoseWithLLM(
   const prompt = buildPrompt(component, attempts, context);
 
   try {
+    // @spawn-exempt: ADR-106 LLM-assisted retry invokes the configured CLI to diagnose
+    // a failed component. Governed by ADR-106, not ADR-817's migration scope.
     const raw = execFileSync(
       cli,
       ["--print", "--max-turns", "1", "-p", prompt],

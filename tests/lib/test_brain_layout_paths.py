@@ -77,3 +77,70 @@ def test_write_brain_manifest_preserves_layout(tmp_path):
         assert read_brain_manifest(legacy_root / "BRAIN.yaml").layout is None
     finally:
         brain_layout.cache_clear()
+
+
+def test_write_brain_manifest_preserves_relative_path_style(tmp_path):
+    """aug project init / sync rewrote BRAIN.yaml's root: . and attached_project: ..
+    to absolute /Users/<name> paths, dirtying the repo and leaking machine paths
+    into a public release (v1.12.0 incident). The writer must keep the committed
+    relative form when the new absolute path resolves to the same location."""
+    from src.lib.brain_manifest import BrainManifest, read_brain_manifest, write_brain_manifest
+    from src.lib.brain_registry_models import BrainType
+
+    project = tmp_path / "Augur"
+    brain_root = project / "project-brain"
+    brain_root.mkdir(parents=True)
+    (brain_root / "BRAIN.yaml").write_text(
+        "schema_version: 1\nid: project-augur\ntype: project\n"
+        "root: .\nattached_project: ..\ndescription: Augur project brain\n",
+        encoding="utf-8",
+    )
+
+    # Simulate the heal path: absolute root/attached_project resolving to the
+    # same dirs as the relative committed form.
+    manifest = BrainManifest(
+        schema_version=1,
+        id="project-augur",
+        type=BrainType("project"),
+        root=str(brain_root),
+        attached_project=str(project),
+        description="Augur project brain",
+    )
+    write_brain_manifest(brain_root, manifest)
+
+    raw = (brain_root / "BRAIN.yaml").read_text(encoding="utf-8")
+    on_disk = read_brain_manifest(brain_root / "BRAIN.yaml")
+    assert on_disk.root == "."
+    assert on_disk.attached_project == ".."
+    assert str(tmp_path) not in raw  # no machine-specific absolute paths leaked
+
+
+def test_write_brain_manifest_rewrites_genuinely_moved_attached_project(tmp_path):
+    """When attached_project really points somewhere else, the new value wins —
+    style preservation must not pin a stale location."""
+    from src.lib.brain_manifest import BrainManifest, read_brain_manifest, write_brain_manifest
+    from src.lib.brain_registry_models import BrainType
+
+    project = tmp_path / "Augur"
+    brain_root = project / "project-brain"
+    brain_root.mkdir(parents=True)
+    moved = tmp_path / "Augur-moved"
+    moved.mkdir()
+    (brain_root / "BRAIN.yaml").write_text(
+        "schema_version: 1\nid: project-augur\ntype: project\n"
+        "root: .\nattached_project: ..\n",
+        encoding="utf-8",
+    )
+
+    manifest = BrainManifest(
+        schema_version=1,
+        id="project-augur",
+        type=BrainType("project"),
+        root=str(brain_root),
+        attached_project=str(moved),  # genuinely different project dir
+    )
+    write_brain_manifest(brain_root, manifest)
+
+    on_disk = read_brain_manifest(brain_root / "BRAIN.yaml")
+    assert on_disk.root == "."  # unchanged — still resolves correctly
+    assert on_disk.attached_project == str(moved)  # rewritten to the new location

@@ -156,6 +156,9 @@ x-augur-loop:
     runner: auto
     discover: ../daemon/scripts/routine_orchestrator/orchestrator.py
   loop_name: knowledge-enrichment
+  isolation:
+    mode: in-place
+    surface: vault
   memory:
     trust: adaptive
 ---

@@ -11,8 +11,6 @@ import sys
 import types
 from pathlib import Path
 
-import pytest
-
 from src.lib.extraction.transcription import diarize_setup
 from src.lib.extraction.transcription.diarize import EMBEDDING_DIR, SEGMENTATION_DIR
 

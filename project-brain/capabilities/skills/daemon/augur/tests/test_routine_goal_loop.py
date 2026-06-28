@@ -199,7 +199,7 @@ def test_aug_routine_goal_parses_and_invokes_goal_loop(monkeypatch, capsys) -> N
 
     args = parser.parse_args(
         [
-            "routine",
+            "a-loops",
             "goal",
             "demo-readiness",
             "--max-iterations",

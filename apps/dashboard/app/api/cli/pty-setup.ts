@@ -188,6 +188,14 @@ if (!_g[PROC_KEY]) _g[PROC_KEY] = new Map();
 export const processes = _g[PROC_KEY]!;
 
 const MAX_BUFFER_LINES = 2000;
+// TODO_CLEANUP: rawBuffer/outputBuffer are line-capped (2000 entries) but not
+// byte-capped — 2000 large raw PTY chunks can still retain tens of MB per
+// detached session. A byte cap must be cursor-aware (adjust rawCursorStart/
+// rawCursorEnd in lockstep with any extra eviction, per the replay contract in
+// cli-stream-replay.test.ts) — a naive slice would desync replay. Deferred from
+// the 2026-06-25 dashboard-dev-oom-fix plan: the unbounded leak was exec
+// (exec-store, fixed); PTY hardening is unproven as material — add only if a
+// heap snapshot shows PTY buffers are a real contributor.
 
 // ============================================================================
 // PTY Helpers

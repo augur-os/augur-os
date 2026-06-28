@@ -304,18 +304,22 @@ class TestAskRetain:
         from src.mcp.augur_core.tools.core.ask_retention import retain_ask_outcome_impl
 
         runtime_dir = tmp_path / "runtime"
-        memory_dir = tmp_path / "memory"
-        monkeypatch.setattr(
-            "src.lib.knowledge.daily_logger.get_runtime_dir",
-            lambda: runtime_dir,
-        )
-        monkeypatch.setattr(
-            "src.lib.knowledge.daily_logger.get_memory_dir",
-            lambda: memory_dir,
-        )
+        # Redirect every write seam to tmp. ask_retention.get_runtime_dir drives
+        # the wiki flag; when no vault write-target resolves, DailyLogger() falls
+        # back to daily_logger's module-level dir helpers, so those must be patched
+        # too. (The refactor replaced the old daily_logger.get_runtime_dir symbol
+        # with get_daily_logs_dir — patching the stale name is what broke here.)
         monkeypatch.setattr(
             "src.mcp.augur_core.tools.core.ask_retention.get_runtime_dir",
             lambda: runtime_dir,
+        )
+        monkeypatch.setattr(
+            "src.lib.knowledge.daily_logger.get_daily_logs_dir",
+            lambda: runtime_dir / "memory" / "daily",
+        )
+        monkeypatch.setattr(
+            "src.lib.knowledge.daily_logger.get_memory_dir",
+            lambda: runtime_dir / "memory",
         )
 
         result = json.loads(
@@ -469,18 +473,22 @@ class TestAskRetain:
         from src.mcp.augur_core.tools.core.ask_retention import retain_ask_outcome_impl
 
         runtime_dir = tmp_path / "runtime"
-        memory_dir = tmp_path / "memory"
-        monkeypatch.setattr(
-            "src.lib.knowledge.daily_logger.get_runtime_dir",
-            lambda: runtime_dir,
-        )
-        monkeypatch.setattr(
-            "src.lib.knowledge.daily_logger.get_memory_dir",
-            lambda: memory_dir,
-        )
+        # Redirect every write seam to tmp. ask_retention.get_runtime_dir drives
+        # the wiki flag; when no vault write-target resolves, DailyLogger() falls
+        # back to daily_logger's module-level dir helpers, so those must be patched
+        # too. (The refactor replaced the old daily_logger.get_runtime_dir symbol
+        # with get_daily_logs_dir — patching the stale name is what broke here.)
         monkeypatch.setattr(
             "src.mcp.augur_core.tools.core.ask_retention.get_runtime_dir",
             lambda: runtime_dir,
+        )
+        monkeypatch.setattr(
+            "src.lib.knowledge.daily_logger.get_daily_logs_dir",
+            lambda: runtime_dir / "memory" / "daily",
+        )
+        monkeypatch.setattr(
+            "src.lib.knowledge.daily_logger.get_memory_dir",
+            lambda: runtime_dir / "memory",
         )
 
         result = json.loads(

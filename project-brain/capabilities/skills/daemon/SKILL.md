@@ -144,6 +144,9 @@ x-augur-loops:
     runner: auto
     discover: scripts/routine_orchestrator/orchestrator.py
   loop_name: self-heal
+  isolation:
+    mode: in-place
+    surface: runtime
   memory:
     trust: adaptive
 - id: goal-loop

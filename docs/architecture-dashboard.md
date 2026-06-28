@@ -43,6 +43,28 @@ The dashboard can render, dispatch, validate, and transport. It does not become 
 
 The route also handles compatibility envelopes and plugin fallback responses for unavailable tools. It does not decide workflows; it forwards one MCP tool call and reports the result.
 
+## Rule-11 exemptions (ADR-817)
+
+Rule 11 forbids the dashboard server from owning `spawn`/`exec`/direct-`fs`/LLM calls; data flows via `callMCPTool` (server-side) → MCP. Each server-side spawn/exec/fs site gets one of three dispositions:
+
+- **Migrate** — anything an MCP tool already covers routes through `callMCPTool`. Examples: the capabilities route sources skills from `list-skills`; file/dir/settings opening goes through `system-open`.
+- **Delete** — utilities that become dead after migration are removed (e.g. the former `lib/server/{cliRunner,pythonRunner}.ts`).
+- **Permanent exemption** — surfaces that genuinely require a process and have no request/response MCP equivalent stay, marked with a `@spawn-exempt` or `@fs-exempt` comment naming the reason + ADR-817.
+
+**Marker convention:** put `// @spawn-exempt: <why>. See ADR-817.` (or `@fs-exempt`) directly above the call. Current permanent exemptions:
+
+| Surface | Marker | Why |
+|---|---|---|
+| Interactive PTY terminal (`api/cli/route.ts`, `api/cli/actions.ts`, `api/cli/exec/route.ts`) | `@spawn-exempt` | A live interactive terminal needs a long-lived bidirectional process; not a request/response tool. Buffers bounded (ADR Phase 1). |
+| Preferred-editor / cross-platform open (`app/actions.ts` `spawnCommand`) | `@spawn-exempt` | Opens a file in the user's chosen editor (app-specific invocation), not a default-open. |
+| Native file-picker dialog (`lib/server/spawn.ts` `runCommand` → `pickAudioFile`) | `@spawn-exempt` | Interactive OS dialog (`osascript`), like the terminal. |
+| Native terminal launcher (`lib/server/nativeTerminal.ts`) | `@spawn-exempt` | Intentional handoff to a native terminal app. |
+| CLI session-state write + local config read (`api/cli/cli-config.ts`) | `@fs-exempt` | Hot, PTY-coupled session write; read-only local YAML config. |
+| ADR archive extraction (`api/adrs/extract/route.ts`) | `@spawn-exempt` (ADR-642) | Unzips archived ADRs. |
+| Upload/ingest staging writes (`api/ingest/upload`, `api/cli/upload`) | `@fs-exempt` | Persists uploaded bytes to the staging dir. |
+
+A new server-side spawn/exec/fs without one of these markers is rule-11 debt.
+
 ## Two-surface model and skill page declaration
 
 The dashboard has exactly two surfaces: **Browse** (`/browse`) and **Workspace** (`/workspace`). There is no hub-nav concept. Skills declare their Workspace pages via `x-augur-dashboard-pages` in SKILL.md frontmatter; dashboard mount scripts discover those declarations and generate route registries and tab entries.

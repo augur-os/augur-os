@@ -10,7 +10,7 @@ import {
 } from "../cli-config";
 // @spawn-exempt: print-mode native AI client handoff uses the configured CLI argv through a PTY.
 import { pty } from "../pty-setup";
-import { execStore, type ExecEntry } from "./exec-store";
+import { execStore, pushBoundedOutput, type ExecEntry } from "./exec-store";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -118,7 +118,7 @@ function attachExecHandlers(entry: ExecEntry, ptyProcess: ExecPtyProcess): void 
       const line = rawLine.trim();
       if (!line.startsWith("{") || !line.endsWith("}")) continue;
 
-      entry.output.push(line);
+      pushBoundedOutput(entry, line);
       applyJsonEvent(entry, line);
     }
   });
@@ -126,7 +126,7 @@ function attachExecHandlers(entry: ExecEntry, ptyProcess: ExecPtyProcess): void 
   ptyProcess.onExit((event: PtyExitEvent) => {
     if (pending.trim().startsWith("{") && pending.trim().endsWith("}")) {
       const line = pending.trim();
-      entry.output.push(line);
+      pushBoundedOutput(entry, line);
       applyJsonEvent(entry, line);
     }
 

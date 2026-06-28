@@ -60,6 +60,14 @@ class Routine:
     fan_out_threshold: int | None = None
     budget_max_turns: int | None = None
     runner: str = ""
+    # ADR-818: execution surface. "worktree" loops are eligible for the
+    # /a-loops all isolated-worktree fan-out; "in-place" loops act on the live
+    # vault/runtime/external state and are routed to the daemon instead.
+    # Defaults to "worktree" so undeclared (code) loops keep fanning out.
+    isolation_mode: str = "worktree"
+    # ADR-818 phase 2: in-place write surface (repo|vault|runtime|mixed). Picks
+    # the guardrail policy in the in-place runner. "repo" for worktree loops.
+    execution_surface: str = "repo"
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -68,6 +76,15 @@ def _routine_from_loop(skill_md: Path, block: dict[str, Any], *, skill_name: str
     discover = loop.automation.discover or ""
     execution = "inline-session" if discover.endswith(".md") else "tiered"
     skill_root = skill_md.parent
+    # ADR-818: a loop is in-place ONLY when it explicitly declares
+    # isolation.mode: in-place. Undeclared loops default to worktree so the
+    # existing code loops keep fanning out (loop_model parses an undeclared
+    # mode as "in-place", so we read the explicit value from the raw block).
+    iso_block = block.get("isolation") or {}
+    isolation_mode = str(iso_block.get("mode") or "worktree")
+    execution_surface = str(
+        iso_block.get("surface") or ("mixed" if isolation_mode == "in-place" else "repo")
+    )
     return Routine(
         id=loop.id,
         execution=execution,
@@ -82,6 +99,8 @@ def _routine_from_loop(skill_md: Path, block: dict[str, Any], *, skill_name: str
         fan_out_threshold=None,
         budget_max_turns=None,
         runner=loop.automation.runner,
+        isolation_mode=isolation_mode,
+        execution_surface=execution_surface,
         raw=dict(block),
     )
 

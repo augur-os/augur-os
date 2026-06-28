@@ -235,4 +235,5 @@ def test_aug_discover_commands_lists_slash_commands():
     data = json.loads(result.stdout)
     assert "slash_commands" in data, f"expected slash-command listing, got keys {list(data)}"
     ids = {command["id"] for group in data["slash_commands"] for command in group.get("commands", [])}
-    assert {"ask", "keep", "discover", "routines"} <= ids
+    # "routines" was consolidated into the unified "a-loops" command (ADR-758).
+    assert {"ask", "keep", "discover", "a-loops"} <= ids

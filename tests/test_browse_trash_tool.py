@@ -1,6 +1,4 @@
 # tests/test_browse_trash_tool.py
-from pathlib import Path
-
 import src.mcp.augur_framework.tools.infrastructure.browse_trash as bt
 
 

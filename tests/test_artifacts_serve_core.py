@@ -6,8 +6,10 @@ from src.lib.artifacts_sidecar import write_sidecar, Sidecar, sidecar_path_for_h
 
 
 def _make(docs: Path, slug: str, body="<html><title>T</title>x</html>", hub="dev"):
-    d = docs / hub / "artifacts"; d.mkdir(parents=True, exist_ok=True)
-    html = d / f"{slug}.html"; html.write_text(body, encoding="utf-8")
+    d = docs / hub / "artifacts"
+    d.mkdir(parents=True, exist_ok=True)
+    html = d / f"{slug}.html"
+    html.write_text(body, encoding="utf-8")
     write_sidecar(sidecar_path_for_html(html), Sidecar(slug=slug, title="T", kind="generated", hub=hub))
     return html
 
@@ -32,7 +34,8 @@ def test_html_returns_file_content(tmp_path):
 
 def test_html_refuses_outside_roots(tmp_path):
     _make(tmp_path, "demo")
-    other = tmp_path / "other"; other.mkdir()
+    other = tmp_path / "other"
+    other.mkdir()
     r = asv.artifact_html_impl("demo", docs_dir=tmp_path, allowed_roots=[other])
     assert r == {"found": False}
 
