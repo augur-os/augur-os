@@ -15,19 +15,21 @@ jobs:
 
       - name: Zip each skill directory
         run: |
-          mkdir -p dist/skills-zips
+          ZIP_DIR="$GITHUB_WORKSPACE/dist/skills-zips"
+          mkdir -p "$ZIP_DIR"
           for skill_dir in project-brain/capabilities/skills/*/; do
             skill_name=$(basename "$skill_dir")
             # Only zip if SKILL.md exists (real skill, not a support dir)
             if [ -f "$skill_dir/SKILL.md" ]; then
-              cd "$skill_dir"
-              zip -r "../../../dist/skills-zips/${skill_name}.zip" . \
-                -x "__pycache__/*" "augur/tests/*" ".pytest_cache/*" "*.pyc"
-              cd ../../..
+              # Absolute ZIP_DIR + subshell cd is depth-independent: skills live at
+              # project-brain/capabilities/skills/<skill>/ (4 deep), so the old
+              # "../../../" relative output landed in project-brain/, not repo root.
+              ( cd "$skill_dir" && zip -r "$ZIP_DIR/${skill_name}.zip" . \
+                  -x "__pycache__/*" "augur/tests/*" ".pytest_cache/*" "*.pyc" )
               echo "Zipped: $skill_name"
             fi
           done
-          ls -la dist/skills-zips/
+          ls -la "$ZIP_DIR"
 
       - name: Create or update release
         env:
