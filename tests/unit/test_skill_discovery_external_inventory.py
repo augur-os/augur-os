@@ -117,3 +117,49 @@ def test_discover_all_skills_includes_codex_superpowers_source(tmp_path: Path, m
     assert by_name["systematic-debugging"].client_sources == ("codex-global-superpowers",)
     assert by_name["systematic-debugging"].source_root == "external-client"
     assert by_name["systematic-debugging"].canonical is False
+
+
+def test_get_client_skill_dirs_includes_agents_shared_roots() -> None:
+    from src.config.paths import get_client_skill_dirs
+
+    dirs = get_client_skill_dirs()
+
+    assert "agents-shared-local" in dirs
+    assert "agents-shared-global" in dirs
+    assert dirs["agents-shared-global"] == Path.home() / ".agents" / "skills"
+    assert dirs["agents-shared-local"].parts[-2:] == (".agents", "skills")
+
+
+def test_discover_all_skills_includes_agents_shared_and_excludes_augur_export(tmp_path: Path, monkeypatch) -> None:
+    from src.plugins import skill_discovery
+
+    agents_global = tmp_path / "home" / ".agents" / "skills"
+
+    # Real third-party skill installed by agents-cli — should surface as external.
+    _write_skill(agents_global / "google-agents-cli-adk-code", "google-agents-cli-adk-code")
+    # Augur's OWN Codex export lives under the augur/ grouping subdir — must be excluded.
+    _write_skill(agents_global / "augur" / "ask", "ask")
+
+    monkeypatch.setattr(skill_discovery, "_load_disabled_skills", lambda: set())
+    monkeypatch.setattr(skill_discovery, "get_skills_dir", lambda: tmp_path / "project" / "skills")
+    monkeypatch.setattr(skill_discovery, "get_claude_plugin_skill_dirs", lambda: [])
+    monkeypatch.setattr(
+        skill_discovery,
+        "_get_client_skill_dirs",
+        lambda: {"agents-shared-global": agents_global},
+    )
+    monkeypatch.setattr(skill_discovery, "_agents_shared_excluded_names", lambda: {"augur"})
+    skill_discovery.invalidate_discovery_cache()
+
+    records = skill_discovery.discover_all_skills(tiers=(2,))
+    by_name = {record.name: record for record in records}
+
+    assert "google-agents-cli-adk-code" in by_name
+    adk = by_name["google-agents-cli-adk-code"]
+    assert adk.source == "agents-shared-global"
+    assert adk.ownership == "external"
+    assert adk.source_root == "external-client"
+    assert adk.canonical is False
+    assert adk.tier == 2
+    # Augur's own export under augur/ must NOT be re-ingested as an external skill.
+    assert "ask" not in by_name

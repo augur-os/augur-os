@@ -115,11 +115,21 @@ def machine_path_markers() -> list[str]:
     home/username is treated as a leak.
     """
     markers: list[str] = []
-    # Generic/shared accounts (CI runners, default OS users) are not a specific
-    # person's private identity and recur as common substrings (e.g. "runner" in
-    # "workflow_runner" or "test runners"), so they must never become leak
-    # markers — otherwise the guard false-positives across the whole tree when it
-    # runs in CI (where the build user is "runner"). The configured
+    # The builder's absolute home directory is ALWAYS a valid marker: it is a full
+    # path, so it cannot false-positive on common words/identifiers. (This is what
+    # the worktree-leak guard tests rely on.)
+    try:
+        home = str(Path.home())
+        # Skip degenerate roots like "/" or "\" that would match everything.
+        if len(home.strip("/\\")) >= 2:
+            markers.append(home)
+    except (RuntimeError, OSError):
+        pass
+    # The BARE username is only a safe marker when it's distinctive. Short or
+    # generic/shared accounts (me, ci, runner, ubuntu, github, ...) recur as
+    # common substrings (e.g. "runner" in "workflow_runner" or "test runners"),
+    # so exclude them — otherwise the guard false-positives across the whole tree
+    # when it runs in CI (where the build user is "runner"). The configured
     # AUGUR_PRIVATE_MARKER_REGEX still catches real private markers regardless.
     generic_users = {
         "runner",
@@ -138,21 +148,10 @@ def machine_path_markers() -> list[str]:
     }
     try:
         user = getpass.getuser()
+        if len(user) >= 5 and user.lower() not in generic_users and user not in markers:
+            markers.append(user)
     except Exception:
-        user = ""
-    if user.lower() in generic_users:
-        return markers
-    try:
-        home = str(Path.home())
-        # Skip degenerate roots like "/" or "\" that would match everything.
-        if len(home.strip("/\\")) >= 2:
-            markers.append(home)
-    except (RuntimeError, OSError):
         pass
-    # Short/common usernames (me, ci, bob) risk false positives; require a
-    # distinctive length before treating a bare username as a leak marker.
-    if len(user) >= 5 and user not in markers:
-        markers.append(user)
     return markers
 
 
