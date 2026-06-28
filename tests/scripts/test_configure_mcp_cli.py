@@ -147,7 +147,7 @@ def test_global_client_config_from_worktree_uses_main_checkout_root(tmp_path, mo
         },
     )
 
-    def fake_entries(ide_name, python_path, repo_root, existing_server_ids=None):
+    def fake_entries(ide_name, python_path, repo_root, existing_server_ids=None, **_kwargs):
         del ide_name, python_path, existing_server_ids
         return {
             "augur-core": {
@@ -221,7 +221,7 @@ def test_repo_local_client_config_from_worktree_keeps_requested_root(tmp_path, m
         raising=False,
     )
 
-    def fake_entries(ide_name, python_path, repo_root, existing_server_ids=None):
+    def fake_entries(ide_name, python_path, repo_root, existing_server_ids=None, **_kwargs):
         del ide_name, python_path, existing_server_ids
         return {
             "augur-core": {

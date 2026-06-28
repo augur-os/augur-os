@@ -661,6 +661,8 @@ def _discover_all_skills_impl(
             "gemini-global",
             "opencode-local",
             "opencode-global",
+            "agents-shared-local",
+            "agents-shared-global",
         }
         _FLAT_EXTENSIONS = {".md", ".mdc"}
         try:
@@ -668,7 +670,8 @@ def _discover_all_skills_impl(
                 if not skill_parent.is_dir():
                     continue
                 if source_tag in _SUBDIR_CLIENTS:
-                    for skill_dir in _iter_subdir_skill_dirs(skill_parent):
+                    exclude_names = _agents_shared_excluded_names() if source_tag in _AGENTS_SHARED_CLIENTS else None
+                    for skill_dir in _iter_subdir_skill_dirs(skill_parent, exclude_names=exclude_names):
                         _process_skill_dir(
                             skill_dir,
                             source_tag,
@@ -698,7 +701,24 @@ def _discover_all_skills_impl(
     return sorted(skills_dict.values(), key=lambda s: s.name)
 
 
-def _iter_subdir_skill_dirs(skills_parent: Path):
+_AGENTS_SHARED_CLIENTS = {"agents-shared-local", "agents-shared-global"}
+
+
+def _agents_shared_excluded_names() -> set[str]:
+    """Grouping subdirs under .agents/skills that are Augur's OWN exports, not
+    external third-party skills. Augur projects its Codex native skills into
+    ~/.agents/skills/<leaf>/, so that leaf must be skipped when scanning
+    .agents/skills as a read-only external source.
+    """
+    try:
+        from src.config.paths import get_codex_native_skills_dir
+
+        return {get_codex_native_skills_dir(scope="global").name}
+    except Exception:
+        return {"augur"}
+
+
+def _iter_subdir_skill_dirs(skills_parent: Path, exclude_names: set[str] | None = None):
     """Yield native skill directories under a client skills parent.
 
     Most SKILL.md-aware clients store skills directly under the skills parent.
@@ -706,9 +726,15 @@ def _iter_subdir_skill_dirs(skills_parent: Path):
     ``codex-primary-runtime/spreadsheets``. Scan one grouping level so those
     real external skills are visible without recursively treating arbitrary
     reference/example directories as skill roots.
+
+    ``exclude_names`` skips top-level grouping dirs by name (e.g. Augur's own
+    ``augur/`` export dir under ``.agents/skills``).
     """
+    exclude = exclude_names or set()
     for child in sorted(skills_parent.iterdir()):
         if not child.is_dir():
+            continue
+        if child.name in exclude:
             continue
         if (child / "SKILL.md").is_file():
             yield child

@@ -1161,6 +1161,11 @@ def get_client_skill_dirs() -> dict[str, Path]:
         "copilot-global": home / ".github" / "instructions",
         "opencode-local": project_root / ".opencode" / "skills",
         "opencode-global": home / ".config" / "opencode" / "skills",
+        # Cross-agent shared skills convention (agents-cli / skills.sh). Read-only,
+        # external. Augur's own Codex export under .agents/skills/augur is excluded
+        # by the scanner (see skill_discovery._agents_shared_excluded_names).
+        "agents-shared-local": project_root / ".agents" / "skills",
+        "agents-shared-global": home / ".agents" / "skills",
     }
 
 
