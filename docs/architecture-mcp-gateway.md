@@ -32,10 +32,10 @@ This document specifies the seven channels of the Connection Layer.
 
 ## 1. MCP server
 
-The local MCP server in `src/mcp/augur_mcp/` exposes every Augur skill as an atomic tool callable from any MCP-aware client. This is the shared execution surface — the "wrapping all five layers" callout from the Harness model.
+The local MCP servers under `src/mcp/` — `augur_core` and `augur_framework` (each a Python module sharing `src/mcp/augur_shared/`), plus `augur-vault` and `augur-ingest` — expose every Augur skill as atomic tools callable from any MCP-aware client. This is the shared execution surface — the "wrapping all five layers" callout from the Harness model.
 
 Key properties:
-- **One trust boundary**: every client connects to the same server.
+- **One trust boundary**: every client connects to the same local servers.
 - **Skill-declared tool surface**: skills declare their MCP tools in SKILL.md frontmatter (`x-augur-mcp-tools`); the server discovers them dynamically.
 - **Dashboard parity**: Dashboard data flows through this same MCP server — there is no parallel REST API for skill data (see ADR-490 for the dashboard-MCP boundary).
 - **Unified history**: every tool call goes through one path, so the audit trail is complete regardless of whether the trigger was a dashboard click, a CLI invocation, or an AI-client agent command.
@@ -45,7 +45,7 @@ See the **MCP Server — Implementation Reference** section at the bottom of thi
 
 ## 2. sync_agents
 
-`sync_agents` (in `project-brain/capabilities/skills/ai/scripts/sync_agents/`) is the per-client instruction-file generator. It reads the canonical sources (the agent rules, project rules, hub map, capability policy) and writes each client's native format:
+`sync_agents` (in `project-brain/capabilities/skills/ai/scripts/sync_agents/`) is the per-client instruction-file generator. It reads the canonical sources (the agent rules, project rules, capability policy) and writes each client's native format:
 
 - **Claude Code**: `CLAUDE.md`, `.claude/skills/`, `.claude/commands/`, `.claude/agents/`
 - **Codex CLI**: `CODEX.md`, `AGENTS.md`, `.codex/skills/`, `.codex/prompts/`
@@ -106,210 +106,60 @@ This is what makes "same memory across clients" real — not a marketing claim, 
 
 The remainder of this document is the implementation reference for channel 1 (MCP server). It pre-dates the Connection Layer reframe and is preserved as the canonical detailed reference for the MCP-specific channel.
 
-## Component Flow Diagram
+## Implementation map
 
-```mermaid
-flowchart TB
-    subgraph Clients["Entry Points"]
-        ExtAgent["External Agent\n(Claude Desktop, Cursor)"]
-        WebClient["Web Client\n(Browser)"]
-        CLI["CLI\n(Terminal)"]
-    end
+The MCP layer is a small set of local servers, not one monolith:
 
-    subgraph Dashboard["Dashboard (Next.js)"]
-        Pages["Pages\n(/brain, /workforce, etc.)"]
-        APIRoutes["API Routes\n(/api/*)"]
-        ContextMgr["Context Manager\n(tool switching)"]
-    end
+| Server | Launch | Surface |
+|---|---|---|
+| `augur-core` | `python -m augur_core` (`src/mcp/augur_core/`) | core session, brain, and read tools |
+| `augur-framework` | `python -m augur_framework` (`src/mcp/augur_framework/`) | broader framework and infrastructure tools |
+| `augur-vault`, `augur-ingest` | `config/system/mcp_servers.yaml` | vault access and inbox ingestion |
 
-    subgraph MCP["Central MCP Server"]
-        ToolRegistry["Tool Registry\n(150+ tools)"]
-        ContextLoader["Context-Aware Loader\n(page → tools mapping)"]
-        Logger["Unified Logger\n(all calls logged)"]
-        Executor["Tool Executor"]
-    end
+All servers share `src/mcp/augur_shared/` — the SDK, the `mcp_tool_interceptor`, the unified logger, and `tool_controller.py`. Each client's MCP config is generated from `config/system/mcp_servers.yaml` by the settings sync, with `PYTHONPATH` covering the project root and `src/mcp`.
 
-    subgraph Skills["Skills (skills/)"]
-        Factory["Factory Skills\n(agents)"]
-        Horizontal["Horizontal Skills\n(infrastructure)"]
-        Vertical["Vertical Skills\n(domains)"]
-    end
+Tools are discovered, not hand-wired: a skill declares its tools in `SKILL.md` frontmatter (`x-augur-mcp-tools`) and the owning server registers them. Which tools reach which client — or the dashboard — is governed by `config/system/capability_exposure.yaml`, not by a dashboard page; see [architecture-capability-exposure.md](./architecture-capability-exposure.md).
 
-    subgraph Execution["Execution"]
-        Scripts["Python Scripts\n(scripts/*.py)"]
-        Modules["Skill Modules\n(modules/*.md)"]
-    end
+## Dashboard data path
 
-    subgraph Data["Data Layer"]
-        DataRepo["External user data dirs\n(vault, documents, runtime)"]
-        Indexes["Derived Indexes\n(RAG, caches)"]
-    end
+The dashboard owns no parallel tool registry and no per-page tool loading. Every dashboard data call posts `{tool, args}` to `apps/dashboard/app/api/mcp/tool/route.ts`, which calls `callMCPTool` server-side and returns JSON. The dashboard has exactly two surfaces — Browse and Workspace — so there is no `/brain` or `/workforce` page driving tool context (see [architecture-dashboard.md](./architecture-dashboard.md)).
 
-    %% Client connections
-    ExtAgent -->|"MCP Protocol"| MCP
-    WebClient -->|"HTTP"| Pages
-    CLI -->|"MCP Protocol"| MCP
+## Logging
 
-    %% Dashboard flow
-    Pages -->|"Page change"| ContextMgr
-    Pages -->|"User action"| APIRoutes
-    APIRoutes -->|"Tool call"| MCP
-    ContextMgr -->|"Switch tools"| ContextLoader
-
-    %% MCP internal
-    ToolRegistry --> ContextLoader
-    ContextLoader --> Executor
-    Executor --> Logger
-
-    %% MCP to Skills
-    Executor -->|"Invoke"| Factory
-    Executor -->|"Invoke"| Horizontal
-    Executor -->|"Invoke"| Vertical
-
-    %% Skills to Execution
-    Factory --> Scripts
-    Horizontal --> Scripts
-    Vertical --> Scripts
-    Factory --> Modules
-    Horizontal --> Modules
-    Vertical --> Modules
-
-    %% Data access
-    Scripts -->|"Read/Write"| DataRepo
-    Scripts -->|"Query/Update"| Indexes
-```
-
-## Context-Aware Tool Loading
-
-When user navigates the dashboard, MCP dynamically loads relevant tools:
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Browser
-    participant Dashboard
-    participant MCP
-    participant Skills
-
-    User->>Browser: Navigate to /brain
-    Browser->>Dashboard: GET /brain
-    Dashboard->>MCP: switch_context("brain")
-    MCP->>MCP: Unload previous tools
-    MCP->>MCP: Load brain tools (60 tools)
-    MCP-->>Dashboard: Context ready
-    Dashboard-->>Browser: Render page
-
-    User->>Browser: Click "Run Audit"
-    Browser->>Dashboard: POST /api/brain/audit
-    Dashboard->>MCP: callTool("data_scientist_data_audit")
-    MCP->>Skills: Execute audit script
-    Skills->>MCP: Return results
-    MCP-->>Dashboard: JSON response
-    Dashboard-->>Browser: Update UI
-
-    User->>Browser: Navigate to /workforce
-    Browser->>Dashboard: GET /workforce
-    Dashboard->>MCP: switch_context("workforce")
-    MCP->>MCP: Unload brain tools
-    MCP->>MCP: Load workforce tools (50 tools)
-    Note over MCP: 15ms swap time
-```
-
-## Tool Context Mapping
-
-Each dashboard page maps to a set of MCP tools:
-
-| Page | Tools Loaded | Count |
-|------|--------------|-------|
-| `/brain` | RAG, bugs, intelligence, metrics | ~60 |
-| `/workforce` | Chains, agents, weights, telemetry | ~50 |
-| `/careers` | Job analyzer, interview prep, contacts | ~40 |
-| `/settings` | Skills management, config | ~20 |
-| *Closed* | Core tools only | ~10 |
-
-**Implementation**: `src/mcp/augur_mcp/tool_controller.py`
-
-## API Route Pattern
-
-All API routes now use one of two patterns:
-
-### Pattern 1: MCP Tool Call (Preferred)
-
-```typescript
-// lib/mcp/createAPIRoute.ts
-export const POST = createAPIRoute({
-  tool: 'data_scientist_data_audit',
-  params: (req) => ({ scope: req.query.scope }),
-});
-```
-
-### Pattern 2: Python Runner (Transition)
-
-For complex cases not yet migrated to MCP tools:
-
-```typescript
-// lib/server/pythonRunner.ts
-import { runPythonScript } from '@/lib/server/pythonRunner';
-
-export async function POST(req: Request) {
-  const result = await runPythonScript(
-    'skills/example/scripts/data_audit.py',
-    ['--scope', scope]
-  );
-  return Response.json(result);
-}
-```
-
-## Debugging
-
-All MCP calls are logged centrally:
+Every tool call is logged centrally under `get_logs_dir()`:
 
 ```bash
-# View MCP logs
 python -c "from pathlib import Path; from src.config.paths import get_logs_dir; print(Path(get_logs_dir()) / 'mcp.log')"
-
-# Or in dashboard
-http://localhost:3000/dev/mcp-logs
 ```
 
-Log format:
-```json
-{
-  "timestamp": "2026-01-13T14:30:00Z",
-  "tool": "data_scientist_data_audit",
-  "params": {"scope": "all"},
-  "duration_ms": 1234,
-  "status": "success",
-  "source": "dashboard:/brain"
-}
-```
+## API route pattern
 
-## Anti-Patterns
-
-### ❌ Direct subprocess calls
+Dashboard API routes forward a single MCP tool call — they do not run workflows or scripts directly:
 
 ```typescript
-// WRONG - bypasses MCP
-import { spawn } from 'child_process';
-const proc = spawn('python', ['script.py']);
-```
-
-### ❌ Importing Python directly
-
-```typescript
-// WRONG - no logging, no context
-import { runPythonCode } from 'some-lib';
-await runPythonCode('import my_script; my_script.run()');
-```
-
-### ✅ Correct pattern
-
-```typescript
-// RIGHT - goes through MCP
+// apps/dashboard/app/api/mcp/tool/route.ts forwards { tool, args } to callMCPTool
 const result = await mcpClient.callTool('skill_action', params);
 ```
 
-## Related Documents
+The former `lib/server/pythonRunner.ts` "python runner" transition pattern has been removed; routes that need Python go through an MCP tool.
+
+## Anti-patterns
+
+Bypassing MCP loses logging, context, and the single trust boundary:
+
+```typescript
+// WRONG — direct subprocess, no logging, no context
+import { spawn } from 'child_process';
+spawn('python', ['script.py']);
+
+// RIGHT — through MCP
+const result = await mcpClient.callTool('skill_action', params);
+```
+
+A server-side `spawn`/`exec`/`fs` call in the dashboard is rule-11 debt unless it carries an `@spawn-exempt`/`@fs-exempt` marker (ADR-817); see [architecture-dashboard.md](./architecture-dashboard.md).
+
+## Related documents
 
 - ADR-005: MCP Execution Gateway
-- Vision: Context-Aware MCP
+- ADR-490: dashboard ↔ MCP boundary
+- [architecture-capability-exposure.md](./architecture-capability-exposure.md): which tools surface where

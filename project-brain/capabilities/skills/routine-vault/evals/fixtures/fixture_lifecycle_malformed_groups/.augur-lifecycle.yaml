@@ -1,3 +1,0 @@
-known_groups:
-  - name: bad-entry
-    canonical_strategy: bogus

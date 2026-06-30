@@ -47,11 +47,11 @@ Extraction produces usable source material. Wiki compilation decides which durab
 
 The modern wiki flow is concept-first. `wiki-rebuild` and `wiki-update` prepare extraction batches. An agent reviews or produces concept JSON. `wiki-apply-concept-batch` then applies that batch to compiler state and page material.
 
-Rewrite proposal tools such as `wiki-rewrite-candidates`, `wiki-rewrite-proposals`, and `wiki-apply-top-rewrite-proposal` exist for targeted maintenance, but the intended compounding path is batched and evidence-preserving.
+Maintenance tools such as `wiki-lint`, `wiki-rebuild`, and `wiki-purge` exist for targeted upkeep, but the intended compounding path is batched and evidence-preserving.
 
 ## Wiki page compiler
 
-ADR-560 introduced the semantic wiki compiler. ADR-731 consolidates memory synthesis into the wiki engine so retained `/ask` outcomes, saved synthesis, and query registry signals feed one compounding path instead of several competing memory writers.
+ADR-560 introduced the semantic wiki compiler; ADR-731 consolidates memory synthesis into the wiki engine so retained `/ask` outcomes, saved synthesis, and query registry signals feed one compounding path instead of several competing memory writers. ADR-823 flattens each compiled page to a minimal OpenKB shape — frontmatter plus `## Summary`, `## Body`, and wikilinks — and is the current page-format decision.
 
 Compiled wiki pages should be concept articles. Thin pages, orphan concepts, and duplicate clusters are health signals, not acceptable end state. `wiki-status` reports whether compounding should run; `wiki-lint` checks the resulting surface.
 

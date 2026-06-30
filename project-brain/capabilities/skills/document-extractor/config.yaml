@@ -1,7 +1,0 @@
-contributions:
-  pages: []
-transcription:
-  provider: whisper-cpp
-  model: medium.en
-  language: en
-  speaker_labels: false
