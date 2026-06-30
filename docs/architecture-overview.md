@@ -227,7 +227,7 @@ This is how the current repo structure maps onto the model:
 - `project-brain/capabilities/skills/`: shared project/core skills, scripts, commands, agents, actions, and skill-owned UI sources
 - configured personal vault `capabilities/skills/`: user-owned private skills
 - `project-brain/capabilities/skills/<skill-name>/augur/dashboard/`: skill-owned UI source where a skill owns dashboard pages/actions
-- `src/mcp/augur_mcp/`: central execution gateway (exposes skills as tools via MCP, handles context switching, logging, and background jobs) — see ADR-005
+- `src/mcp/` (`augur_core`, `augur_framework`, sharing `augur_shared/`): the local MCP servers that expose skills as tools, with unified logging — see ADR-005
 - `apps/dashboard/`: ops UI shell (Next.js App Router) that hosts skill UIs and provides src/lib components, navigation, and bounded execution actions
 - `src/config/paths.py`: ops configuration for user data locations
 - external vault/documents/runtime paths: knowledge layer for notes, documents, memory, compiled wiki pages, indexes, and runtime state
@@ -253,7 +253,7 @@ flowchart TB
   end
 
   subgraph Exec["Execution layer"]
-    MCP["Central MCP Server\n(src/mcp/augur_mcp)"]
+    MCP["Local MCP servers\n(src/mcp: augur_core, augur_framework)"]
     Skills["Skills\n(project-brain/capabilities/skills/<skill-name>)"]
     Dashboard["Console UI\n(apps/dashboard)"]
   end
@@ -302,7 +302,7 @@ flowchart TB
   UserConfig["runtime skill state\n(state/dashboard/skills-state.yaml)"]
   SkillData["External user data dirs\n(vault, documents, runtime)"]
 
-  Registry["src/plugins/skill_registry.py"]
+  Registry["src/mcp/augur_shared/skill_registry.py"]
 
   SKILL --> Registry
   Modules --> Registry
@@ -315,8 +315,8 @@ flowchart TB
   PathsPy --> SkillData
 
   subgraph MCP["MCP Service"]
-    Server["augur_mcp/server.py"]
-    Dynamic["augur_mcp/dynamic_registry.py"]
+    Server["augur_core / augur_framework (servers)"]
+    Dynamic["augur_shared/dynamic_registry.py"]
   end
 
   Registry --> Server
@@ -370,7 +370,7 @@ To move toward reliable delegation (Stage 5), the Ops layer needs explicit task 
 - an approval model
 - auditable traces of tool execution
 
-See `docs/delegation.md` for the first delegated task class definition.
+These define the first delegated task classes.
 
 ## Augur Enterprise
 

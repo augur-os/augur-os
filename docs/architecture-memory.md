@@ -95,5 +95,5 @@ Do not memorize secrets, raw credentials, temporary shell output, or stale guess
 - `project-brain/capabilities/skills/knowledge/SKILL.md` owns memory commands and tools.
 - `src/config/paths.py` defines `get_memory_dir()` and vault path helpers.
 - `docs/agent-topics/CONTEXT.md` carries agent-facing context-management rules.
-- `docs/memory/` and the configured vault memory directory are the durable source surfaces.
+- The configured vault memory directory (`get_memory_dir()`) is the durable source surface; memory is never stored in `docs/`.
 - See [architecture-vault.md](./architecture-vault.md) for storage and [architecture-wiki.md](./architecture-wiki.md) for compounding.

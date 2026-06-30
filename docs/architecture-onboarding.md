@@ -66,7 +66,6 @@ Skipped items should not create false regressions, but they should remain visibl
 
 - `project-brain/capabilities/skills/onboard/SKILL.md` owns onboarding modes.
 - `project-brain/capabilities/skills/onboard/scripts/windows_one_click.py` implements Windows bootstrap.
-- `docs/superpowers/specs/2026-05-10-setup-completeness-widget-design.md` defines the widget contract.
-- `docs/superpowers/specs/2026-05-11-voice-profile-personalization-design.md` defines voice profile personalization.
+- ADR-722 defines the Setup Completeness Widget contract.
 - `apps/dashboard/features/setup/` is the intended dashboard feature area for the widget.
 - See [architecture-dashboard.md](./architecture-dashboard.md) for dashboard data flow and [architecture-memory.md](./architecture-memory.md) for profile memory.

@@ -15,8 +15,8 @@ project-brain/capabilities/skills/example/
   augur/
     actions/            # dashboard/action definitions
     tests/              # skill-owned tests
-    pages/              # config-driven dashboard pages
-  dashboard/            # source UI only where the local contract allows it
+    pages/              # config-driven dashboard pages (ADR-491)
+    dashboard/          # source UI where the local contract allows it
 ```
 
 ## Skill file structure
@@ -46,16 +46,19 @@ Client-specific folders such as `.codex/skills/`, `.claude/skills/`, and `.gemin
 
 Skill frontmatter declares how the skill participates in Augur:
 
-| Field family | Purpose |
+| Field | Purpose |
 |---|---|
 | `name` and `description` | Standard Agent Skills identity and discovery |
-| `x-augur.hub` | Hub/app ownership and Browse grouping |
-| `x-augur.tools` | Deterministic tool declarations and intended surfaces |
-| `x-augur.commands` | Slash-command declarations owned by the skill |
-| `x-augur.routines` | Routine declarations per ADR-758 |
-| `x-augur.dashboard` | Skill-owned dashboard page/action declarations |
+| `x-augur-type` | Skill type (domain, command, routine, …) |
+| `x-augur-group` | Capability group (brain, dev, life, …) for packaging and Browse grouping |
+| `x-augur-tab` | Browse tab the skill's items surface under |
+| `x-augur-release` | Release tier that enables the skill (e.g. `mvp`) |
+| `x-augur-mcp-tools` | Deterministic MCP tool declarations |
+| `x-augur-commands` | Slash-command declarations owned by the skill |
+| `x-augur-dashboard-pages` | Workspace page declarations (admit the skill to the dashboard) |
+| `x-augur-config` | Config and data contributions |
 
-Legacy top-level `x-augur-*` fields remain readable during migration. This contract differs from vault note frontmatter. Skill metadata is packaging and routing metadata; user note metadata is durable content metadata.
+Fields are top-level `x-augur-*` keys. The hub concept and the `x-augur-hub` field were removed (ADR-802): a skill is admitted to the dashboard by declaring `x-augur-dashboard-pages`, and grouping is by `x-augur-group` / `x-augur-tab`. This contract differs from vault note frontmatter — skill metadata is packaging and routing metadata; user note metadata is durable content metadata.
 
 ## Bundle assembly pipeline
 
@@ -76,9 +79,9 @@ Each target has a formatter and filter profile. The formatter writes the target 
 
 ## Skill group and release enablement
 
-Skill groups determine which capability families ship together and which user surfaces see them. The hub assignment is not cosmetic: it controls Browse grouping, mode filtering, generated instruction surfacing, and enterprise/shared overlay behavior.
+Skill groups (`x-augur-group`) determine which capability families ship together and which user surfaces see them. The group assignment is not cosmetic: it controls Browse grouping, generated instruction surfacing, and enterprise/shared overlay behavior.
 
-Release profiles can include or exclude skills by hub, prefix, or explicit skill name. This keeps personal-tier, team, and client-specific distributions from exposing every internal capability by default.
+Release profiles can include or exclude skills by release tier (`x-augur-release`), group, prefix, or explicit skill name. This keeps personal-tier, team, and client-specific distributions from exposing every internal capability by default.
 
 ## Skill discovery
 

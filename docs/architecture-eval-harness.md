@@ -39,7 +39,7 @@ Three principles, inherited from the gbrain borrow slate's boundary rules and no
 
 ## Component map
 
-Everything ships inside one new skill, `project-brain/capabilities/skills/evals/` (hub `dev`). Exactly one line of code lands outside the skill — the observer registration in `src/mcp/augur_shared/mcp_sdk.py`.
+Everything ships inside one new skill, `project-brain/capabilities/skills/evals/` (group `dev`). Exactly one line of code lands outside the skill — the observer registration in `src/mcp/augur_shared/mcp_sdk.py`.
 
 ```mermaid
 flowchart TB

@@ -1,5 +1,0 @@
-enabled: true
-pattern_hints:
-  - 'guriqo-com-V*.zip'
-  - 'augur-run-V*.zip'
-keep_latest: 1

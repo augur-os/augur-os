@@ -61,7 +61,7 @@ Shared content is portable and versioned with the repo. Private content is local
 
 ADR-571 defines how user-facing vault markdown stores metadata. Human fields remain plain. Augur-managed system fields use leading underscore keys and are merged through frontmatter helpers so user-authored fields are not overwritten.
 
-The `x-augur-*` fields in `SKILL.md` are a different contract: they describe skill packaging, hub ownership, MCP tools, and dashboard exposure. Vault note frontmatter should not be migrated into skill metadata, and skill metadata should not be applied to user notes.
+The `x-augur-*` fields in `SKILL.md` are a different contract: they describe skill packaging, grouping, MCP tools, and dashboard exposure. Vault note frontmatter should not be migrated into skill metadata, and skill metadata should not be applied to user notes.
 
 ## Draft staging and publish flow
 

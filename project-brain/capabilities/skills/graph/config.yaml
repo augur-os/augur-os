@@ -1,4 +1,0 @@
-# graph skill configuration — ADR-738
-# The edge-type registry and tier thresholds are CENTRAL config, not skill-local,
-# because users and other skills extend them. See config/system/graph_edges.yaml.
-edge_config_path: config/system/graph_edges.yaml

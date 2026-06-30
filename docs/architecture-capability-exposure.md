@@ -72,7 +72,7 @@ Use the daemon or scheduler only to start work. Do not hide intelligence there.
 
 Drift scanners compare declared capability policy with generated client surfaces and Browse rows. Unclassified exports are debt because they create hidden behavior that no policy has approved.
 
-ADR-734 extends this closure layer with browse control hub rows, drift guardrails, and cleanup actions. The policy file is therefore both documentation and an enforcement input.
+ADR-734 extends this closure layer with browse control rows, drift guardrails, and cleanup actions. The policy file is therefore both documentation and an enforcement input.
 
 ## Implementation pointers
 

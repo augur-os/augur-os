@@ -1,6 +1,6 @@
 # Dashboard Architecture
 
-The dashboard is Augur's local browser surface. It renders hubs, Browse, blocks, setup state, actions, and diagnostics without bypassing the same MCP execution path used by AI clients.
+The dashboard is Augur's local browser surface. It renders Browse, Workspace, blocks, setup state, actions, and diagnostics without bypassing the same MCP execution path used by AI clients.
 
 ```mermaid
 sequenceDiagram
@@ -68,6 +68,8 @@ A new server-side spawn/exec/fs without one of these markers is rule-11 debt.
 ## Two-surface model and skill page declaration
 
 The dashboard has exactly two surfaces: **Browse** (`/browse`) and **Workspace** (`/workspace`). There is no hub-nav concept. Skills declare their Workspace pages via `x-augur-dashboard-pages` in SKILL.md frontmatter; dashboard mount scripts discover those declarations and generate route registries and tab entries.
+
+Sidebar navigation (ADR-821): Browse is the fixed top nav entry. Workspace is **not** a sidebar nav link — it is reached via Browse → **Pages** or by direct URL. Below Browse, the sidebar surfaces a **Pinned** section that lists pinned Browse items grouped by category (journey order), newest-pinned first, with a deep-link to `/browse?category=&item=` that preselects the card.
 
 Generated files under `apps/dashboard/app/workspace/` or generated registries should be treated as output. Source edits belong in the skill, feature, page YAML, or dashboard framework file that generated them.
 
